@@ -72,9 +72,10 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 
 - **Found:** `LICENSE.txt` of the ML-MAWS repository is the Apache License 2.0, while the header of `SuffixAutomaton.h` states "License: MIT" and "Authors: [Your Name]". No ML-MAWS code is copied into Q-MAWS; the behaviour is reimplemented, so the difference does not affect Q-MAWS. It is recorded for the baselines notes (M11).
 
-## OI-12: Golden worksheet wording (open, 2026-10-02; owner approval requested)
+## OI-12: Golden worksheet wording (resolved, 2026-10-02)
 
 - **Specification:** `qmaws teach --example` must match `tests/golden/worksheet_example.txt` byte for byte, with all values of the worksheet example (Appendix A of the teaching material); golden outputs change only with the owner's approval.
 - **Found:** the golden file did not exist; it was written in M4 from the program's output after a test confirmed every value against the teaching material: the 16 candidate words and the constant words CC, CT, GA; the 13-column matrix; the five quartets and the full pattern table; the W1 votes with their words (for example `KL|NP (8: AT, CA, GC, TG, AC, CG, GT, TA)`), the weights 1, 1, 1, 0.875, 0.875 and the vote summary (27 of 65 cells); the contribution and score matrices, both merge rounds and the tree `((K,L),M,(N,P));`; the splits, nRF = 0 and the control nRF = 0.5; the model values 0.0401 and 0.0081.
 - **Differences in wording only:** steps are numbered "Step 1" to "Step 9" instead of A.1 to A.9; arithmetic uses `x` and `/` (plain text) instead of × and ÷; every new score is written out in full, for example `{K,L}-N = (0 + 0) / 2 = 0` where the teaching material writes `{K,L}–N = 0`; the model terms are listed in a fixed order of the internal states (u, v) = (0,0), (0,1), (1,0), (1,1), so `P(1100 | ab|cd) = 0.5 x (0.00729 + 0.00001 + 0.06561 + 0.00729)` lists the same four terms as the teaching material in another order.
 - **Options:** (a) approve the golden file as it is; (b) ask for specific wording changes, after which the golden file is regenerated and approved again.
+- **Resolution:** the owner approved the golden file as it is (option a) on 2026-10-02.
