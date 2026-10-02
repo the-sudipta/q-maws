@@ -77,7 +77,8 @@ check() { # dataset id, input folder
         END { if (bad == "") print "same (" n " lengths)"; else print "DIFFERENT:" bad }
     ' "$out_ml/entropy_results.tsv" "$out_q/entropy.tsv")
     lengths_ml=$(grep -o 'selected lengths = {[^}]*}' "$out_ml/stderr.txt" | head -1)
-    lengths_q=$(grep -o '"selected_lengths": \[[^]]*\]' "$out_q/summary.json" | tr -d '\n ')
+    # The JSON list spans several lines: join the file before searching.
+    lengths_q=$(tr -d '\n ' <"$out_q/summary.json" | grep -o '"selected_lengths":\[[^]]*\]')
     if cmp -s "$out_ml/ml_maws_matrix.phy" "$out_q/m_ml.phy"; then
         dims=$(head -1 "$out_q/m_ml.phy")
         annotate notice "$id" "M_ml identical to ML-MAWS (PHYLIP $dims, byte for byte); entropy tables $entropy; ML-MAWS $lengths_ml, Q-MAWS $lengths_q"
