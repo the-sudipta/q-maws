@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.6-m06-h3] - 2026-10-02
+
 ### Added
 
 - Long-branch simulation of hypothesis H3 (`qmaws simulate-h3`): per-character simulator, 2,400 seeded replicates, recovery table, figure and report in `results/h3/`. H3 is supported: at 100,000 characters W1 recovered the true quartet in 0% of replicates and W2 in 98.5% to 100%.
