@@ -148,6 +148,21 @@ Code: `crates/qmaws-core/src/weight.rs`. Topologies of a quartet (a, b, c, d) in
   - Hashing: the stage's content hash is taken over a text form of the records with every floating-point value rounded to 9 significant digits (`{:.8e}`). `audit/chunks.json` lists each chunk's raw and rounded SHA-256.
   - `--weighting w2-sym` (default), `w2-emp` or `none` (no weighting stage).
 
+## Long-branch simulation (M6)
+
+Code: `crates/qmaws-core/src/sim.rs` (simulation and recovery), `crates/qmaws-cli/src/h3_cmd.rs` (the command `simulate-h3`), `crates/qmaws-viz/src/chart.rs` (the figure).
+
+- **Simulator:** characters are simulated one by one along ab|cd, so the simulator does not use the likelihood code it tests.
+  - The internal node u (joining a and b) is 0 or 1 with probability 0.5 each.
+  - a, b and the internal node v (joining c and d) change from u, and c and d from v, each with probability (1 − exp(−2t)) ÷ 2. Random numbers come from SplitMix64; the change probabilities from `libm::exp`.
+  - A test compares the simulated pattern frequencies of 400,000 characters with the model's pattern probabilities (within 5 standard errors) for each long-branch length.
+- **Settings** (pre-registered): t_long ∈ {0.5, 1.0, 1.5} for a and c, 0.05 for b, d and the internal branch; N ∈ {100, 1,000, 10,000, 100,000} characters before 0000 columns are removed; 200 replicates per setting.
+- **Seeds:** each replicate's seed is the first 8 bytes of SHA-256 of (global seed, index of t_long, index of N, replicate number), each 8 bytes little-endian; W2c in a replicate uses `quartet_seed(replicate seed, 1)`. All seeds are written to `results/h3/replicates.csv`.
+- **Recovery:** 1 if ab|cd is the only best topology, 1 ÷ k among k tied best topologies (the expected value of a random choice), 0 otherwise. W1 with no split pattern is a three-way tie. W2 ties are log-likelihoods within 10⁻⁸ (`weight::TIE_TOLERANCE`). The W2c "best" is the highest W2c weight, with exact ties shared.
+- **Evaluation:** `evaluation.txt` applies the pre-registered criterion mechanically. A setting is a long-branch length; the criterion applies where W1 recovery at N = 100,000 is below 0.5 and then requires W2 recovery of at least 0.95. If it applies nowhere, the verdict says the experiment does not test H3.
+- **Determinism:** the experiment runs on one thread in a fixed order. A test reproduces one committed replicate (seed, counts, log-likelihoods within 10⁻⁶, W2c weights) on every CI platform.
+- **Figure:** one panel per long-branch length; the x axis is logarithmic. W1 is drawn dashed orange with squares and W2 solid blue with circles (Okabe–Ito colours, so line style and marker also carry the meaning). Dotted reference lines mark 0.5 and 0.95. SVG only until M10.
+
 ## To be written
 
 - wQFM-rs algorithm details with references to the wQFM paper (M7)
