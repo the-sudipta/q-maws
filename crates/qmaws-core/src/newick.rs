@@ -297,6 +297,70 @@ fn quote_if_needed(label: &str) -> String {
     }
 }
 
+impl Tree {
+    /// The non-trivial splits of the tree, read as unrooted. Each split is
+    /// given by the side that does not contain the alphabetically first
+    /// leaf, as a sorted list of leaf names; splits with fewer than 2 leaves
+    /// on a side are left out. The result is sorted.
+    pub fn splits(&self) -> Vec<Vec<String>> {
+        let mut all = self.leaf_names();
+        all.sort();
+        let total = all.len();
+        let first = all.first().cloned().unwrap_or_default();
+        let mut out = std::collections::BTreeSet::new();
+        // Leaves below each node, by a post-order walk.
+        fn below(t: &Tree, n: usize, acc: &mut Vec<Vec<String>>) -> Vec<String> {
+            let node = &t.nodes[n];
+            let mut leaves = Vec::new();
+            if node.children.is_empty() {
+                leaves.push(node.label.clone().unwrap_or_default());
+            } else {
+                for &c in &node.children {
+                    leaves.extend(below(t, c, acc));
+                }
+            }
+            acc.push(leaves.clone());
+            leaves
+        }
+        let mut sets = Vec::new();
+        below(self, self.root, &mut sets);
+        for mut side in sets {
+            side.sort();
+            let size = side.len();
+            if size < 2 || total - size < 2 {
+                continue;
+            }
+            let side = if side.contains(&first) {
+                all.iter().filter(|x| !side.contains(x)).cloned().collect()
+            } else {
+                side
+            };
+            out.insert(side);
+        }
+        out.into_iter().collect()
+    }
+}
+
+/// Normalised Robinson–Foulds distance between two trees on the same leaves:
+/// |splits(a) Δ splits(b)| ÷ (2 × (n − 3)). Returns the number of splits
+/// in the symmetric difference too.
+pub fn nrf(a: &Tree, b: &Tree) -> (usize, f64) {
+    let sa = a.splits();
+    let sb = b.splits();
+    let diff = sa.iter().filter(|s| !sb.contains(s)).count()
+        + sb.iter().filter(|s| !sa.contains(s)).count();
+    let n = a.leaf_names().len();
+    let denom = 2 * n.saturating_sub(3);
+    (
+        diff,
+        if denom == 0 {
+            0.0
+        } else {
+            diff as f64 / denom as f64
+        },
+    )
+}
+
 /// Differences between the leaf names of a tree and a set of taxon names.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct NameMatch {
@@ -391,6 +455,26 @@ mod tests {
         }
         let e = Tree::parse("(A,B").unwrap_err();
         assert_eq!(e.position, 4);
+    }
+
+    #[test]
+    fn splits_and_normalised_robinson_foulds() {
+        let t = Tree::parse("((K,L),M,(N,P));").unwrap();
+        let want: Vec<Vec<String>> = vec![
+            vec!["M".into(), "N".into(), "P".into()],
+            vec!["N".into(), "P".into()],
+        ];
+        assert_eq!(t.splits(), want);
+        // The same unrooted tree written with another root has the same splits.
+        let r = Tree::parse("(K,L,(M,(N,P)));").unwrap();
+        assert_eq!(nrf(&t, &r), (0, 0.0));
+        let c = Tree::parse("((K,M),L,(N,P));").unwrap();
+        assert_eq!(nrf(&c, &t), (2, 0.5));
+        // Six taxa: n - 3 = 3 splits each.
+        let a = Tree::parse("((A,B),(C,D),(E,F));").unwrap();
+        let b = Tree::parse("((A,C),(B,D),(E,F));").unwrap();
+        assert_eq!(a.splits().len(), 3);
+        assert_eq!(nrf(&a, &b), (4, 4.0 / 6.0));
     }
 
     #[test]

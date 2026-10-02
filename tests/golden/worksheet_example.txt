@@ -1,0 +1,145 @@
+Q-MAWS teaching worksheet
+=========================
+
+Step 1. Input
+-------------
+Taxon  Sequence
+K      AACGTA
+L      ACGTAG
+M      ACGTTC
+N      CATTGC
+P      CATGGC
+
+Step 2. Neighbouring pairs
+--------------------------
+A sliding window of width 2: a sequence of length z has z - 1 pairs.
+
+Taxon  Pairs
+K      AA, AC, CG, GT, TA
+L      AC, CG, GT, TA, AG
+M      AC, CG, GT, TT, TC
+N      CA, AT, TT, TG, GC
+P      CA, AT, TG, GG, GC
+
+Step 3. Two-letter minimal absent words
+---------------------------------------
+xy is a MAW of s if x occurs in s, y occurs in s, and xy is not among the
+neighbouring pairs of s.
+All 5 sequences contain A, C, G and T, so here xy is a MAW exactly when xy is
+not a neighbouring pair. There are 4 x 4 = 16 candidate words.
+
+MAW of every sequence (constant all-1 columns, removed): CC, CT, GA.
+MAW of no sequence (constant all-0 columns, removed): none.
+
+Step 4. Matrix
+--------------
+1 = the word is a MAW of the sequence; 0 = it is not.
+
+Word  K  L  M  N  P
+AA    0  1  1  1  1
+AC    0  0  0  1  1
+AG    1  0  1  1  1
+AT    1  1  1  0  0
+CA    1  1  1  0  0
+CG    0  0  0  1  1
+GC    1  1  1  0  0
+GG    1  1  1  1  0
+GT    0  0  0  1  1
+TA    0  0  1  1  1
+TC    1  1  0  1  1
+TG    1  1  1  0  0
+TT    1  1  0  0  1
+
+13 columns.
+
+Step 5. Quartets
+----------------
+Q = 5 x 4 x 3 x 2 / 24 = 120 / 24 = 5: KLMN, KLMP, KLNP, KMNP, LMNP (each leaves out exactly one taxon).
+
+Step 6. Pattern table
+---------------------
+Members of each quartet are read in name order.
+
+Word  KLMN  KLMP  KLNP  KMNP  LMNP
+AA    0111  0111  0111  0111  1111
+AC    0001  0001  0011  0011  0011
+AG    1011  1011  1011  1111  0111
+AT    1110  1110  1100  1100  1100
+CA    1110  1110  1100  1100  1100
+CG    0001  0001  0011  0011  0011
+GC    1110  1110  1100  1100  1100
+GG    1111  1110  1110  1110  1110
+GT    0001  0001  0011  0011  0011
+TA    0011  0011  0011  0111  0111
+TC    1101  1101  1111  1011  1011
+TG    1110  1110  1100  1100  1100
+TT    1100  1101  1101  1001  1001
+
+No 0000 pattern occurs.
+
+Step 7. Informative-pattern votes (W1) and weights
+--------------------------------------------------
+For members (a, b, c, d): ab|cd is supported by 1100 and 0011, ac|bd by 1010 and
+0101, ad|bc by 1001 and 0110. Weight of the winner = its votes / all votes.
+
+Quartet  T1 (votes)                                 T2 (votes)  T3 (votes)     Winner  Weight
+KLMN     KL|MN (2: TT, TA)                          KM|LN (0)   KN|LM (0)      KL|MN   2 / 2 = 1
+KLMP     KL|MP (1: TA)                              KM|LP (0)   KP|LM (0)      KL|MP   1 / 1 = 1
+KLNP     KL|NP (8: AT, CA, GC, TG, AC, CG, GT, TA)  KN|LP (0)   KP|LN (0)      KL|NP   8 / 8 = 1
+KMNP     KM|NP (7: AT, CA, GC, TG, AC, CG, GT)      KN|MP (0)   KP|MN (1: TT)  KM|NP   7 / 8 = 0.875
+LMNP     LM|NP (7: AT, CA, GC, TG, AC, CG, GT)      LN|MP (0)   LP|MN (1: TT)  LM|NP   7 / 8 = 0.875
+
+Votes used: 2 + 1 + 8 + 8 + 8 = 27 of 65 pattern cells; 38 cells cast no vote (one-taxon-differs
+or all-equal patterns).
+
+Step 8. Classroom amalgamation
+------------------------------
+Number of pairs = 5 x 4 / 2 = 10.
+
+Contribution of each winning topology to its two pairs:
+
+Winner (weight)  K-L  K-M    K-N  K-P  L-M    L-N  L-P  M-N  M-P  N-P
+KL|MN (1)        1                                      1
+KL|MP (1)        1                                           1
+KL|NP (1)        1                                                1
+KM|NP (0.875)         0.875                                       0.875
+LM|NP (0.875)                          0.875                      0.875
+Sum              3    0.875  0    0    0.875  0    0    1    1    2.75
+
+Score matrix:
+
+   K      L      M      N     P
+K  -      3      0.875  0     0
+L  3      -      0.875  0     0
+M  0.875  0.875  -      1     1
+N  0      0      1      -     2.75
+P  0      0      1      2.75  -
+
+Round 1: highest = 3 (K-L) -> merge {K,L}.
+New scores: {K,L}-M = (0.875 + 0.875) / 2 = 0.875; {K,L}-N = (0 + 0) / 2 = 0; {K,L}-P = (0 + 0) / 2 = 0.
+
+       {K,L}  M      N     P
+{K,L}  -      0.875  0     0
+M      0.875  -      1     1
+N      0      1      -     2.75
+P      0      1      2.75  -
+
+Round 2: highest = 2.75 (N-P) -> merge {N,P}.
+Three groups remain ({K,L}, M, {N,P}); stop. Merges performed: n - 3 = 2.
+
+Final tree: ((K,L),M,(N,P));
+
+Step 9. Evaluation
+------------------
+Splits of the final tree: KL | MNP and KLM | NP (n - 3 = 2 splits).
+Reference tree ((K,L),M,(N,P));
+nRF = 0 / (2 x (5 - 3)) = 0 / 4 = 0.
+Control: tree ((K,M),L,(N,P)); against the same reference: unmatched splits = 2, nRF =
+2 / 4 = 0.5.
+
+Model example (two-state symmetric model)
+-----------------------------------------
+Every branch changes state with probability 0.1. The root state has probability
+0.5. Sum over the two internal states u (joining the first pair) and v.
+P(1100 | ab|cd) = 0.5 x (0.00729 + 0.00001 + 0.06561 + 0.00729) = 0.0401
+P(1100 | ac|bd) = 0.5 x (0.00729 + 0.00081 + 0.00081 + 0.00729) = 0.0081

@@ -1,14 +1,15 @@
 # golden
 
 ## Purpose
-Golden files: fixed expected outputs, for example the worksheet produced by `qmaws teach --example` (`worksheet_example.txt`).
+Golden files: fixed expected outputs that tests compare byte for byte. A golden file changes only with the owner's approval of a documented correction.
 
 ## Contents
 | Item | Description |
 |---|---|
+| `worksheet_example.txt` | Output of `qmaws teach --example`: the teaching worksheet of the five-taxon example, golden test G1 |
 
 ## Relationships
-Compared byte for byte by tests in `crates/`.
+Compared by tests in `crates/` (`crates/qmaws-core/src/teach.rs` compiles this file in with `include_str!`).
 
 ## Notes
-Empty in milestone M0; the first golden file is added in milestone M4.
+`worksheet_example.txt` was written in M4 from the program's output after a test checked every value against the teaching example; the wording differences from the teaching material are listed in `docs/OPEN_ISSUES.md`, OI-12 (owner approval requested). Line endings are LF in the repository; the test accepts CRLF checkouts.
