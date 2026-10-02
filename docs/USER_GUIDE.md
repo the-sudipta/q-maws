@@ -6,10 +6,28 @@ How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; 
 
 | Command | What it does |
 |---|---|
-| `qmaws --help` | Prints the available options |
+| `qmaws --help`, `qmaws <command> --help` | Prints the available commands and options |
 | `qmaws --version` | Prints the version |
+| `qmaws toy-run [--output "<folder>"] [--blocks N] [--seed S] [--chunk-seconds T]` | Runs a toy computation that exercises checkpoints, resume and the progress display (development command) |
+| `qmaws resume [--output "<run folder>"]` | Resumes an unfinished run. Without `--output`, resumes the only unfinished run in `results/runs`; if there are several, lists them |
 
-Any other command prints an error saying it is not available in this development build.
+Options for every command:
+
+| Option | Effect |
+|---|---|
+| `--quiet` | Shows only the final result and errors |
+| `--json-progress` | Prints progress as one JSON object per line on standard output, for scripts |
+| `--no-color` | Disables colours |
+
+## Stopping and resuming
+
+Press Ctrl+C once to stop after the current step; the run is saved and can be resumed. Press Ctrl+C a second time to exit at once; this is also safe, because every file is written in a way that survives interruption. Closing the terminal or a power cut is equally safe. To continue, run `qmaws resume --output "<run folder>"`; the progress so far is checked and kept.
+
+Exit status: 0 when the run finished, 3 when it stopped and can be resumed, 1 on an error, 2 on a usage error.
+
+## Run folders
+
+Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unless `--output` names another folder. A finished toy run contains `audit/root.txt`, the run's root fingerprint: the same settings give the same fingerprint on every computer.
 
 ## Launch scripts
 
