@@ -34,7 +34,7 @@ pub enum RecordMode {
     /// One taxon per file: records concatenated in file order, named after
     /// the file (records of one genome, such as chromosomes or contigs).
     ConcatenatePerFile,
-    /// One taxon per record, named after the first word of its header.
+    /// One taxon per record, named after its whole header line.
     OneTaxonPerRecord,
 }
 
@@ -216,9 +216,19 @@ pub fn taxa_from_file(file_name: &str, bytes: &[u8], mode: RecordMode) -> Vec<Ta
         return vec![make(r.name.clone(), 0, &r.text)];
     }
     match mode {
+        // One taxon per record: the whole header is the name (owner decision,
+        // 2026-10-02), so headers such as "A/American black duck/NB/2538/2007"
+        // stay distinct; unsafe characters become "_".
         RecordMode::OneTaxonPerRecord => records
             .iter()
-            .map(|r| make(r.name.clone(), 1, &r.text))
+            .map(|r| {
+                let name = if r.header.is_empty() {
+                    r.name.clone()
+                } else {
+                    r.header.clone()
+                };
+                make(name, 1, &r.text)
+            })
             .collect(),
         RecordMode::ConcatenatePerFile => {
             if records.is_empty() {
@@ -462,9 +472,23 @@ mod tests {
         let names: Vec<&str> = per_record.iter().map(|t| t.name.as_str()).collect();
         assert_eq!(names, vec!["chr1", "plasmid"]);
 
+        // Per record, the whole header is the name, made Newick-safe.
+        let flu = taxa_from_file(
+            "flu.fasta",
+            b">A/American black duck/NB/2538/2007(H7N3)\nACGT\n>A/American green-winged teal/CA/1(H7N3)\nGG\n",
+            RecordMode::OneTaxonPerRecord,
+        );
+        assert_eq!(flu[0].name, "A/American_black_duck/NB/2538/2007_H7N3_");
+        assert_eq!(
+            flu[0].original_name,
+            "A/American black duck/NB/2538/2007(H7N3)"
+        );
+        assert_ne!(flu[0].name, flu[1].name);
+
+        // One taxon per file: a single record keeps its header's first word.
         let single = taxa_from_file(
             "file.fasta",
-            b">NC_009057\nACGT\n",
+            b">NC_009057 Oreochromis mitochondrion\nACGT\n",
             RecordMode::ConcatenatePerFile,
         );
         assert_eq!(single[0].name, "NC_009057");
