@@ -13,4 +13,4 @@ Everything needed to obtain the input data reproducibly: dataset registries, acc
 Read and written by `crates/qmaws-data`. Downloaded and generated sequences go to `data/raw/`, which is ignored by git and created on first download.
 
 ## Notes
-`data/raw/` holds raw downloads (`data/raw/<dataset_id>/`, archives in `data/raw/_archives/`) and simulated sequences (`data/raw/simulated/`). It is listed in `.gitignore` and blocked by the pre-commit guard.
+`data/raw/` holds downloads: archives in `data/raw/_archives/`, extracted archives and single files in `data/raw/<download id>/` (see `manifests/benchmarks.toml`), and from M13 simulated sequences in `data/raw/simulated/`. It is created by `qmaws download`, listed in `.gitignore`, and blocked by the pre-commit guard.

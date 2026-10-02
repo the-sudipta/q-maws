@@ -61,6 +61,25 @@ The root fingerprint is the SHA-256 of a short, line-based text listing the fing
 
 `qmaws toy-run` exercises the engine without any science. Its work is split into blocks of 1,048,576 steps; block `b` is the wrapping sum of SplitMix64 outputs over its steps, stored as 8 bytes. Stages: `toy_count` (chunked) and `finalize` (writes `audit/chunks.json`, `audit/root.txt`, `report/toy_result.json`). The same seed and block count give the same root fingerprint on every device, whatever the chunk size.
 
+## Input reading and cleaning (M2)
+
+- `qmaws-core::input` works on file names and bytes only. A file whose first non-whitespace character is `>` is FASTA (each record's name is the first word of its header); anything else is raw sequence text for one taxon named after the file. Accepted extensions: `.txt`, `.fa`, `.fasta`, `.fna`, `.fas`, each optionally followed by `.gz` (case-insensitive).
+- Cleaning, in order: remove header lines, line breaks, spaces, tabs, digits and other whitespace; upper-case; `U` to `T`; remove everything except A, C, G, T, counting each removed symbol. The original length is the number of symbols after the first step.
+- Folders: files in byte order of their names. By default one taxon per file (records joined in file order; a single-record file keeps its header's name, a multi-record file is named after the file); `--records per-record` gives one taxon per record. A single file is read as one taxon per record. Pending decision D13 (`docs/OPEN_ISSUES.md`, OI-8).
+- Validation findings: fewer than 4 usable taxa (error); empty after cleaning, duplicate names, identical cleaned sequences, shorter than 100 letters (warnings, each with its choices); names with characters unsafe in Newick (space, `( ) , : ; ' " [ ]`, control characters) are changed to `_` automatically. Duplicates can be renamed by appending `_2`, `_3`, ... in input order, skipping names already in use. Interactive choices are asked by the menus (later milestones); `qmaws inspect` lists the findings with their choices.
+
+## Newick (M2)
+
+`qmaws-core::newick` parses nested groups, unquoted and single-quoted labels, branch lengths, internal labels and bracket comments, and writes trees back with quoting where needed. Underscores in unquoted labels are kept (not turned into spaces), so leaf names compare exactly with taxon names.
+
+## Data folder, downloads and verification (M2)
+
+- The registry `data/manifests/benchmarks.toml` and the reference trees in `data/references/` are compiled into the program, so it works without the repository. Downloads go to the data folder (default `data/`, option `--data-dir`).
+- Download: write to `<file>.part`; continue an existing `.part` file with an HTTP `Range` request; if the server sends the whole file instead, start again; up to 5 attempts with waits of 2, 4, 8 and 16 s between them; client errors (4xx except 429) are not retried. A complete file is checked against every given checksum (published MD5, pinned SHA-256); on a mismatch it is deleted and downloaded once more, then reported. Only a verified file is renamed to its final name; an existing file is replaced only by a verified one.
+- HTTPS uses rustls with the ring provider and the operating system's certificate store (`docs/DEPENDENCIES.md`). Timeouts: 30 s to connect, 60 s for the response to start.
+- Archives are extracted into `<folder>.extracting` and renamed when complete; entries that would leave the folder are refused. A marker file `.qmaws-extracted.json` records the archive's SHA-256 and file count, so a missing or outdated extraction is repeated.
+- After each download, the dataset is read: its taxon count must equal the registry's, and its names must equal the reference tree's leaves exactly. Every download is appended to `data/manifests/download_log.json` (URL, UTC date, size, MD5, SHA-256, result).
+
 ## To be written
 
 - Optimiser for the conditioned quartet likelihood (M5)
