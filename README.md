@@ -67,15 +67,25 @@ To be written (milestones M11 to M13).
 | Item | Description |
 |---|---|
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files |
+| `.github/` | GitHub configuration; continuous integration workflows (added from M1) |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
+| `baselines/` | Published results of other methods, with exact sources ([README](baselines/README.md)) |
 | `Cargo.lock` | Exact dependency versions of the Rust workspace |
 | `Cargo.toml` | Rust workspace manifest listing the seven crates |
+| `CHANGELOG.md` | Changes per tagged version |
+| `CONTRIBUTING.md` | Rules for commits, tests and documentation |
 | `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
+| `data/` | Dataset manifests and reference trees; raw data is downloaded, not committed ([README](data/README.md)) |
+| `docs/` | Design, method, user and milestone documentation ([README](docs/README.md)) |
+| `figures/` | Final publication figures ([README](figures/README.md)) |
 | `LICENSE` | Q-MAWS Source-Available License v1.0 |
+| `results/` | Run records, experiment results and summary tables ([README](results/README.md)) |
 | `run.bat` | Launcher for Windows |
 | `run.sh` | Launcher for macOS and Linux |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
 | `scripts/` | Development scripts: pre-commit guard and hook installers ([README](scripts/README.md)) |
+| `tests/` | Golden test files and small test inputs ([README](tests/README.md)) |
+| `THIRD_PARTY_NOTICES` | Licenses and notices of third-party components |
 
 ## Citation
 
