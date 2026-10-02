@@ -163,6 +163,29 @@ Code: `crates/qmaws-core/src/sim.rs` (simulation and recovery), `crates/qmaws-cl
 - **Determinism:** the experiment runs on one thread in a fixed order. A test reproduces one committed replicate (seed, counts, log-likelihoods within 10⁻⁶, W2c weights) on every CI platform.
 - **Figure:** one panel per long-branch length; the x axis is logarithmic. W1 is drawn dashed orange with squares and W2 solid blue with circles (Okabe–Ito colours, so line style and marker also carry the meaning). Dotted reference lines mark 0.5 and 0.95. SVG only until M10.
 
-## To be written
+## Quartet amalgamation: wQFM-rs (M7)
 
-- wQFM-rs algorithm details with references to the wQFM paper (M7)
+Code: `crates/qmaws-core/src/amalgamate.rs` (algorithm, exhaustive oracle, consistency score, wQFM input format), `crates/qmaws-engine/src/analysis.rs` (stage `amalgamate`), `crates/qmaws-cli/src/wqfm_cmd.rs` and `scripts/wqfm_check.sh` (jar comparison, development only).
+
+- **Source and license:** wQFM (Mahbub, Wahab, Reaz, Rahman and Bayzid, *Bioinformatics* 37:3734–3743, 2021), official code github.com/Mahim1997/wQFM-2020 at commit `7bfdf8e` (v1.4), Apache License 2.0 (`THIRD_PARTY_NOTICES`). wQFM-rs follows the paper's sections 2.5 and 2.6; where the paper leaves a detail open, it follows the v1.4 code. Java is never needed by Q-MAWS.
+- **Input:** weighted quartets ab|cd on taxon ids, normalised so that a < b, c < d and a < c. Quartets with non-finite weights are ignored. Taxa that appear in no quartet are attached at the root.
+- **Recursion** (paper 2.5): a level has a taxon set and its quartets. With at most three taxa, or no quartets, it returns a star. Otherwise it finds a bipartition, divides, solves both sides and joins them.
+- **Initial bipartition:** quartets in descending weight (stable sort, so input order decides ties) assign their unassigned taxa greedily, keeping sisters together and the two sister pairs apart. Taxa left over are spread to balance the sides.
+- **Partition score** (paper 2.6): weight of satisfied quartets (the sister pairs on different sides) minus β × weight of violated quartets (two taxa on each side, sisters split). Deferred quartets (three on one side) and blank quartets (all four on one side) do not count. β = 1, the jar's default (`[s] - [v]`).
+- **FM refinement** (paper 2.6, Fiduccia–Mattheyses):
+  - In each pass every free taxon is moved hypothetically. A move is not allowed if a side would keep fewer than two taxa.
+  - The move with the highest gain is made and the taxon is locked. Ties go first to the most satisfied quartets after the move, then to the last such taxon, as in the jar's `TreeMap` order (so −0 sorts below +0).
+  - After every taxon is locked, the prefix of moves with the highest cumulative gain is kept.
+  - Iterations repeat while that gain is positive and the bipartition changes, up to 1,000,000 per level (the jar's limit).
+- **Division:** each side gets a new dummy taxon standing for the other side.
+  - Blank quartets go to their side.
+  - Deferred quartets go to the side of their three taxa, with the fourth taxon replaced by the dummy. Equal new quartets are merged with the mean weight, as in v1.4.
+  - Satisfied and violated quartets are dropped.
+- **Joining:** the two subtrees are joined by removing both dummies and connecting their neighbours. The final tree is written unrooted, with a basal multifurcation.
+- **Consistency score:** the total weight of input quartets that the final tree induces, reported together with the total input weight.
+- **Exhaustive oracle (G8):** every unrooted binary tree on m ≤ 10 taxa by stepwise addition (10,395 trees at m = 8). The best tree is the first one with the highest consistency score. Tests check that wQFM-rs reaches the optimum on noise-free inputs and report its gap on noisy ones.
+- **Analysis stage `amalgamate`:** a whole stage after `quartet_weight`. Every quartet contributes its three topologies with W2c weights (W2b when no resamples were made). Weights that are not positive are left out. Quartets are taken in rank order, so the tree does not depend on chunking or threads. Output: `report/tree.nwk` and `work/amalgamation.json` (weight source, number of weighted quartets, score and total weight to 9 significant digits).
+- **Jar comparison (development only, plan 2.8):**
+  - `qmaws wqfm-export` writes 23 inputs in the jar's format (`((a,b),(c,d)); w` per line, from its README): the worksheet example, 10 noise-free and 10 noisy inputs from random trees, and the W2c quartets of Fish mtDNA with and without the strand filter.
+  - `scripts/wqfm_check.sh` runs the jar with default settings on each input (GitHub Actions workflow `wqfm.yml`).
+  - `qmaws wqfm-compare` then requires an identical topology on noise-free inputs, and a wQFM-rs score of at least 99.9% of the jar's on the others.

@@ -45,7 +45,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Analyse a folder or downloaded dataset (in this version: up to the quartet pattern counts)
+    /// Analyse a folder or downloaded dataset (in this version: up to the tree, without support values)
     Run {
         /// Folder of sequence files, or one multi-FASTA file
         #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]

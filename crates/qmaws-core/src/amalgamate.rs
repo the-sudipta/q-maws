@@ -1174,6 +1174,8 @@ mod tests {
                 worst = worst.min(result.score / best_score);
             }
         }
+        // The gap is reported (cargo test -- --nocapture) for the M7 report.
+        println!("G8 noisy inputs: worst wQFM-rs score / optimum = {worst:.6}");
         assert!(worst > 0.9, "worst ratio {worst}");
     }
 
