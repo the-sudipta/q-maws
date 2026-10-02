@@ -98,10 +98,16 @@ pub fn download(selection: &str, data_dir: &Path, mode: DisplayMode, color: bool
                 "{}: {} ({}) from {}",
                 d.id, d.file_name, d.published_size, d.source
             ));
-            let mut display = DownloadDisplay::new(mode, color, &d.id);
+            let unit = if d.kind == qmaws_data::registry::DownloadKind::Ncbi {
+                "records"
+            } else {
+                "bytes"
+            };
+            let mut display = DownloadDisplay::with_unit(mode, color, &d.id, unit);
             let result = qmaws_data::fetch(
                 &data,
                 &fetcher,
+                &reg,
                 d,
                 &UtcDateTime::now().iso8601(),
                 RetryPolicy::default(),
@@ -229,6 +235,7 @@ pub fn inspect(
     input: Option<&Path>,
     dataset: Option<&str>,
     reference: Option<&Path>,
+    compare_with: Option<&str>,
     records: Records,
     data_dir: &Path,
 ) -> ExitCode {
@@ -305,9 +312,64 @@ pub fn inspect(
             }
         }
     }
+    if let Some(other_id) = compare_with {
+        let Some(other) = reg.dataset(other_id) else {
+            eprintln!("Error: unknown dataset {other_id}; run 'qmaws datasets' to see the list");
+            return ExitCode::from(2);
+        };
+        let other_loaded = match loader::load(&data.dataset_path(&reg, other), mode_for(other)) {
+            Ok(l) => l,
+            Err(e) => {
+                eprintln!("Error: {other_id}: {e}");
+                return ExitCode::from(1);
+            }
+        };
+        println!();
+        print!("{}", compare(&loaded, &other_loaded, other_id));
+    }
     if loaded.findings.iter().any(|f| f.is_error()) {
         ExitCode::from(1)
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// Compares the cleaned sequences of two inputs: which taxa have an
+/// identical sequence in the other input, and under which name.
+pub fn compare(a: &LoadedInput, b: &LoadedInput, b_label: &str) -> String {
+    let mut by_hash: std::collections::BTreeMap<&str, Vec<&str>> =
+        std::collections::BTreeMap::new();
+    for (t, h) in b.taxa.iter().zip(&b.cleaned_sha256) {
+        by_hash.entry(h.as_str()).or_default().push(t.name.as_str());
+    }
+    let mut identical = 0;
+    let mut renamed = Vec::new();
+    let mut unmatched = Vec::new();
+    for (t, h) in a.taxa.iter().zip(&a.cleaned_sha256) {
+        match by_hash.get(h.as_str()) {
+            Some(names) => {
+                identical += 1;
+                if !names.contains(&t.name.as_str()) {
+                    renamed.push(format!("  {} = {}", t.name, names.join(" / ")));
+                }
+            }
+            None => unmatched.push(format!("  {}", t.name)),
+        }
+    }
+    let mut out = format!(
+        "Comparison with {b_label}: {identical} of {} taxa have an identical cleaned sequence there ({} taxa in {b_label}).\n",
+        a.taxa.len(),
+        b.taxa.len()
+    );
+    if !renamed.is_empty() {
+        out.push_str("Identical sequence under another name:\n");
+        out.push_str(&renamed.join("\n"));
+        out.push('\n');
+    }
+    if !unmatched.is_empty() {
+        out.push_str("No identical sequence:\n");
+        out.push_str(&unmatched.join("\n"));
+        out.push('\n');
+    }
+    out
 }

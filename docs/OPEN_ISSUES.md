@@ -33,20 +33,25 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 - **Found:** `simulated-sim_hgt.zip` (MD5 `967b15c79b44524a8f3c389e66344279`, matching the published value) contains five folders `simulated-sim_hgt/hgt_0`, `hgt_250`, `hgt_500`, `hgt_750`, `hgt_1000`, each with 33 files `Species1.fasta` to `Species33.fasta` holding one record each (171 entries in total).
 - **Resolution:** registered as five datasets `sim_hgt_0` to `sim_hgt_1000` with layout `file_per_taxon`, sharing one download. Nothing else changes.
 
-## OI-6: Influenza A sequence lengths (open, 2026-10-02)
+## OI-6: Influenza A sequence lengths (resolved, 2026-10-02)
 
 - **Specification:** the Influenza A dataset (38 sequences) has an average length of 13 kb (from ML-MAWS Table 2); a later publication describes a 38-sequence Influenza A dataset as neuraminidase segment sequences.
 - **Found:** the file ML-MAWS used (`Data/influenza.fasta`, commit `0c38db1`) has 38 records with a mean of 1,407 A/C/G/T letters per record. Headers are strain names with subtypes, for example `A/duck/Hong Kong/319/1978(H2N2)`. This is consistent with single-segment sequences, not with whole genomes of the 13 kb listed in Table 2.
 - **Options:** (a) use the file as it is (it is what ML-MAWS ran on) and report the measured lengths next to the Table 2 value; (b) also assemble whole-genome sequences for these strains as a separate, labelled "reconstructed" dataset (decision D5). Recommendation: (a), with the discrepancy stated neutrally in `baselines/README.md` when baselines are collected (M11).
 
-## OI-7: Taxon names from FASTA headers that contain spaces (open, 2026-10-02)
+- **Resolution:** the owner decided (D5, 2026-10-02) to build the NCBI datasets from accession lists and to rebuild influenza from NCBI. Li, He, He and Yau (2017), the source of the dataset, state that they used "Segment 6 gene encoding N (neuraminidase)"; their Table S2 lists the 38 accessions with lengths of 1,350 to 1,467 bp, and every NCBI record title names segment 6 or neuraminidase. The rebuilt dataset `influenza_a` (38 neuraminidase segments, pinned record versions) is identical in sequence to the ML-MAWS file. So the data are correct as the neuraminidase segment, and the 13 kb in ML-MAWS Table 2 does not describe them; this discrepancy will be stated neutrally in `baselines/README.md` (M11). A whole-genome influenza dataset was not built; it can be added as a separate, labelled "reconstructed" dataset if the owner wishes.
+
+## OI-7: Taxon names from FASTA headers that contain spaces (resolved, 2026-10-02)
 
 - **Specification:** a FASTA record's taxon name is the first word of its header; duplicate names produce a warning with the choices "rename automatically (append `_2`)" or "abort".
 - **Found:** in the ML-MAWS data files, 25 of 38 influenza headers and 18 of 41 mammal mtDNA headers contain spaces. Taking the first word gives duplicate names: `A/American` (3 records), `A/wild` (2) and `Common` (2), so 38 records give 35 distinct names and 41 give 40. ML-MAWS's reader uses the first word in the same way.
 - **Options:** (a) keep the rule; renaming then produces names such as `A/American_2` that no longer say which strain is meant; (b) for `record_per_taxon` datasets, use the whole header line with unsafe characters replaced by `_` (for example `A/American_black_duck/NB/2538/2007_H7N3_`), which gives unique, readable names; (c) a name table per dataset. Choosing (b) changes names relative to ML-MAWS, which matters only for the M3 matrix comparison (column and row contents stay the same). Recommendation: (b). **Owner decision needed.**
 
-## OI-8: Several records in one file (decision D13, open, 2026-10-02)
+- **Resolution:** option (b), decided by the owner on 2026-10-02: with one taxon per record, the whole header line is the name, with unsafe characters replaced by `_`. No duplicate names remain in the influenza and mammal mtDNA data.
+
+## OI-8: Several records in one file (decision D13, resolved, 2026-10-02)
 
 - **Specification:** default one taxon per file, records concatenated in file order; the owner decides per D13.
 - **Found:** ML-MAWS (`FastaReader.cpp`) treats a folder as one taxon per file, joining the records of a multi-record file and naming the taxon after the file; a single multi-FASTA file given directly is read as one taxon per record. No AFproject file has more than one record; the five ML-MAWS data files are multi-FASTA files with one taxon per record.
 - **Implemented now:** folders default to one taxon per file (records joined; a single-record file keeps its header name), with `--records per-record` to choose one taxon per record; a single file is always read as one taxon per record. This matches ML-MAWS. **Owner decision D13 needed** to confirm or change the folder default.
+- **Resolution:** the owner confirmed the implemented behaviour (D13, 2026-10-02): folders give one taxon per file (records joined in file order); a single multi-FASTA file gives one taxon per record.

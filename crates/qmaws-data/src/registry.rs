@@ -8,6 +8,27 @@ use std::fmt;
 /// The registry file, as committed.
 pub const REGISTRY_TOML: &str = include_str!("../../../data/manifests/benchmarks.toml");
 
+/// Accession lists (`data/manifests/accessions/<id>.tsv`), compiled in.
+pub fn accession_list(id: &str) -> Option<&'static str> {
+    macro_rules! list {
+        ($name:literal) => {
+            include_str!(concat!(
+                "../../../data/manifests/accessions/",
+                $name,
+                ".tsv"
+            ))
+        };
+    }
+    Some(match id {
+        "coronavirus" => list!("coronavirus"),
+        "ebolavirus" => list!("ebolavirus"),
+        "influenza_a" => list!("influenza_a"),
+        "mammal_mtdna" => list!("mammal_mtdna"),
+        "rhinovirus" => list!("rhinovirus"),
+        _ => return None,
+    })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DownloadKind {
@@ -15,6 +36,9 @@ pub enum DownloadKind {
     Zip,
     /// A single file, used as downloaded.
     File,
+    /// Records fetched from NCBI by accession (see `ncbi.rs`), written as
+    /// one multi-FASTA file.
+    Ncbi,
 }
 
 /// One file fetched from the internet.
@@ -35,6 +59,10 @@ pub struct Download {
     /// version (such as a repository commit).
     #[serde(default)]
     pub pinned_sha256: Option<String>,
+    /// For NCBI downloads: id of the accession list in
+    /// `data/manifests/accessions/`.
+    #[serde(default)]
+    pub accessions: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
@@ -64,8 +92,17 @@ pub struct Dataset {
     pub citation: String,
 }
 
+/// Settings sent with every NCBI E-utilities request.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct NcbiSettings {
+    pub tool: String,
+    pub email: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Registry {
+    #[serde(default)]
+    pub ncbi: Option<NcbiSettings>,
     #[serde(rename = "download")]
     pub downloads: Vec<Download>,
     #[serde(rename = "dataset")]
@@ -106,13 +143,29 @@ impl Registry {
             if !ids.insert(d.id.as_str()) {
                 return Err(RegistryError(format!("download id {} is used twice", d.id)));
             }
-            if !d.resolved_url.ends_with(&d.file_name) {
+            if d.kind == DownloadKind::Ncbi {
+                let list = d.accessions.as_deref().unwrap_or_default();
+                if accession_list(list).is_none() {
+                    return Err(RegistryError(format!(
+                        "download {}: unknown accession list {list:?}",
+                        d.id
+                    )));
+                }
+                if self.ncbi.is_none() {
+                    return Err(RegistryError(
+                        "NCBI downloads need an [ncbi] section with tool and email".into(),
+                    ));
+                }
+            } else if !d.resolved_url.ends_with(&d.file_name) {
                 return Err(RegistryError(format!(
                     "download {}: the resolved URL does not end with the file name",
                     d.id
                 )));
             }
-            if d.published_md5.is_none() && d.pinned_sha256.is_none() {
+            if d.kind != DownloadKind::Ncbi
+                && d.published_md5.is_none()
+                && d.pinned_sha256.is_none()
+            {
                 return Err(RegistryError(format!(
                     "download {}: neither a published MD5 nor a pinned SHA-256 is given",
                     d.id
@@ -170,8 +223,8 @@ mod tests {
     #[test]
     fn builtin_registry_is_valid_and_complete() {
         let r = Registry::builtin();
-        assert_eq!(r.downloads.len(), 10);
-        assert_eq!(r.datasets.len(), 14);
+        assert_eq!(r.downloads.len(), 15);
+        assert_eq!(r.datasets.len(), 19);
         let afproject: Vec<&str> = r
             .datasets
             .iter()
@@ -197,8 +250,41 @@ mod tests {
             r.download("fish_mito").unwrap().published_md5.as_deref(),
             Some("8ec0391b78c9dc13fc38f6de0aed92b5")
         );
-        assert_eq!(r.select("all").unwrap().len(), 14);
+        assert_eq!(r.select("all").unwrap().len(), 19);
         assert!(r.select("nonexistent").is_err());
+    }
+
+    #[test]
+    fn ncbi_accession_lists_match_their_datasets() {
+        let r = Registry::builtin();
+        let ncbi: Vec<&Download> = r
+            .downloads
+            .iter()
+            .filter(|d| d.kind == DownloadKind::Ncbi)
+            .collect();
+        assert_eq!(ncbi.len(), 5);
+        let mut all = BTreeSet::new();
+        for d in ncbi {
+            let rows = crate::ncbi::parse_accessions(
+                accession_list(d.accessions.as_deref().unwrap()).unwrap(),
+            )
+            .unwrap();
+            let ds = r.datasets.iter().find(|s| s.download == d.id).unwrap();
+            assert_eq!(rows.len(), ds.taxa, "{}", d.id);
+            assert!(d.pinned_sha256.is_some(), "{} is pinned", d.id);
+            for row in &rows {
+                let v = row.version.as_deref().expect("every version is pinned");
+                assert!(v.starts_with(&format!("{}.", row.accession)), "{v}");
+                assert!(
+                    all.insert(row.accession.clone()),
+                    "{} listed twice",
+                    row.accession
+                );
+            }
+            let names: BTreeSet<&str> = rows.iter().map(|r| r.name.as_str()).collect();
+            assert_eq!(names.len(), rows.len(), "{}: names are unique", d.id);
+        }
+        assert_eq!(all.len(), 34 + 59 + 38 + 41 + 116);
     }
 
     #[test]

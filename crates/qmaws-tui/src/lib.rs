@@ -182,25 +182,38 @@ impl ProgressSink for TerminalDisplay {
     }
 }
 
-/// Progress display for one file download: a byte bar with speed and
-/// remaining time on a terminal, plain lines otherwise.
+/// Progress display for one download: a bar with remaining time on a
+/// terminal, plain lines otherwise. Counts bytes (with speed) or other units
+/// such as records.
 pub struct DownloadDisplay {
     mode: DisplayMode,
     bar: Option<ProgressBar>,
     label: String,
+    unit: &'static str,
     last_plain: Option<Instant>,
 }
 
 impl DownloadDisplay {
+    /// A display counting bytes.
     pub fn new(mode: DisplayMode, color: bool, label: &str) -> Self {
+        Self::with_unit(mode, color, label, "bytes")
+    }
+
+    /// A display counting `unit`, for example "records".
+    pub fn with_unit(mode: DisplayMode, color: bool, label: &str, unit: &'static str) -> Self {
         let interactive = std::io::stderr().is_terminal();
         let bar = (mode == DisplayMode::Normal && interactive).then(|| {
-            let template = if color {
-                "{prefix:.bold} [{bar:32.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec}, remaining {eta}"
+            let counts = if unit == "bytes" {
+                "{bytes}/{total_bytes} {bytes_per_sec}".to_string()
             } else {
-                "{prefix} [{bar:32}] {bytes}/{total_bytes} {bytes_per_sec}, remaining {eta}"
+                format!("{{pos}}/{{len}} {unit}")
             };
-            let style = ProgressStyle::with_template(template)
+            let template = if color {
+                format!("{{prefix:.bold}} [{{bar:32.cyan/blue}}] {counts}, remaining {{eta}}")
+            } else {
+                format!("{{prefix}} [{{bar:32}}] {counts}, remaining {{eta}}")
+            };
+            let style = ProgressStyle::with_template(&template)
                 .expect("valid progress template")
                 .progress_chars("=> ");
             let bar = ProgressBar::with_draw_target(Some(0), ProgressDrawTarget::stderr())
@@ -212,11 +225,12 @@ impl DownloadDisplay {
             mode,
             bar,
             label: label.to_string(),
+            unit,
             last_plain: None,
         }
     }
 
-    /// Bytes received so far, out of `total` if known.
+    /// Units received so far, out of `total` if known.
     pub fn update(&mut self, done: u64, total: Option<u64>) {
         match self.mode {
             DisplayMode::Quiet => {}
@@ -224,8 +238,9 @@ impl DownloadDisplay {
                 let line = serde_json::json!({
                     "event": "download_progress",
                     "item": self.label,
-                    "bytes_done": done,
-                    "bytes_total": total,
+                    "unit": self.unit,
+                    "done": done,
+                    "total": total,
                 });
                 println!("{line}");
             }
@@ -244,7 +259,7 @@ impl DownloadDisplay {
                     if due || complete {
                         self.last_plain = Some(Instant::now());
                         let of = total.map(|t| format!(" of {t}")).unwrap_or_default();
-                        eprintln!("{}: {done}{of} bytes", self.label);
+                        eprintln!("{}: {done}{of} {}", self.label, self.unit);
                     }
                 }
             },

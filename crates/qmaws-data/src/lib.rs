@@ -12,6 +12,7 @@
 pub mod download;
 pub mod extract;
 pub mod loader;
+pub mod ncbi;
 pub mod references;
 pub mod registry;
 
@@ -63,7 +64,7 @@ impl DataDir {
     pub fn download_file(&self, d: &Download) -> PathBuf {
         match d.kind {
             DownloadKind::Zip => self.archives().join(&d.file_name),
-            DownloadKind::File => self.raw().join(&d.id).join(&d.file_name),
+            DownloadKind::File | DownloadKind::Ncbi => self.raw().join(&d.id).join(&d.file_name),
         }
     }
 
@@ -129,7 +130,7 @@ pub fn status(data: &DataDir, d: &Download) -> Status {
         return Status::ChecksumMismatch;
     }
     match d.kind {
-        DownloadKind::File => Status::Ready,
+        DownloadKind::File | DownloadKind::Ncbi => Status::Ready,
         DownloadKind::Zip if extract::is_extracted(&data.download_dir(d), &sums.sha256) => {
             Status::Ready
         }
@@ -175,6 +176,7 @@ pub enum FetchDataError {
     Download(download::DownloadError),
     Extract(extract::ExtractError),
     Log(std::io::Error),
+    Ncbi(String),
 }
 
 impl fmt::Display for FetchDataError {
@@ -183,11 +185,87 @@ impl fmt::Display for FetchDataError {
             FetchDataError::Download(e) => write!(f, "{e}"),
             FetchDataError::Extract(e) => write!(f, "{e}"),
             FetchDataError::Log(e) => write!(f, "could not write the download log: {e}"),
+            FetchDataError::Ncbi(e) => write!(f, "{e}"),
         }
     }
 }
 
 impl std::error::Error for FetchDataError {}
+
+/// Name of the provenance table written next to an NCBI dataset file.
+pub fn provenance_path(data: &DataDir, d: &Download) -> PathBuf {
+    data.download_dir(d)
+        .join(format!("{}.accessions.tsv", d.id))
+}
+
+fn write_replacing(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let part = download::part_path(path);
+    fs::write(&part, bytes)?;
+    fs::OpenOptions::new().write(true).open(&part)?.sync_all()?;
+    fs::rename(part, path)
+}
+
+/// Builds an NCBI dataset file: fetches every accession of the list, writes
+/// the records under their list names, and checks the pinned SHA-256.
+fn fetch_ncbi(
+    data: &DataDir,
+    fetcher: &dyn Fetcher,
+    registry: &Registry,
+    d: &Download,
+    progress: &mut dyn FnMut(download::DownloadProgress),
+) -> Result<Downloaded, FetchDataError> {
+    let file = data.download_file(d);
+    let io =
+        |p: &Path, e| FetchDataError::Download(download::DownloadError::Io(p.to_path_buf(), e));
+    if file.exists() && provenance_path(data, d).exists() {
+        let sums = download::checksums(&file).map_err(|e| io(&file, e))?;
+        if sums.matches(&expected(d)) {
+            return Ok(Downloaded::AlreadyPresent(sums));
+        }
+    }
+    let settings = registry.ncbi.as_ref().expect("registry is checked");
+    let list = registry::accession_list(d.accessions.as_deref().unwrap_or_default())
+        .expect("registry is checked");
+    let rows = ncbi::parse_accessions(list).map_err(FetchDataError::Ncbi)?;
+    let records = ncbi::fetch_records(
+        fetcher,
+        &rows,
+        &settings.tool,
+        &settings.email,
+        ncbi::PAUSE,
+        &mut |done, total| {
+            progress(download::DownloadProgress {
+                bytes_done: done as u64,
+                total_size: Some(total as u64),
+                attempt: 1,
+            })
+        },
+    )
+    .map_err(|e| FetchDataError::Ncbi(e.to_string()))?;
+    let dir = data.download_dir(d);
+    fs::create_dir_all(&dir).map_err(|e| io(&dir, e))?;
+    let fasta = ncbi::dataset_fasta(&rows, &records);
+    let part = download::part_path(&file);
+    fs::write(&part, fasta.as_bytes()).map_err(|e| io(&part, e))?;
+    let sums = download::checksums(&part).map_err(|e| io(&part, e))?;
+    if !sums.matches(&expected(d)) {
+        let _ = fs::remove_file(&part);
+        return Err(FetchDataError::Download(
+            download::DownloadError::ChecksumMismatch {
+                expected: expected(d),
+                got: sums,
+            },
+        ));
+    }
+    fs::rename(&part, &file).map_err(|e| io(&file, e))?;
+    let prov = provenance_path(data, d);
+    write_replacing(&prov, ncbi::provenance_tsv(&rows, &records).as_bytes())
+        .map_err(|e| io(&prov, e))?;
+    Ok(Downloaded::Fetched {
+        checksums: sums,
+        resumed_from: 0,
+    })
+}
 
 /// Result of [`fetch`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,21 +281,26 @@ pub struct Fetched {
 pub fn fetch(
     data: &DataDir,
     fetcher: &dyn Fetcher,
+    registry: &Registry,
     d: &Download,
     date_utc: &str,
     retry: RetryPolicy,
     progress: &mut dyn FnMut(download::DownloadProgress),
 ) -> Result<Fetched, FetchDataError> {
     let file = data.download_file(d);
-    let downloaded = download::download(
-        fetcher,
-        &d.resolved_url,
-        &file,
-        &expected(d),
-        retry,
-        progress,
-    )
-    .map_err(FetchDataError::Download)?;
+    let downloaded = if d.kind == DownloadKind::Ncbi {
+        fetch_ncbi(data, fetcher, registry, d, progress)?
+    } else {
+        download::download(
+            fetcher,
+            &d.resolved_url,
+            &file,
+            &expected(d),
+            retry,
+            progress,
+        )
+        .map_err(FetchDataError::Download)?
+    };
     let sums = downloaded.checksums().clone();
     let mut extracted = false;
     if d.kind == DownloadKind::Zip && !extract::is_extracted(&data.download_dir(d), &sums.sha256) {
@@ -236,7 +319,14 @@ pub fn fetch(
         data,
         LogEntry {
             download: d.id.clone(),
-            url: d.resolved_url.clone(),
+            url: match d.kind {
+                DownloadKind::Ncbi => format!(
+                    "{} (efetch, accession list data/manifests/accessions/{}.tsv)",
+                    d.resolved_url,
+                    d.accessions.as_deref().unwrap_or_default()
+                ),
+                _ => d.resolved_url.clone(),
+            },
             date_utc: date_utc.to_string(),
             bytes: sums.bytes,
             published_md5: d.published_md5.clone(),

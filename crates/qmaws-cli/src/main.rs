@@ -107,6 +107,10 @@ enum Command {
         #[arg(long)]
         reference: Option<PathBuf>,
 
+        /// Downloaded dataset whose cleaned sequences are compared with these
+        #[arg(long)]
+        compare_with: Option<String>,
+
         /// For a folder: one taxon per file (records joined) or one per record
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
@@ -189,6 +193,7 @@ fn main() -> ExitCode {
             input,
             dataset,
             reference,
+            compare_with,
             records,
             data_dir,
         } => {
@@ -196,6 +201,7 @@ fn main() -> ExitCode {
                 input.as_deref(),
                 dataset.as_deref(),
                 reference.as_deref(),
+                compare_with.as_deref(),
                 records,
                 &data_dir,
             )

@@ -1,18 +1,23 @@
 # manifests
 
 ## Purpose
-Committed records that make every dataset reproducible: the benchmark registry, the log of every download with its URL and checksums, and (from M13) the recipes of simulated datasets. The registry is compiled into the `qmaws` program.
+Committed records that make every dataset reproducible: the benchmark registry, the accession lists of the NCBI datasets, the log of every download with its URL and checksums, and (from M13) the recipes of simulated datasets. The registry and the accession lists are compiled into the `qmaws` program.
 
 ## Contents
 | Item | Description |
 |---|---|
-| `benchmarks.toml` | Benchmark registry: one `[[download]]` per file fetched from the internet, one `[[dataset]]` per benchmark dataset |
+| `accessions/` | Accession lists of the NCBI datasets, with pinned record versions ([README](accessions/README.md)) |
+| `benchmarks.toml` | Benchmark registry: NCBI settings, one `[[download]]` per file or record set fetched from the internet, one `[[dataset]]` per benchmark dataset |
 | `download_log.json` | One entry per download made with `qmaws download`: URL, date, size, published and computed checksums, result |
 
 ## Relationships
-Read by `crates/qmaws-data` (registry compiled in with `include_str!`; log appended by `qmaws download`). Describes the files downloaded into `data/raw/`. Reference trees named by datasets are in `data/references/`.
+Read by `crates/qmaws-data` (registry and accession lists compiled in with `include_str!`; log appended by `qmaws download`). Describes the files downloaded into `data/raw/`. Reference trees named by datasets are in `data/references/`.
 
 ## Notes
+
+### `[ncbi]` settings
+
+`tool` and `email` are sent with every NCBI E-utilities request, as NCBI asks. The email is the owner's contact address (decision D10, 2026-10-02).
 
 ### `[[download]]` fields
 
@@ -20,15 +25,16 @@ Read by `crates/qmaws-data` (registry compiled in with `include_str!`; log appen
 |---|---|
 | `id` | Download identifier; also the folder name under `data/raw/` |
 | `source` | Who publishes the file |
-| `page_url` | Page that links to the file (read to find the link; never guessed) |
-| `file_name` | Name of the published file |
-| `resolved_url` | Direct link found on the page and confirmed by a verified download |
-| `kind` | `zip` (extracted after download, archive kept in `data/raw/_archives/`) or `file` (used as downloaded) |
-| `published_size` | Size as stated by the source, or the exact byte count for files without a stated size |
+| `page_url` | Page that links to the file (read to find the link; never guessed); for NCBI downloads, the publication of the accession list |
+| `file_name` | Name of the published file, or of the file built from NCBI records |
+| `resolved_url` | Direct link found on the page and confirmed by a verified download; for NCBI downloads, the E-utilities `efetch` endpoint |
+| `kind` | `zip` (extracted after download, archive kept in `data/raw/_archives/`), `file` (used as downloaded) or `ncbi` (records fetched by accession and written as one multi-FASTA file) |
+| `accessions` | For `ncbi`: the accession list in `accessions/` |
+| `published_size` | Size as stated by the source, the exact byte count for files without a stated size, or the number of records |
 | `published_md5` | MD5 published by the source, if it publishes one |
-| `pinned_sha256` | SHA-256 the file must have: for AFproject, computed from our first verified download (2026-10-02); for repository files, the SHA-256 of the file at the pinned commit |
+| `pinned_sha256` | SHA-256 the file must have: for AFproject, computed from our first verified download (2026-10-02); for repository files, the SHA-256 of the file at the pinned commit; for NCBI, computed from the file built from the pinned record versions |
 
-A download is accepted only if every given checksum matches. Each download must have `published_md5` or `pinned_sha256`.
+A download is accepted only if every given checksum matches. Each `zip` and `file` download must have `published_md5` or `pinned_sha256`.
 
 ### `[[dataset]]` fields
 
@@ -46,5 +52,7 @@ A download is accepted only if every given checksum matches. Each download must 
 ### Findings on the datasets (2026-10-02)
 
 - **AFproject:** all five archives match their published MD5. Every sequence file holds one FASTA record whose header equals the file name. The simulated HGT archive contains one folder per HGT level (`hgt_0`, `hgt_250`, `hgt_500`, `hgt_750`, `hgt_1000`) with 33 single-genome files each, registered as datasets `sim_hgt_0` to `sim_hgt_1000` sharing one download.
-- **NCBI datasets of ML-MAWS:** the ML-MAWS repository (commit `0c38db12d9ad271aafcb4940d7558dfcd00925c1`, folder `Data/`) contains the five sequence files ML-MAWS used: `coronavirus.fasta` (34 records), `ebolavirus.fasta` (59), `influenza.fasta` (38), `mammal_mtdna.fasta` (41), `rhinovirus.fasta` (116). It contains no accession lists; headers are names (for example `Cow`, `2_MHV`, `A/duck/Hong Kong/319/1978(H2N2)`), and only the Ebolavirus headers include accession numbers. These files are registered directly, pinned to that commit, and labelled "ML-MAWS data file". Mean lengths of A, C, G, T per record: coronavirus 27,565; ebolavirus 18,932; influenza 1,407; mammal mtDNA 16,647; rhinovirus 7,153. The influenza mean differs from the 13 kb average listed for this dataset in the ML-MAWS paper (Table 2); see `docs/OPEN_ISSUES.md`, OI-6.
-- No download from NCBI was needed, so the NCBI E-utilities (and an `email` parameter, decision D10) are not used.
+- **NCBI datasets:** built from NCBI Nucleotide with the accession lists of Li, He, He and Yau (2017), Supplementary Tables S1 to S5 (`accessions/README.md`), as the owner decided (decision D5, 2026-10-02). Every one of the 288 records was returned, and every sequence is identical to the file ML-MAWS used.
+- **Influenza A:** Li et al. (2017) state that they used "Segment 6 gene encoding N (neuraminidase)" of the 38 viruses; their table lists lengths of 1,350 to 1,467 bp, and every NCBI record title names segment 6 or neuraminidase. The dataset is therefore the neuraminidase segment, about 1.4 kb per virus; the 13 kb average listed in the ML-MAWS paper (Table 2) does not describe these data (`docs/OPEN_ISSUES.md`, OI-6).
+- **ML-MAWS data files (reference only):** the ML-MAWS repository (commit `0c38db12d9ad271aafcb4940d7558dfcd00925c1`, folder `Data/`) contains the five files ML-MAWS used, without accession lists. They stay registered as `coronavirus_mlmaws`, `ebolavirus_mlmaws`, `influenza_a_mlmaws`, `mammal_mtdna_mlmaws` and `rhinovirus_mlmaws`, only to document and check that the NCBI datasets contain the same sequences. Mean A/C/G/T letters per record: coronavirus 27,565; ebolavirus 18,932; influenza 1,407; mammal mtDNA 16,647; rhinovirus 7,153.
+- **Download log:** the first entries for `coronavirus`, `ebolavirus`, `influenza_a`, `mammal_mtdna` and `rhinovirus` (URL `raw.githubusercontent.com/...`) were made before these ids were given to the NCBI datasets; they are the ML-MAWS files now registered with the suffix `_mlmaws`. Entries with the `efetch` URL are the NCBI datasets.

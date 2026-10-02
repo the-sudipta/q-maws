@@ -99,7 +99,7 @@ fn datasets_lists_every_registered_dataset() {
     ] {
         assert!(text.contains(id), "{id} missing:\n{text}");
     }
-    assert_eq!(text.matches("not downloaded").count(), 14, "{text}");
+    assert_eq!(text.matches("not downloaded").count(), 19, "{text}");
 }
 
 #[test]

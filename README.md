@@ -52,7 +52,7 @@ Available in this build: `qmaws datasets`, `qmaws download --dataset <id or all>
 
 ## Benchmark datasets
 
-Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch them (215,177,316 bytes to download; about 660 MB on disk after extraction, measured on 2026-10-02). Nine datasets come from AFproject (https://afproject.org): Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT, and five simulated HGT levels, each with a reference tree. Five more (coronavirus, ebolavirus, influenza A, mammal mtDNA, rhinovirus) are the data files of the ML-MAWS repository, without reference trees. Every download is verified by checksum and recorded in `data/manifests/download_log.json`; sequences are never stored in this repository. Sources and name matching: `data/manifests/README.md`, `data/references/SOURCE.md`.
+Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch them (218,853,951 bytes to download; about 660 MB on disk after extraction, measured on 2026-10-02). Nine datasets come from AFproject (https://afproject.org): Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT, and five simulated HGT levels, each with a reference tree. Five more (coronavirus, ebolavirus, influenza A neuraminidase segments, mammal mtDNA, rhinovirus) are built from NCBI with the accession lists published by Li et al. (2017), without reference trees; their sequences are identical to the data ML-MAWS used. Every download is verified by checksum and recorded in `data/manifests/download_log.json`; sequences are never stored in this repository. Sources and name matching: `data/manifests/README.md`, `data/manifests/accessions/README.md`, `data/references/SOURCE.md`.
 
 ## Verifying a run
 

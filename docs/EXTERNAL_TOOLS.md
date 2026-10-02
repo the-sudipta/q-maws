@@ -35,6 +35,17 @@ External tools, services and repositories used during development or by the prog
 - **Used for:** the five NCBI dataset files in `Data/` (downloaded by `qmaws download` from `raw.githubusercontent.com` at that commit; each download matched the SHA-256 of the file at that commit), and the name tables in `Data/*/reference/dataset.json` (see `data/references/SOURCE.md`). No code is used.
 - **Read:** `README.md`; `FastaReader.cpp` (input reading: keeps A, C, G, T after upper-casing, with no conversion of U to T; reads `.fasta`, `.fa`, `.fna`, `.fas` from a folder in sorted order; a single-record file takes the header's first word as name, a multi-record file is joined and named after the file; a single multi-FASTA file is read as one taxon per record); `main.cpp` (input may be a folder or a file); `run_all_benchmarks.sh` (the five NCBI datasets are single multi-FASTA files). Further files (suffix automaton, MAW extraction, entropy selection, matrix building) are read in M3.
 
+### NCBI E-utilities (https://eutils.ncbi.nlm.nih.gov/entrez/eutils/)
+
+- **Used for:** building the five NCBI datasets with `efetch.fcgi?db=nuccore&rettype=fasta&retmode=text&id=<list>&tool=qmaws&email=<contact>`; 50 accessions per request, at least 0.4 s between requests.
+- **Usage rules verified on 2026-10-02:** without an API key, at most 3 requests per second (NCBI Insights, "New API keys for the E-utilities", 2017-11-02, and NLM Support article KA-05317); an API key raises the limit to 10 per second and is not needed for our few requests. The E-utilities book page (https://www.ncbi.nlm.nih.gov/books/NBK25497/) answered automated and browser requests with a reCAPTCHA check; it was not bypassed, and the rules were read on the two pages above. The `tool` and `email` parameters follow the project specification; the email is the owner's contact address (decision D10).
+- **Behaviour observed:** a request with unversioned accessions returns the current versions; requests with versioned accessions return exactly those versions. Each fetch of the five datasets took 8 requests.
+
+### Li, He, He and Yau (2017), Scientific Reports 7:12226
+
+- **Used for:** the accession lists of the NCBI datasets (Supplementary Tables S1 to S5). Article and supplement are open access under CC BY 4.0 (license stated in the article page metadata).
+- **Read:** the article text (dataset descriptions; influenza A data are segment 6, neuraminidase) and the supplementary PDF (1,808,034 bytes, SHA-256 `d4c5b48e...945b`), converted with `pdftotext -raw` (Xpdf 4.06, installed in the MSYS2 UCRT64 environment on the development laptop). Details: `data/manifests/accessions/README.md`.
+
 ### GitHub raw file service
 
 - `https://raw.githubusercontent.com/<owner>/<repository>/<commit>/<path>` serves a file at a fixed commit. Verified on 2026-10-02 by downloading the five ML-MAWS data files and comparing their SHA-256 with `git show <commit>:<path>` in the clone: all identical.
@@ -45,4 +56,4 @@ External tools, services and repositories used during development or by the prog
 
 ### Not used yet
 
-The CD-MAWS suffix automaton implementation, wQFM, IQ-TREE, NCBI E-utilities and Open Tree of Life are added when each is first consulted, including its license.
+The CD-MAWS suffix automaton implementation, wQFM, IQ-TREE and Open Tree of Life are added when each is first consulted, including its license.

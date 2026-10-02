@@ -63,9 +63,9 @@ The root fingerprint is the SHA-256 of a short, line-based text listing the fing
 
 ## Input reading and cleaning (M2)
 
-- `qmaws-core::input` works on file names and bytes only. A file whose first non-whitespace character is `>` is FASTA (each record's name is the first word of its header); anything else is raw sequence text for one taxon named after the file. Accepted extensions: `.txt`, `.fa`, `.fasta`, `.fna`, `.fas`, each optionally followed by `.gz` (case-insensitive).
+- `qmaws-core::input` works on file names and bytes only. A file whose first non-whitespace character is `>` is FASTA (a record's name is the first word of its header when files are taxa, and the whole header line when records are taxa); anything else is raw sequence text for one taxon named after the file. Accepted extensions: `.txt`, `.fa`, `.fasta`, `.fna`, `.fas`, each optionally followed by `.gz` (case-insensitive).
 - Cleaning, in order: remove header lines, line breaks, spaces, tabs, digits and other whitespace; upper-case; `U` to `T`; remove everything except A, C, G, T, counting each removed symbol. The original length is the number of symbols after the first step.
-- Folders: files in byte order of their names. By default one taxon per file (records joined in file order; a single-record file keeps its header's name, a multi-record file is named after the file); `--records per-record` gives one taxon per record. A single file is read as one taxon per record. Pending decision D13 (`docs/OPEN_ISSUES.md`, OI-8).
+- Folders: files in byte order of their names. By default one taxon per file (records joined in file order; a single-record file keeps its header's name, a multi-record file is named after the file); `--records per-record` gives one taxon per record. A single file is read as one taxon per record. Confirmed by the owner (D13, 2026-10-02; `docs/OPEN_ISSUES.md`, OI-8). With one taxon per record, the whole header line is the name, unsafe characters replaced by `_` (owner decision, OI-7).
 - Validation findings: fewer than 4 usable taxa (error); empty after cleaning, duplicate names, identical cleaned sequences, shorter than 100 letters (warnings, each with its choices); names with characters unsafe in Newick (space, `( ) , : ; ' " [ ]`, control characters) are changed to `_` automatically. Duplicates can be renamed by appending `_2`, `_3`, ... in input order, skipping names already in use. Interactive choices are asked by the menus (later milestones); `qmaws inspect` lists the findings with their choices.
 
 ## Newick (M2)
@@ -79,6 +79,12 @@ The root fingerprint is the SHA-256 of a short, line-based text listing the fing
 - HTTPS uses rustls with the ring provider and the operating system's certificate store (`docs/DEPENDENCIES.md`). Timeouts: 30 s to connect, 60 s for the response to start.
 - Archives are extracted into `<folder>.extracting` and renamed when complete; entries that would leave the folder are refused. A marker file `.qmaws-extracted.json` records the archive's SHA-256 and file count, so a missing or outdated extraction is repeated.
 - After each download, the dataset is read: its taxon count must equal the registry's, and its names must equal the reference tree's leaves exactly. Every download is appended to `data/manifests/download_log.json` (URL, UTC date, size, MD5, SHA-256, result).
+
+## NCBI datasets (M2)
+
+- An NCBI download names an accession list (`data/manifests/accessions/<id>.tsv`, compiled in). `qmaws download` requests the pinned record versions from E-utilities `efetch` in batches of 50 with at least 0.4 s between requests, sending the `tool` and `email` of the registry's `[ncbi]` section. Every listed accession must be returned, with exactly the pinned version; no other record may be returned.
+- The records are written in list order as `<id>.fasta`, each under the list's name as header, with the sequence lines as NCBI sends them, and a provenance table `<id>.accessions.tsv` (name, accession, version, NCBI title). The file is checked against the pinned SHA-256 before it replaces anything.
+- `qmaws inspect --dataset <a> --compare-with <b>` compares cleaned sequences of two datasets by SHA-256 and lists identical sequences under other names; it was used to show that the NCBI datasets equal the files ML-MAWS used.
 
 ## To be written
 

@@ -10,10 +10,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 - Input reading and cleaning (FASTA and raw text, `.gz`, cleaning rules, Newick-safe names) with all validation findings.
 - Newick parser and writer; name comparison between trees and taxa.
-- Benchmark registry with 14 datasets: nine AFproject datasets and the five NCBI dataset files of the ML-MAWS repository.
+- Benchmark registry with 19 datasets: nine AFproject datasets, five NCBI datasets built from published accession lists (pinned record versions), and the five ML-MAWS data files as reference only.
+- NCBI datasets fetched with E-utilities (batched, rate-limited, tool and email), verified against pinned checksums and identical in sequence to the files ML-MAWS used.
 - Downloads with resume, retries and MD5 and SHA-256 verification; safe archive extraction; download log.
 - Reference trees for the AFproject datasets, with name tables checked against two independent sources.
-- Commands `qmaws datasets`, `qmaws download` and `qmaws inspect`.
+- Commands `qmaws datasets`, `qmaws download` and `qmaws inspect` (with `--compare-with`).
+- One taxon per record is named by its whole header line.
 
 ## [v0.1-m01-engine] - 2026-10-02
 
