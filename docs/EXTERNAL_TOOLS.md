@@ -16,7 +16,7 @@ External tools, services and repositories used during development or by the prog
 |---|---|---|---|
 | `actions/checkout` | `v7` (newest major tag) | Checking out the repository in each CI job | Tags listed with `git ls-remote --tags https://github.com/actions/checkout` on 2026-10-02; usage `uses: actions/checkout@v7` from its README |
 | `EmbarkStudios/cargo-deny-action` | `v2` (newest major tag) | Running `cargo deny check licenses bans sources` with `deny.toml` | Tags listed with `git ls-remote` on 2026-10-02; inputs `rust-version`, `command`, `command-arguments` read from its `README.md` and `action.yml` at tag `v2`. It is a Docker action, so it runs on the Linux runner only; its built-in Rust is older, so `rust-version` is set to the pinned 1.98.1 |
-| `deny.toml` format | cargo-deny configuration | License, ban and source policy | Section and key names taken from `deny.template.toml` in the cargo-deny repository (branch `main`) on 2026-10-02 |
+| `deny.toml` format | cargo-deny configuration | License, ban and source policy | Section and key names taken from `deny.template.toml` in the cargo-deny repository (branch `main`) on 2026-10-02. The first CI run failed with `error[wildcard]` on the path dependencies between workspace crates; reproduced locally with cargo-deny 0.20.2 (installed with `cargo install cargo-deny --locked`) and fixed with `allow-wildcard-paths = true`, which then gave `bans ok, licenses ok, sources ok` |
 | `rustup toolchain install` | rustup 1.29.1 | Installing the toolchain pinned in `rust-toolchain.toml` on each runner | `rustup toolchain install --help` (rustup 1.29.1): with no argument it installs "the active toolchain", which is the one named in `rust-toolchain.toml` |
 
 ## Repositories, services and data sources
