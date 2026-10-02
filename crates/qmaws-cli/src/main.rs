@@ -236,6 +236,28 @@ enum Command {
         w2c_replicates: u32,
     },
 
+    /// Development: export weighted-quartet inputs for the wQFM jar comparison
+    #[command(hide = true)]
+    WqfmExport {
+        /// Folder for the .wqrts files and inputs.tsv
+        #[arg(long)]
+        output: PathBuf,
+        /// Finished analysis runs whose W2c quartets are exported too
+        #[arg(long)]
+        run: Vec<PathBuf>,
+        /// Seed of the simulated trees and weights
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+    },
+
+    /// Development: compare wQFM-rs with the trees of the wQFM jar
+    #[command(hide = true)]
+    WqfmCompare {
+        /// The folder written by wqfm-export, with the jar's .jar.tre files
+        #[arg(long)]
+        dir: PathBuf,
+    },
+
     /// Development: export quartets of a run for the IQ-TREE cross-check
     #[command(hide = true)]
     IqtreeExport {
@@ -270,6 +292,7 @@ mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod teach_cmd;
+mod wqfm_cmd;
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
 /// the current unit; the second exits immediately (safe because every output
@@ -355,6 +378,8 @@ fn main() -> ExitCode {
             seed,
         } => return iqtree_cmd::export(&run, &output, quartets, seed),
         Command::IqtreeCompare { run, dir } => return iqtree_cmd::compare(&run, &dir),
+        Command::WqfmExport { output, run, seed } => return wqfm_cmd::export(&output, &run, seed),
+        Command::WqfmCompare { dir } => return wqfm_cmd::compare(&dir),
         Command::Teach {
             example,
             input,
@@ -520,7 +545,9 @@ fn main() -> ExitCode {
         | Command::Teach { .. }
         | Command::SimulateH3 { .. }
         | Command::IqtreeExport { .. }
-        | Command::IqtreeCompare { .. } => {
+        | Command::IqtreeCompare { .. }
+        | Command::WqfmExport { .. }
+        | Command::WqfmCompare { .. } => {
             unreachable!("data commands return above")
         }
     };

@@ -10,6 +10,7 @@ Source code of the `qmaws` binary.
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
+| `wqfm_cmd.rs` | The hidden development commands `wqfm-export` and `wqfm-compare` of the wQFM jar comparison |
 | `teach_cmd.rs` | The command `teach` |
 | `main.rs` | Argument parsing, Ctrl+C handling, and the commands `run`, `toy-run` and `resume` |
 

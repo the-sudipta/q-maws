@@ -1,0 +1,34 @@
+name: wQFM comparison
+
+# Development check: wQFM-rs against the original wQFM jar (v1.4) on 23
+# weighted-quartet inputs (plan 2.8). The jar is run with the runner's
+# preinstalled Java; neither is part of Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "crates/qmaws-core/src/amalgamate.rs"
+      - "crates/qmaws-cli/src/wqfm_cmd.rs"
+      - "scripts/wqfm_check.sh"
+      - ".github/workflows/wqfm.yml"
+  workflow_dispatch:
+
+jobs:
+  wqfm:
+    name: Compare wQFM-rs with the wQFM jar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Q-MAWS
+        run: cargo build --release
+
+      - name: Download Fish mtDNA
+        run: ./target/release/qmaws download --dataset fish_mito
+
+      - name: Run the jar and compare
+        run: sh scripts/wqfm_check.sh "$RUNNER_TEMP/external"

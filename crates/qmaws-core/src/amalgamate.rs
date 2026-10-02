@@ -844,6 +844,130 @@ pub fn quartets_of(q: [usize; 4], weights: [f64; 3]) -> impl Iterator<Item = Qua
         .map(|((w1, x1, y1, z1), w)| Quartet::new(w1, x1, y1, z1, w))
 }
 
+/// A random unrooted binary tree on `names` by random stepwise addition
+/// (each new taxon on a uniformly chosen edge), as Newick.
+pub fn random_binary_tree(names: &[String], rng: &mut crate::weight::SplitMix64) -> String {
+    let m = names.len();
+    assert!(m >= 3, "a tree needs at least 3 taxa");
+    let mut edges: Vec<(usize, usize)> = vec![(0, m), (1, m), (2, m)];
+    for t in 3..m {
+        let inner = m + (t - 2);
+        let i = (rng.next_u64() % edges.len() as u64) as usize;
+        let (u, v) = edges[i];
+        edges[i] = (u, inner);
+        edges.push((inner, v));
+        edges.push((t, inner));
+    }
+    let mut adj = vec![Vec::new(); 2 * m - 2];
+    for &(u, v) in &edges {
+        adj[u].push(v);
+        adj[v].push(u);
+    }
+    fn write(
+        v: usize,
+        from: usize,
+        adj: &[Vec<usize>],
+        m: usize,
+        names: &[String],
+        out: &mut String,
+    ) {
+        if v < m {
+            out.push_str(&names[v]);
+            return;
+        }
+        out.push('(');
+        let mut first = true;
+        for &w in &adj[v] {
+            if w != from {
+                if !first {
+                    out.push(',');
+                }
+                first = false;
+                write(w, v, adj, m, names, out);
+            }
+        }
+        out.push(')');
+    }
+    let mut out = String::new();
+    write(m, usize::MAX, &adj, m, names, &mut out);
+    out.push(';');
+    out
+}
+
+/// The topology that `tree` induces on every 4-set of taxa, each with
+/// weight 1, in rank order.
+pub fn induced_quartets(tree: &Topology) -> Vec<Quartet> {
+    let m = tree.m as u32;
+    let mut out = Vec::new();
+    for d in 3..m {
+        for c in 2..d {
+            for b in 1..c {
+                for a in 0..b {
+                    for q in [
+                        Quartet::new(a, b, c, d, 1.0),
+                        Quartet::new(a, c, b, d, 1.0),
+                        Quartet::new(a, d, b, c, 1.0),
+                    ] {
+                        if tree.displays(&q) {
+                            out.push(q);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Reads wQFM's input format, one `((a,b),(c,d)); w` per line, mapping
+/// names to the indices of `names` (new names are appended).
+pub fn parse_wqfm_input(text: &str, names: &mut Vec<String>) -> Result<Vec<Quartet>, String> {
+    let mut index: HashMap<String, u32> = names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.clone(), i as u32))
+        .collect();
+    let mut out = Vec::new();
+    for (n, line) in text.lines().enumerate() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        let cleaned: String = line
+            .chars()
+            .map(|c| {
+                if c == '(' || c == ')' || c == ';' {
+                    ' '
+                } else {
+                    c
+                }
+            })
+            .collect();
+        let parts: Vec<&str> = cleaned
+            .split(|c: char| c == ',' || c.is_whitespace())
+            .filter(|s| !s.is_empty())
+            .collect();
+        if parts.len() != 5 {
+            return Err(format!("line {}: expected ((a,b),(c,d)); w", n + 1));
+        }
+        let mut id = |s: &str| -> u32 {
+            if let Some(&i) = index.get(s) {
+                return i;
+            }
+            let i = names.len() as u32;
+            names.push(s.to_string());
+            index.insert(s.to_string(), i);
+            i
+        };
+        let t: Vec<u32> = parts[..4].iter().map(|s| id(s)).collect();
+        let w: f64 = parts[4]
+            .parse()
+            .map_err(|_| format!("line {}: weight {} is not a number", n + 1, parts[4]))?;
+        out.push(Quartet::new(t[0], t[1], t[2], t[3], w));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1090,7 +1214,10 @@ mod tests {
     #[ignore]
     fn benchmark_wqfm() {
         let mut rng = Lcg(2026);
-        for m in [25usize, 50, 80] {
+        let sizes: Vec<usize> = std::env::var("QMAWS_BENCH_TAXA")
+            .map(|v| v.split(',').map(|x| x.parse().unwrap()).collect())
+            .unwrap_or_else(|_| vec![25, 50, 80]);
+        for m in sizes {
             let nm = names(m);
             let truth = random_tree(&nm, &mut rng);
             let topo = Topology::from_newick(&truth, &nm).unwrap();
@@ -1127,5 +1254,34 @@ mod tests {
                 r.score / r.total_weight
             );
         }
+    }
+
+    #[test]
+    fn input_round_trip_and_induced_quartets() {
+        let nm = names(6);
+        let mut rng = crate::weight::SplitMix64::new(4);
+        let tree = random_binary_tree(&nm, &mut rng);
+        let topo = Topology::from_newick(&tree, &nm).unwrap();
+        let qs = induced_quartets(&topo);
+        assert_eq!(qs.len(), 15, "one topology per 4-set");
+        assert!(qs.iter().all(|q| topo.displays(q)));
+        let text = to_wqfm_input(&nm, &qs);
+        let mut names_back = Vec::new();
+        let back = parse_wqfm_input(&text, &mut names_back).unwrap();
+        assert_eq!(back.len(), qs.len());
+        let to_names = |q: &Quartet, n: &[String]| {
+            let s = |t: u32| n[t as usize].clone();
+            let mut l = [s(q.l[0]), s(q.l[1])];
+            let mut r = [s(q.r[0]), s(q.r[1])];
+            l.sort();
+            r.sort();
+            let mut pair = [l, r];
+            pair.sort();
+            (pair, q.weight)
+        };
+        for (a, b) in qs.iter().zip(&back) {
+            assert_eq!(to_names(a, &nm), to_names(b, &names_back));
+        }
+        assert!(parse_wqfm_input("((a,b),(c)); 1", &mut Vec::new()).is_err());
     }
 }
