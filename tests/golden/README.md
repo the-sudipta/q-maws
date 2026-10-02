@@ -12,4 +12,4 @@ Golden files: fixed expected outputs that tests compare byte for byte. A golden 
 Compared by tests in `crates/` (`crates/qmaws-core/src/teach.rs` compiles this file in with `include_str!`).
 
 ## Notes
-`worksheet_example.txt` was written in M4 from the program's output after a test checked every value against the teaching example; the wording differences from the teaching material are listed in `docs/OPEN_ISSUES.md`, OI-12 (owner approval requested). Line endings are LF in the repository; the test accepts CRLF checkouts.
+`worksheet_example.txt` was written in M4 from the program's output after a test checked every value against the teaching example; the wording differences from the teaching material are listed in `docs/OPEN_ISSUES.md`, OI-12, and the owner approved the file on 2026-10-02. Line endings are LF in the repository; the test accepts CRLF checkouts.
