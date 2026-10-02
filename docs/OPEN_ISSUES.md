@@ -19,3 +19,10 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 - **Specification:** the pre-commit guard enforces the attribution rules, which also apply to commit messages.
 - **Found:** a pre-commit hook cannot see the commit message.
 - **Resolution:** the same script is also installed as the `commit-msg` hook; it checks the message when called with the message file as its argument.
+
+## OI-4: Root fingerprint and device-dependent chunk boundaries (resolved by a design choice, 2026-10-02; owner may revise)
+
+- **Specification:** chunk sizes are chosen per device by a calibration benchmark (target 2 to 5 seconds per chunk) and frozen in `run.json`; the root fingerprint is the SHA-256 over the ordered list of all stage and chunk hashes; the root fingerprint must be identical on Windows, macOS and Linux for the same data and settings.
+- **Found:** if per-chunk hashes enter the root fingerprint, two devices that calibrate different chunk sizes produce different fingerprints for identical results, so the cross-platform requirement cannot hold.
+- **Options:** (a) the root covers stage content hashes, each computed over the concatenated chunk outputs in order, so it is independent of chunk boundaries; per-chunk hashes stay in `audit/chunks.json` for quick verification. (b) Fix the chunk size per dataset instead of calibrating it; chunk durations then vary by device, and estimates and the live tree cadence become less even. (c) Keep chunk hashes in the root and compare roots only between runs with the same chunk plan; cross-platform comparison then needs the stored plan to be reused.
+- **Choice:** (a), implemented in M1 (`docs/DESIGN.md`, "Root fingerprint"). It keeps both requirements and changes no research design.

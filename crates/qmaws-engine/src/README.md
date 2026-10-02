@@ -10,9 +10,12 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
 | `lib.rs` | Crate root: module list and main re-exports |
+| `progress.rs` | Progress events, the `ProgressSink` trait, the cost model and moving-average time estimator, duration formatting |
 | `rundir.rs` | Run folder layout, run identifiers, discovery of unfinished runs |
+| `runner.rs` | Starting, stopping and resuming runs; the chunk loop; final outputs and the root fingerprint |
 | `state.rs` | The `run.json` record: stages, statuses, chunk plans, throughput, elapsed time; saving and verified loading |
 | `testutil.rs` | Temporary folders for unit tests (test builds only) |
+| `toy.rs` | The toy computation (SplitMix64 block sums) used to exercise the engine |
 
 ## Relationships
 `runner.rs` uses all other modules. `qmaws-tui` consumes the events defined in `progress.rs`; `qmaws-cli` calls `runner.rs` and `rundir.rs`.
