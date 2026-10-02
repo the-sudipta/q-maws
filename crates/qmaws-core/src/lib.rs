@@ -3,8 +3,8 @@
 //!
 //! This crate has no knowledge of files, terminals or windows. It receives
 //! data and returns data.
-//!
-//! Status: empty skeleton. Functionality is added milestone by milestone.
+
+pub mod input;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
