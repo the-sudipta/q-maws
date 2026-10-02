@@ -186,6 +186,7 @@ pub fn verify(
         .join(format!("verify_{}.txt", now.run_id_part()));
     std::fs::create_dir_all(run.dir.report()).map_err(io_err(&run.dir.report()))?;
     atomic::write_verified(&path, (w.lines.join("\n") + "\n").as_bytes()).map_err(io_err(&path))?;
+    crate::readme::write_run_readmes(run.dir.root()).map_err(io_err(run.dir.root()))?;
     Ok(Report {
         lines: w.lines,
         failures: w.failures,

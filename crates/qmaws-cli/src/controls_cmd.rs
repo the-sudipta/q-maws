@@ -42,6 +42,91 @@ fn write_fasta(dir: &Path, name: &str, seq: &[u8]) -> std::io::Result<()> {
     std::fs::write(dir.join(format!("{name}.fasta")), text)
 }
 
+/// README of a folder written by this command (repository rule: every
+/// folder lists its items).
+fn readme(dir: &Path, purpose: &str, items: &[(String, String)]) -> std::io::Result<()> {
+    let title = dir
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let mut text = format!(
+        "# {title}\n\n## Purpose\n{purpose}\n\n## Contents\n| Item | Description |\n|---|---|\n"
+    );
+    for (item, what) in items {
+        let _ = writeln!(text, "| `{item}` | {what} |");
+    }
+    text.push_str("\n## Relationships\nWritten by the hidden command `qmaws controls` (`crates/qmaws-cli/src/controls_cmd.rs`).\n\n## Notes\nRecreated by the command with the same seed.\n");
+    std::fs::write(dir.join("README.md"), text)
+}
+
+/// Items of a folder of FASTA files, one per taxon.
+fn fasta_items(dir: &Path) -> Vec<(String, String)> {
+    let mut v: Vec<(String, String)> = std::fs::read_dir(dir)
+        .map(|r| {
+            r.flatten()
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .filter(|n| n.ends_with(".fasta"))
+                .map(|n| {
+                    let taxon = n.trim_end_matches(".fasta").to_string();
+                    (n, format!("Sequence of {taxon}"))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    v.sort();
+    v
+}
+
+fn write_readmes(output: &Path, seed: u64) -> std::io::Result<()> {
+    let inputs = output.join("inputs");
+    let sim = inputs.join("simulated");
+    let shuf = inputs.join("fish_shuffled");
+    readme(
+        &inputs,
+        "Input data of the positive and negative controls.",
+        &[
+            (
+                "fish_shuffled/".into(),
+                "Fish mtDNA, each sequence shuffled on its own (negative control)".into(),
+            ),
+            (
+                "simulated/".into(),
+                "Sequences simulated along a random tree (positive control)".into(),
+            ),
+        ],
+    )?;
+    readme(
+        &sim,
+        &format!("{SIM_TAXA} sequences of {SIM_LENGTH} bases evolved along a random binary tree under Jukes–Cantor (branch lengths uniform in 0.01 to 0.1, seed {seed})."),
+        &[
+            ("sequences/".into(), "The simulated sequences, one FASTA file per taxon".into()),
+            ("true_tree.nwk".into(), "The true tree with branch lengths (expected substitutions per site)".into()),
+        ],
+    )?;
+    readme(
+        &sim.join("sequences"),
+        "The simulated sequences.",
+        &fasta_items(&sim.join("sequences")),
+    )?;
+    readme(
+        &shuf,
+        &format!("The Fish mtDNA sequences, each shuffled by Fisher–Yates with seed quartet_seed({seed}, taxon index); the letter composition of each sequence is kept."),
+        &fasta_items(&shuf),
+    )?;
+    readme(
+        &output.join("runs"),
+        "The analysis runs of the controls, one folder per control.",
+        &[
+            (
+                "fish/".into(),
+                "Fish mtDNA unchanged (reference point)".into(),
+            ),
+            ("fish_shuffled/".into(), "Negative control".into()),
+            ("simulated/".into(), "Positive control".into()),
+        ],
+    )
+}
+
 fn fail(msg: impl std::fmt::Display) -> ExitCode {
     eprintln!("Error: {msg}");
     ExitCode::from(1)
@@ -212,6 +297,9 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
         if let Err(e) = std::fs::write(output.join(name), text) {
             return fail(e);
         }
+    }
+    if let Err(e) = write_readmes(output, seed) {
+        return fail(e);
     }
     println!("{summary}");
     ExitCode::SUCCESS

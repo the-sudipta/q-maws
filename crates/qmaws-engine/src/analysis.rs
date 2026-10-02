@@ -545,6 +545,7 @@ impl<'a> Session<'a> {
             .trim()
             .to_string();
         self.log(&format!("Run finished. Root fingerprint: {root}"))?;
+        crate::readme::write_run_readmes(self.dir.root()).map_err(io_err(self.dir.root()))?;
         self.save()?;
         self.emit(Event::Finished { root: root.clone() });
         Ok(Outcome::Finished { root })

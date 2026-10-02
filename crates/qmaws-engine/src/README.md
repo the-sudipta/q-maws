@@ -13,6 +13,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
 | `lib.rs` | Crate root: module list and main re-exports |
 | `matrix_pipeline.rs` | From cleaned sequences to `M_full` and `M_ml`: parallel MAW extraction within a memory limit, entropy selection, matrix building, entropy table |
+| `readme.rs` | README files of a run folder and its committed subfolders, listing their items (written at the end of a run and after verification) |
 | `progress.rs` | Progress events, the `ProgressSink` trait, the cost model and moving-average time estimator, duration formatting |
 | `rundir.rs` | Run folder layout, run identifiers, discovery of unfinished runs |
 | `runner.rs` | Starting, stopping and resuming runs; the chunk loop; final outputs and the root fingerprint |
