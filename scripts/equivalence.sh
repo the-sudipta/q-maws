@@ -33,7 +33,10 @@ fi
 ml="$work/ML-MAWS/ml-maws"
 if [ ! -x "$ml" ]; then
     # The repository has no Makefile; compile all sources directly.
-    if ! (cd "$work/ML-MAWS" && g++ -O2 -std=c++17 -fopenmp -o ml-maws ./*.cpp) >"$work/ml-maws-build.txt" 2>&1; then
+    # EntropySelector.h uses uint8_t without including <cstdint>, which
+    # current GCC rejects; the header is supplied on the command line, so
+    # the ML-MAWS sources stay unchanged.
+    if ! (cd "$work/ML-MAWS" && g++ -O2 -std=c++17 -fopenmp -include cstdint -o ml-maws ./*.cpp) >"$work/ml-maws-build.txt" 2>&1; then
         # The first compiler messages, on one line (annotations are one line).
         first=$(grep -E 'error|Error' "$work/ml-maws-build.txt" | head -5 | tr '\n' ' ' | cut -c1-900)
         annotate error "ML-MAWS build" "g++ failed: $first"
