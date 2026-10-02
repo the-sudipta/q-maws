@@ -182,9 +182,96 @@ impl ProgressSink for TerminalDisplay {
     }
 }
 
+/// Progress display for one file download: a byte bar with speed and
+/// remaining time on a terminal, plain lines otherwise.
+pub struct DownloadDisplay {
+    mode: DisplayMode,
+    bar: Option<ProgressBar>,
+    label: String,
+    last_plain: Option<Instant>,
+}
+
+impl DownloadDisplay {
+    pub fn new(mode: DisplayMode, color: bool, label: &str) -> Self {
+        let interactive = std::io::stderr().is_terminal();
+        let bar = (mode == DisplayMode::Normal && interactive).then(|| {
+            let template = if color {
+                "{prefix:.bold} [{bar:32.cyan/blue}] {bytes}/{total_bytes} {bytes_per_sec}, remaining {eta}"
+            } else {
+                "{prefix} [{bar:32}] {bytes}/{total_bytes} {bytes_per_sec}, remaining {eta}"
+            };
+            let style = ProgressStyle::with_template(template)
+                .expect("valid progress template")
+                .progress_chars("=> ");
+            let bar = ProgressBar::with_draw_target(Some(0), ProgressDrawTarget::stderr())
+                .with_style(style);
+            bar.set_prefix(label.to_string());
+            bar
+        });
+        Self {
+            mode,
+            bar,
+            label: label.to_string(),
+            last_plain: None,
+        }
+    }
+
+    /// Bytes received so far, out of `total` if known.
+    pub fn update(&mut self, done: u64, total: Option<u64>) {
+        match self.mode {
+            DisplayMode::Quiet => {}
+            DisplayMode::Json => {
+                let line = serde_json::json!({
+                    "event": "download_progress",
+                    "item": self.label,
+                    "bytes_done": done,
+                    "bytes_total": total,
+                });
+                println!("{line}");
+            }
+            DisplayMode::Normal => match &self.bar {
+                Some(bar) => {
+                    if let Some(t) = total {
+                        bar.set_length(t);
+                    }
+                    bar.set_position(done);
+                }
+                None => {
+                    let due = self
+                        .last_plain
+                        .is_none_or(|t| t.elapsed() >= PLAIN_INTERVAL);
+                    let complete = total.is_some_and(|t| done >= t);
+                    if due || complete {
+                        self.last_plain = Some(Instant::now());
+                        let of = total.map(|t| format!(" of {t}")).unwrap_or_default();
+                        eprintln!("{}: {done}{of} bytes", self.label);
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn finish(&self) {
+        if let Some(bar) = &self.bar {
+            bar.finish_and_clear();
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn download_display_accepts_updates_in_every_mode() {
+        for mode in [DisplayMode::Normal, DisplayMode::Quiet, DisplayMode::Json] {
+            let mut d = DownloadDisplay::new(mode, false, "fish_mito");
+            d.update(0, Some(100));
+            d.update(100, Some(100));
+            d.update(5, None);
+            d.finish();
+        }
+    }
 
     fn snapshot() -> Snapshot {
         Snapshot {

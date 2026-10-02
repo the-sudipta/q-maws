@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Added
 
+- Input reading and cleaning (FASTA and raw text, `.gz`, cleaning rules, Newick-safe names) with all validation findings.
+- Newick parser and writer; name comparison between trees and taxa.
+- Benchmark registry with 14 datasets: nine AFproject datasets and the five NCBI dataset files of the ML-MAWS repository.
+- Downloads with resume, retries and MD5 and SHA-256 verification; safe archive extraction; download log.
+- Reference trees for the AFproject datasets, with name tables checked against two independent sources.
+- Commands `qmaws datasets`, `qmaws download` and `qmaws inspect`.
+
+## [v0.1-m01-engine] - 2026-10-02
+
+### Added
+
 - Run engine: run folders, `run.json` stage state machine, atomic hash-verified writes, frozen chunk plans, resume after interruption or hard kill, root fingerprint independent of chunk boundaries.
 - Progress events and time estimates (calibration, moving-average throughput, cost-weighted overall progress).
 - Terminal progress display with overall and stage bars; `--quiet`, `--json-progress` and `--no-color`.

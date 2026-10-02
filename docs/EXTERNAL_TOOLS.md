@@ -21,4 +21,28 @@ External tools, services and repositories used during development or by the prog
 
 ## Repositories, services and data sources
 
-None used yet. Entries for ML-MAWS, the CD-MAWS suffix automaton implementation, wQFM, IQ-TREE, AFproject, NCBI E-utilities and Open Tree of Life are added when each is first consulted, including its license.
+### AFproject (https://afproject.org)
+
+- **Used for:** five benchmark archives (nine datasets) and their reference trees.
+- **Verified on 2026-10-02:** each dataset page (`/app/benchmark/genome/.../dataset/`) links the archive as `/media/genome/.../dataset/<file>.zip` and states its size and MD5; the links in `data/manifests/benchmarks.toml` were taken from these pages, and every download matched the published MD5. The E. coli (29) and E. coli/Shigella HGT archives have published MD5 values (`de88729e76a47c1de7f06a6c59298cb8`, `e4282d59f4dae2fd6e4914cb747e5566`). The archives contain no reference trees; each results page (`/app/benchmark/genome/.../results/`) embeds the reference tree as a `data:text/plain;charset=utf-8,` link (see `data/references/SOURCE.md`). The server supports HTTP range requests (`Accept-Ranges: bytes`), used to resume downloads; an interrupted 114,629,704-byte download resumed at byte 12,304,384 and verified.
+- **Reference package:** `AF-reference_datasets190511.zip`, 4,894,058,545 bytes, last modified 2019-08-09 (HTTP headers); not downloaded. The results archive `AF-results190511.zip` is 12,422,678,494 bytes; not downloaded.
+- **Citation:** A. Zielezinski et al., Genome Biology 20:144 (2019).
+
+### ML-MAWS repository (https://github.com/PapriSaha/ML-MAWS)
+
+- **License:** Apache License 2.0 (`LICENSE.txt`, read before any file was used).
+- **Cloned** on 2026-10-02 to `../_external/ML-MAWS` (outside this repository) at commit `0c38db12d9ad271aafcb4940d7558dfcd00925c1` (2026-05-09).
+- **Used for:** the five NCBI dataset files in `Data/` (downloaded by `qmaws download` from `raw.githubusercontent.com` at that commit; each download matched the SHA-256 of the file at that commit), and the name tables in `Data/*/reference/dataset.json` (see `data/references/SOURCE.md`). No code is used.
+- **Read:** `README.md`; `FastaReader.cpp` (input reading: keeps A, C, G, T after upper-casing, with no conversion of U to T; reads `.fasta`, `.fa`, `.fna`, `.fas` from a folder in sorted order; a single-record file takes the header's first word as name, a multi-record file is joined and named after the file; a single multi-FASTA file is read as one taxon per record); `main.cpp` (input may be a folder or a file); `run_all_benchmarks.sh` (the five NCBI datasets are single multi-FASTA files). Further files (suffix automaton, MAW extraction, entropy selection, matrix building) are read in M3.
+
+### GitHub raw file service
+
+- `https://raw.githubusercontent.com/<owner>/<repository>/<commit>/<path>` serves a file at a fixed commit. Verified on 2026-10-02 by downloading the five ML-MAWS data files and comparing their SHA-256 with `git show <commit>:<path>` in the clone: all identical.
+
+### cargo-deny
+
+- Version 0.20.2, installed locally with `cargo install cargo-deny --locked` on 2026-10-02 (development tool only). Used to reproduce the CI dependency check.
+
+### Not used yet
+
+The CD-MAWS suffix automaton implementation, wQFM, IQ-TREE, NCBI E-utilities and Open Tree of Life are added when each is first consulted, including its license.

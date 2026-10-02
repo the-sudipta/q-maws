@@ -2,7 +2,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: early development (milestone M1, engine skeleton).** The run engine (checkpoints, resume, progress display) works with a toy computation. No analysis can be run yet. This README is a draft and is completed as features are added.
+> **Status: early development (milestone M2, input and data).** The run engine works with a toy computation; benchmark datasets can be downloaded and verified, and sequence folders read and checked. No analysis can be run yet. This README is a draft and is completed as features are added.
 
 License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
 
@@ -48,11 +48,11 @@ To be written (milestones M1 to M8).
 
 ## Direct commands
 
-Available in this build: `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws resume`, `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
+Available in this build: `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws resume`, `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
 
 ## Benchmark datasets
 
-To be written (milestone M2). Datasets are downloaded by the program and verified by checksum; they are never stored in this repository.
+Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch them (215,177,316 bytes to download; about 660 MB on disk after extraction, measured on 2026-10-02). Nine datasets come from AFproject (https://afproject.org): Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT, and five simulated HGT levels, each with a reference tree. Five more (coronavirus, ebolavirus, influenza A, mammal mtDNA, rhinovirus) are the data files of the ML-MAWS repository, without reference trees. Every download is verified by checksum and recorded in `data/manifests/download_log.json`; sequences are never stored in this repository. Sources and name matching: `data/manifests/README.md`, `data/references/SOURCE.md`.
 
 ## Verifying a run
 

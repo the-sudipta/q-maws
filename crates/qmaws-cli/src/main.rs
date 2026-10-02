@@ -74,7 +74,50 @@ enum Command {
         #[arg(long)]
         output: Option<PathBuf>,
     },
+
+    /// List the benchmark datasets and whether they are downloaded
+    Datasets {
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
+    /// Download, verify and extract benchmark datasets
+    Download {
+        /// Dataset id, or "all"
+        #[arg(long)]
+        dataset: String,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
+    /// Read a sequence folder or file (or a downloaded dataset) and report taxa and problems
+    Inspect {
+        /// Folder of sequence files, or one multi-FASTA file
+        #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
+        input: Option<PathBuf>,
+
+        /// Downloaded benchmark dataset id
+        #[arg(long)]
+        dataset: Option<String>,
+
+        /// Reference tree (Newick) whose leaf names are compared with the taxa
+        #[arg(long)]
+        reference: Option<PathBuf>,
+
+        /// For a folder: one taxon per file (records joined) or one per record
+        #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
+        records: data_cmd::Records,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
 }
+
+mod data_cmd;
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
 /// the current unit; the second exits immediately (safe because every output
@@ -134,7 +177,33 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     };
 
-    let display = TerminalDisplay::new(mode, !cli.no_color);
+    // Data commands need no Ctrl+C handling: an interrupted download leaves
+    // a .part file that the next download continues.
+    let color = !cli.no_color;
+    let command = match command {
+        Command::Datasets { data_dir } => return data_cmd::datasets(&data_dir),
+        Command::Download { dataset, data_dir } => {
+            return data_cmd::download(&dataset, &data_dir, mode, color)
+        }
+        Command::Inspect {
+            input,
+            dataset,
+            reference,
+            records,
+            data_dir,
+        } => {
+            return data_cmd::inspect(
+                input.as_deref(),
+                dataset.as_deref(),
+                reference.as_deref(),
+                records,
+                &data_dir,
+            )
+        }
+        other => other,
+    };
+
+    let display = TerminalDisplay::new(mode, color);
     let cancel = Arc::new(AtomicBool::new(false));
     install_interrupt_handler(Arc::clone(&cancel));
 
@@ -171,6 +240,9 @@ fn main() -> ExitCode {
             };
             let result = resume_run(&run_dir, "terminal", &display, &cancel);
             (run_dir, result)
+        }
+        Command::Datasets { .. } | Command::Download { .. } | Command::Inspect { .. } => {
+            unreachable!("data commands return above")
         }
     };
 
