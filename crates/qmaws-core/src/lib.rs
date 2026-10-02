@@ -5,6 +5,7 @@
 //! data and returns data.
 
 pub mod amalgamate;
+pub mod bootstrap;
 pub mod input;
 pub mod matrix;
 pub mod maw;

@@ -8,6 +8,7 @@
 
 pub mod analysis;
 pub mod atomic;
+pub mod bootstrap;
 pub mod clock;
 pub mod hash;
 pub mod matrix_pipeline;

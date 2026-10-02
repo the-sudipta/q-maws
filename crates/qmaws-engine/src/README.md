@@ -8,6 +8,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 |---|---|
 | `analysis.rs` | The analysis run: stages from input to quartet pattern counts, weights, the tree and its support (S1, halo values), checkpoints, chunked counting and weighting in Feistel order, resume, root fingerprint, and the audit files (results, quartet decisions, sample worksheets, environment) |
 | `atomic.rs` | Atomic writes (temporary file, sync, rename) with SHA-256 hash files; validity checks; removal of stale temporary files |
+| `bootstrap.rs` | S2 bootstrap replicates of a finished run (weighted counts, W2c or W2b, wQFM-rs), timed for the cost measurement of decision D7 |
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
 | `lib.rs` | Crate root: module list and main re-exports |

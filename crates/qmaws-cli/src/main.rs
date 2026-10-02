@@ -45,7 +45,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Analyse a folder or downloaded dataset (in this version: up to the tree, without support values)
+    /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 support and halo values)
     Run {
         /// Folder of sequence files, or one multi-FASTA file
         #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
@@ -285,6 +285,22 @@ enum Command {
         dir: PathBuf,
     },
 
+    /// Development: time S2 bootstrap replicates of a finished run (decision D7)
+    #[command(hide = true)]
+    S2Cost {
+        /// Finished run folder
+        #[arg(long)]
+        run: PathBuf,
+
+        /// Number of replicates to run
+        #[arg(long, default_value_t = 2)]
+        replicates: u64,
+
+        /// Use W2b weights instead of W2c in the replicates
+        #[arg(long)]
+        w2b: bool,
+    },
+
     /// Development: export quartets of a run for the IQ-TREE cross-check
     #[command(hide = true)]
     IqtreeExport {
@@ -318,6 +334,7 @@ mod data_cmd;
 mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
+mod s2_cmd;
 mod teach_cmd;
 mod verify_cmd;
 mod wqfm_cmd;
@@ -408,6 +425,11 @@ fn main() -> ExitCode {
         Command::IqtreeCompare { run, dir } => return iqtree_cmd::compare(&run, &dir),
         Command::WqfmExport { output, run, seed } => return wqfm_cmd::export(&output, &run, seed),
         Command::WqfmCompare { dir } => return wqfm_cmd::compare(&dir),
+        Command::S2Cost {
+            run,
+            replicates,
+            w2b,
+        } => return s2_cmd::run(&run, replicates, !w2b),
         Command::Teach {
             example,
             input,
@@ -601,6 +623,7 @@ fn main() -> ExitCode {
         | Command::IqtreeCompare { .. }
         | Command::WqfmExport { .. }
         | Command::WqfmCompare { .. }
+        | Command::S2Cost { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
