@@ -72,6 +72,8 @@ To be written (milestones M11 to M13).
 | `Cargo.toml` | Rust workspace manifest listing the seven crates |
 | `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
 | `LICENSE` | Q-MAWS Source-Available License v1.0 |
+| `run.bat` | Launcher for Windows |
+| `run.sh` | Launcher for macOS and Linux |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
 | `scripts/` | Development scripts: pre-commit guard and hook installers ([README](scripts/README.md)) |
 
