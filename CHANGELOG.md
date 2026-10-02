@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- Quartet amalgamation with `wQFM-rs`, a Rust implementation of wQFM (Apache License 2.0): analysis runs now end with the stage `amalgamate` and write `report/tree.nwk`. Exhaustive tree oracle (G8); G2 complete. Identical to the original wQFM jar on 23 comparison inputs (development check on GitHub Actions).
+
 ## [v0.6-m06-h3] - 2026-10-02
 
 ### Added
