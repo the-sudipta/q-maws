@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- Quartet weighting: W1 votes; conditioned quartet maximum likelihood under the two-state model (W2-sym, W2-emp) with an exact-derivative Newton optimiser; W2a, W2b and W2c (100 multinomial resamples with per-quartet seeds); golden test G3.
+- Analysis runs gain the resumable stage `quartet_weight` and the options `--weighting` and `--replicates`.
+- IQ-TREE cross-check of the quartet likelihood on GitHub Actions (development only).
+
 ## [v0.4-m04-counting] - 2026-10-02
 
 ### Added
