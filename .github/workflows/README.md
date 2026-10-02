@@ -1,14 +1,15 @@
 # workflows
 
 ## Purpose
-Continuous integration and release workflows: `ci.yml` (formatting, lints, tests and golden tests on Windows, macOS and Linux) and `release.yml` (release binaries for tagged versions).
+Continuous integration and release workflows run by GitHub Actions.
 
 ## Contents
 | Item | Description |
 |---|---|
+| `ci.yml` | On every push and pull request: formatting, lints, tests in release mode, the guard self-test and the README check on Windows, macOS and Linux; dependency licenses, bans and sources with `cargo deny` on Linux |
 
 ## Relationships
-Build and test `crates/`; release bundles include `run.bat`, `run.sh`, `README.md` and `LICENSE`.
+Builds and tests `crates/` with the toolchain pinned in `rust-toolchain.toml`; runs `scripts/test-guard.sh` and `scripts/check-readmes.sh`; reads the dependency policy from `deny.toml`. Release bundles (from M14) include `run.bat`, `run.sh`, `README.md` and `LICENSE`.
 
 ## Notes
-Empty in milestone M0. Basic CI is added in milestone M1; full CI and releases in milestone M14.
+Basic CI exists from milestone M1. Golden tests G1, G2, G10 and G12 are added with their milestones, and `release.yml` (release binaries for tagged versions) in milestone M14. Workflow and job names are plain English.

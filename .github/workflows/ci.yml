@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run lints
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Run tests
+        run: cargo test --release
+
+      - name: Test the pre-commit guard
+        shell: bash
+        run: sh scripts/test-guard.sh
+
+      - name: Check folder READMEs
+        shell: bash
+        run: sh scripts/check-readmes.sh
+
+  dependencies:
+    name: Dependency licenses and sources
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Check licenses, bans and sources
+        uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          rust-version: "1.98.1"
+          command: check
+          command-arguments: "licenses bans sources"

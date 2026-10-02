@@ -4,7 +4,7 @@
 
 > **Status: early development (milestone M1, engine skeleton).** The run engine (checkpoints, resume, progress display) works with a toy computation. No analysis can be run yet. This README is a draft and is completed as features are added.
 
-License: Q-MAWS Source-Available License v1.0 (see [License](#license)). CI status and DOI badges will be added when continuous integration (M1) and the archive (M14) exist.
+License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
 
 ## What Q-MAWS does
 
@@ -67,7 +67,7 @@ To be written (milestones M11 to M13).
 | Item | Description |
 |---|---|
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files |
-| `.github/` | GitHub configuration; continuous integration workflows (added from M1) |
+| `.github/` | GitHub configuration: continuous integration workflows ([README](.github/README.md)) |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
 | `baselines/` | Published results of other methods, with exact sources ([README](baselines/README.md)) |
 | `Cargo.lock` | Exact dependency versions of the Rust workspace |
