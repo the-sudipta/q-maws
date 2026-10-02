@@ -720,6 +720,18 @@ impl Topology {
         s1 < s2 && s1 < s3
     }
 
+    /// The topology the tree induces on taxa a < b < c < d: 0 for ab|cd,
+    /// 1 for ac|bd, 2 for ad|bc; `None` if the tree is a star on them.
+    pub fn induced(&self, q: [usize; 4]) -> Option<usize> {
+        let [a, b, c, d] = q.map(|t| t as u32);
+        let s = [
+            self.d(a, b) as u64 + self.d(c, d) as u64,
+            self.d(a, c) as u64 + self.d(b, d) as u64,
+            self.d(a, d) as u64 + self.d(b, c) as u64,
+        ];
+        (0..3).find(|&t| (0..3).all(|o| o == t || s[t] < s[o]))
+    }
+
     /// Weighted quartet consistency score and total weight.
     pub fn score(&self, quartets: &[Quartet]) -> (f64, f64) {
         let mut score = 0.0;

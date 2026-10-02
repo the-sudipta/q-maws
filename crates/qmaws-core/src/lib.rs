@@ -11,8 +11,10 @@ pub mod maw;
 pub mod newick;
 pub mod quartet;
 pub mod sim;
+pub mod support;
 pub mod teach;
 pub mod weight;
+pub mod worksheet;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
