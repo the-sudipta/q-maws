@@ -217,6 +217,25 @@ enum Command {
         reference: Option<PathBuf>,
     },
 
+    /// Run the long-branch simulation of hypothesis H3
+    SimulateH3 {
+        /// Folder for recovery.csv, replicates.csv, recovery.svg and evaluation.txt
+        #[arg(long, default_value = "results/h3")]
+        output: PathBuf,
+
+        /// Global seed; each replicate's seed is derived from it
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+
+        /// Replicates per setting
+        #[arg(long, default_value_t = qmaws_core::sim::REPLICATES)]
+        replicates: u32,
+
+        /// W2c resamples per replicate (supplementary result)
+        #[arg(long, default_value_t = qmaws_core::weight::REPLICATES)]
+        w2c_replicates: u32,
+    },
+
     /// Development: export quartets of a run for the IQ-TREE cross-check
     #[command(hide = true)]
     IqtreeExport {
@@ -247,6 +266,7 @@ enum Command {
 }
 
 mod data_cmd;
+mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod teach_cmd;
@@ -314,6 +334,20 @@ fn main() -> ExitCode {
     let color = !cli.no_color;
     let command = match command {
         Command::Datasets { data_dir } => return data_cmd::datasets(&data_dir),
+        Command::SimulateH3 {
+            output,
+            seed,
+            replicates,
+            w2c_replicates,
+        } => {
+            return h3_cmd::run(h3_cmd::H3Args {
+                output: &output,
+                seed,
+                replicates,
+                w2c_replicates,
+                quiet: mode != DisplayMode::Normal,
+            })
+        }
         Command::IqtreeExport {
             run,
             output,
@@ -484,6 +518,7 @@ fn main() -> ExitCode {
         | Command::Inspect { .. }
         | Command::Matrix { .. }
         | Command::Teach { .. }
+        | Command::SimulateH3 { .. }
         | Command::IqtreeExport { .. }
         | Command::IqtreeCompare { .. } => {
             unreachable!("data commands return above")
