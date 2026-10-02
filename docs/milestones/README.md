@@ -7,6 +7,7 @@ One report per completed milestone: what was built, how it was verified, measure
 | Item | Description |
 |---|---|
 | `M00.md` | M0: foundation and pre-registration |
+| `M01.md` | M1: engine skeleton — checkpoints, progress, terminal display, basic CI |
 
 ## Relationships
 Reports refer to code in `crates/`, scripts in `scripts/`, and run records in `results/`. Each report corresponds to a milestone tag.
