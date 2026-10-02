@@ -68,7 +68,11 @@ To be written (milestones M11 to M13).
 |---|---|
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
+| `Cargo.lock` | Exact dependency versions of the Rust workspace |
+| `Cargo.toml` | Rust workspace manifest listing the seven crates |
+| `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
 | `LICENSE` | Q-MAWS Source-Available License v1.0 |
+| `rust-toolchain.toml` | Pinned Rust toolchain version and components |
 
 ## Citation
 
