@@ -8,6 +8,8 @@ How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; 
 |---|---|
 | `qmaws --help`, `qmaws <command> --help` | Prints the available commands and options |
 | `qmaws --version` | Prints the version |
+| `qmaws run --dataset <id> | --input "<folder>" [--output "<run folder>"] [--no-strand] [--lengths a,b,c] [--seed S]` | Analyses the data as a resumable run: input check, MAW extraction, length selection, matrices and the pattern counts of every quartet (later versions continue to the tree). Stop with Ctrl+C and continue with `qmaws resume` |
+| `qmaws teach --example` or `qmaws teach --input "<folder>" [--reference "<tree.nwk>"]` | Prints the hand-calculable teaching worksheet (see `docs/TEACHING.md`) |
 | `qmaws toy-run [--output "<folder>"] [--blocks N] [--seed S] [--chunk-seconds T]` | Runs a toy computation that exercises checkpoints, resume and the progress display (development command) |
 | `qmaws resume [--output "<run folder>"]` | Resumes an unfinished run. Without `--output`, resumes the only unfinished run in `results/runs`; if there are several, lists them |
 | `qmaws datasets [--data-dir "<folder>"]` | Lists the benchmark datasets with taxa, size, reference tree and status (ready, not downloaded, checksum mismatch, not extracted) |

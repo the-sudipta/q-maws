@@ -210,3 +210,97 @@ fn progress_reports_updated_time_estimates() {
     assert_eq!(events.first().unwrap()["event"], "started");
     assert_eq!(events.last().unwrap()["event"], "finished");
 }
+
+/// Writes `m` related synthetic genomes of `len` letters into `dir`.
+fn synthetic_inputs(dir: &Path, m: usize, len: usize) {
+    std::fs::create_dir_all(dir).unwrap();
+    let mut rng = Lcg(99);
+    let base: Vec<u8> = (0..len)
+        .map(|_| b"ACGT"[rng.next_in(0, 4) as usize])
+        .collect();
+    for t in 0..m {
+        let mut s = base.clone();
+        for _ in 0..len / 15 {
+            let i = rng.next_in(0, len as u64) as usize;
+            s[i] = b"ACGT"[rng.next_in(0, 4) as usize];
+        }
+        let text = format!(">S{t:02}\n{}\n", String::from_utf8(s).unwrap());
+        std::fs::write(dir.join(format!("S{t:02}.fasta")), text).unwrap();
+    }
+}
+
+fn analysis_args(input: &Path, out: &Path, chunk: u64) -> Vec<String> {
+    vec![
+        "--quiet".into(),
+        "run".into(),
+        "--input".into(),
+        input.display().to_string(),
+        "--chunk-quartets".into(),
+        chunk.to_string(),
+        "--output".into(),
+        out.display().to_string(),
+    ]
+}
+
+#[test]
+fn killed_and_resumed_analysis_gives_the_same_root() {
+    let tmp = TempDir::new("kill_analysis");
+    let input = tmp.0.join("input");
+    let (taxa, chunk) = if cfg!(debug_assertions) {
+        (40, 20)
+    } else {
+        (70, 100)
+    };
+    synthetic_inputs(&input, taxa, 3000);
+
+    let reference = tmp.0.join("reference");
+    run_to_end(&analysis_args(&input, &reference, 997));
+    let expected = read_root(&reference);
+
+    let dir = tmp.0.join("killed");
+    let mut rng = Lcg(424242);
+    let mut kills = 0;
+    let deadline = Instant::now() + Duration::from_secs(600);
+    while kills < 6 {
+        assert!(Instant::now() < deadline, "test took too long");
+        let args = if dir.join("run.json").exists() {
+            resume_args(&dir)
+        } else {
+            analysis_args(&input, &dir, chunk)
+        };
+        let mut child = Command::new(BIN)
+            .args(args)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        sleep(Duration::from_millis(rng.next_in(20, 250)));
+        match child.try_wait().unwrap() {
+            Some(status) => {
+                assert!(status.success(), "run failed before the kill: {status}");
+                break;
+            }
+            None => {
+                child.kill().unwrap();
+                child.wait().unwrap();
+                kills += 1;
+            }
+        }
+    }
+    let finish = if dir.join("run.json").exists() {
+        resume_args(&dir)
+    } else {
+        analysis_args(&input, &dir, chunk)
+    };
+    run_to_end(&finish);
+    eprintln!("analysis kills: {kills}");
+    assert_eq!(
+        read_root(&dir),
+        expected,
+        "root differs after {kills} kills"
+    );
+    assert!(
+        kills >= 3,
+        "only {kills} kills happened; the run is too short"
+    );
+}

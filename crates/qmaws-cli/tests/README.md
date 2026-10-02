@@ -7,7 +7,7 @@ Integration tests that run the real `qmaws` binary, as a user or script would.
 | Item | Description |
 |---|---|
 | `data_commands.rs` | The data commands without network: `inspect` (summary, findings with choices, reference name comparison, errors for too few taxa and missing folders), `datasets` (all 14 datasets listed), unknown dataset ids rejected |
-| `kill_resume.rs` | Milestone M1 acceptance: a toy run hard-killed 10 times at seeded random moments and resumed finishes with the same root fingerprint as an uninterrupted run; progress output carries remaining-time estimates that are updated during the run |
+| `kill_resume.rs` | A toy run hard-killed 10 times (M1 acceptance) and an analysis run of synthetic genomes hard-killed 6 times, each resumed, finish with the same root fingerprint as an uninterrupted run with another chunk size; progress output carries remaining-time estimates that are updated during the run |
 
 ## Relationships
 Cargo builds the `qmaws` binary from `../src/` before these tests and passes its path in `CARGO_BIN_EXE_qmaws`.

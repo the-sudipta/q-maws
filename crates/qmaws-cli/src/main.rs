@@ -45,6 +45,49 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Analyse a folder or downloaded dataset (in this version: up to the quartet pattern counts)
+    Run {
+        /// Folder of sequence files, or one multi-FASTA file
+        #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
+        input: Option<PathBuf>,
+
+        /// Downloaded benchmark dataset id
+        #[arg(long)]
+        dataset: Option<String>,
+
+        /// Run folder [default: results/runs/<name>_<date>_<time>]
+        #[arg(long)]
+        output: Option<PathBuf>,
+
+        /// Do not apply the strand filter
+        #[arg(long)]
+        no_strand: bool,
+
+        /// Fixed MAW lengths, for example 7,8,9, instead of the entropy selection
+        #[arg(long, value_delimiter = ',')]
+        lengths: Option<Vec<usize>>,
+
+        /// Random seed of the quartet processing order
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+
+        /// Target duration of one chunk of quartets, in seconds
+        #[arg(long, default_value_t = 3.0)]
+        chunk_seconds: f64,
+
+        /// Fixed number of quartets per chunk instead of calibration (testing)
+        #[arg(long, hide = true)]
+        chunk_quartets: Option<u64>,
+
+        /// For a folder: one taxon per file (records joined) or one per record
+        #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
+        records: data_cmd::Records,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
     /// Run a toy computation that exercises checkpoints, resume and progress display
     ToyRun {
         /// Run folder [default: results/runs/toy_<date>_<time>]
@@ -150,10 +193,26 @@ enum Command {
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
+
+    /// Print the hand-calculable teaching worksheet
+    Teach {
+        /// Use the built-in example (taxa K, L, M, N, P)
+        #[arg(long, conflicts_with = "input", required_unless_present = "input")]
+        example: bool,
+
+        /// A small folder of your own sequences (at most 8 taxa, 200 letters each)
+        #[arg(long)]
+        input: Option<PathBuf>,
+
+        /// Reference tree (Newick) for the nRF step
+        #[arg(long, requires = "input")]
+        reference: Option<PathBuf>,
+    },
 }
 
 mod data_cmd;
 mod matrix_cmd;
+mod teach_cmd;
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
 /// the current unit; the second exits immediately (safe because every output
@@ -218,6 +277,11 @@ fn main() -> ExitCode {
     let color = !cli.no_color;
     let command = match command {
         Command::Datasets { data_dir } => return data_cmd::datasets(&data_dir),
+        Command::Teach {
+            example,
+            input,
+            reference,
+        } => return teach_cmd::run(example, input.as_deref(), reference.as_deref()),
         Command::Matrix {
             input,
             dataset,
@@ -266,6 +330,74 @@ fn main() -> ExitCode {
     install_interrupt_handler(Arc::clone(&cancel));
 
     let (run_dir, result) = match command {
+        Command::Run {
+            input,
+            dataset,
+            output,
+            no_strand,
+            lengths,
+            seed,
+            chunk_seconds,
+            chunk_quartets,
+            records,
+            data_dir,
+        } => {
+            let (path, records, name) = match (input, dataset) {
+                (Some(p), _) => {
+                    let name = p
+                        .file_name()
+                        .map(|n| n.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| "run".into());
+                    let r = match records {
+                        data_cmd::Records::PerFile => "per_file",
+                        data_cmd::Records::PerRecord => "per_record",
+                    };
+                    (p, r, name)
+                }
+                (None, Some(id)) => {
+                    let reg = qmaws_data::registry::Registry::builtin();
+                    let Some(ds) = reg.dataset(&id) else {
+                        eprintln!(
+                            "Error: unknown dataset {id}; run 'qmaws datasets' to see the list"
+                        );
+                        return ExitCode::from(EXIT_USAGE);
+                    };
+                    let r = match ds.layout {
+                        qmaws_data::registry::Layout::FilePerTaxon => "per_file",
+                        qmaws_data::registry::Layout::RecordPerTaxon => "per_record",
+                    };
+                    (
+                        qmaws_data::DataDir::new(&data_dir).dataset_path(&reg, ds),
+                        r,
+                        id,
+                    )
+                }
+                (None, None) => unreachable!("clap requires --input or --dataset"),
+            };
+            let absolute = std::path::absolute(&path).unwrap_or(path);
+            let run_dir = output.unwrap_or_else(|| {
+                new_run_dir(
+                    Path::new(DEFAULT_RUNS_ROOT),
+                    &run_id(&name, UtcDateTime::now()),
+                )
+            });
+            let options = qmaws_engine::analysis::AnalysisOptions {
+                config: qmaws_engine::analysis::AnalysisConfig {
+                    input: absolute.display().to_string(),
+                    records: records.to_string(),
+                    strand: !no_strand,
+                    lengths,
+                    seed,
+                    ml_max_columns: qmaws_core::matrix::MAX_ML_COLUMNS,
+                },
+                chunk_seconds,
+                chunk_quartets,
+                memory_limit: None,
+            };
+            let result =
+                qmaws_engine::analysis::start(&run_dir, &options, "terminal", &display, &cancel);
+            (run_dir, result)
+        }
         Command::ToyRun {
             output,
             blocks,
@@ -302,7 +434,8 @@ fn main() -> ExitCode {
         Command::Datasets { .. }
         | Command::Download { .. }
         | Command::Inspect { .. }
-        | Command::Matrix { .. } => {
+        | Command::Matrix { .. }
+        | Command::Teach { .. } => {
             unreachable!("data commands return above")
         }
     };

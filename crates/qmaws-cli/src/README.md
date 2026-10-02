@@ -8,7 +8,8 @@ Source code of the `qmaws` binary.
 |---|---|
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
 | `matrix_cmd.rs` | The command `matrix` |
-| `main.rs` | Argument parsing, Ctrl+C handling, and the commands `toy-run` and `resume` |
+| `teach_cmd.rs` | The command `teach` |
+| `main.rs` | Argument parsing, Ctrl+C handling, and the commands `run`, `toy-run` and `resume` |
 
 ## Relationships
 Calls `qmaws-engine` for runs, `qmaws-data` for datasets and input, and `qmaws-tui` for progress display.
