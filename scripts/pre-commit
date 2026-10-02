@@ -1,0 +1,113 @@
+#!/bin/sh
+# Pre-commit guard for the Q-MAWS repository.
+#
+# Installed as two git hooks by scripts/install-hooks.sh or .bat:
+#   pre-commit   (no arguments)   checks the staged files
+#   commit-msg   (one argument)   checks the commit message file
+#
+# A commit is blocked if:
+#   - a staged file is larger than 50 MB;
+#   - a staged path is under data/raw/ or inside any work/ folder;
+#   - a staged path is listed in the local, uncommitted exclude file
+#     (.git/info/exclude);
+#   - staged content or a staged path contains a secret pattern;
+#   - staged content, a staged path or the commit message contains a
+#     forbidden attribution string (tool or assistant attributions).
+#
+# The forbidden strings and secret markers are assembled from fragments so
+# that this file does not itself contain them.
+#
+# Limitation: paths containing a newline character are not supported.
+
+LC_ALL=C
+export LC_ALL
+
+MAX_BYTES=52428800 # 50 MB
+
+# --- Forbidden attribution patterns (extended regex, case-insensitive) ------
+n1="Cla""ude"
+n2="Anthr""opic"
+n3="Chat""GPT"
+n4="Open""AI"
+n5="Co""pilot"
+n6="Gem""ini"
+n7="Code""ium"
+n8="Tab""nine"
+n9="Wind""surf"
+NAMES="$n1|$n2|$n3|$n4|$n5|$n6|$n7|$n8|$n9"
+TRAILER="co-""authored-""by"
+ROBOT=$(printf '\360\237\244\226') # U+1F916 robot face, UTF-8 bytes
+ATTRIBUTION="(^|[^A-Za-z0-9])($NAMES)([^A-Za-z0-9]|$)|$TRAILER|(generated|created|written) (with|by) ($NAMES)|$ROBOT"
+
+# --- Secret patterns (extended regex) ---------------------------------------
+B="-----""BEGIN"
+SECRETS="$B ([A-Z0-9]+ )*PRIVATE KEY-----"
+SECRETS="$SECRETS|gh""p_[A-Za-z0-9]{36}|gh""o_[A-Za-z0-9]{36}|github_""pat_[A-Za-z0-9_]{22,}"
+SECRETS="$SECRETS|AK""IA[0-9A-Z]{16}|xox""[baprs]-[A-Za-z0-9-]{10,}|s""k-[A-Za-z0-9_-]{32,}"
+SECRETS="$SECRETS|(pass""word|pass""wd|sec""ret|api_?key|access_?token|auth_?token)[\"']?[[:space:]]*[:=][[:space:]]*[\"'][^\"'[:space:]]{8,}[\"']"
+
+fail=0
+block() {
+    echo "Commit blocked: $1" >&2
+    fail=1
+}
+
+# --- commit-msg mode ---------------------------------------------------------
+if [ $# -ge 1 ] && [ -f "$1" ]; then
+    if grep -v '^#' "$1" | grep -Eiq -- "$ATTRIBUTION"; then
+        block "the commit message contains a forbidden attribution string."
+        grep -v '^#' "$1" | grep -Ein -- "$ATTRIBUTION" | sed 's/^/  line /' >&2
+    fi
+    exit $fail
+fi
+
+# --- pre-commit mode ---------------------------------------------------------
+exclude_file=$(git rev-parse --git-path info/exclude)
+staged=$(git -c core.quotePath=false diff --cached --name-only --diff-filter=ACMR)
+
+old_ifs=$IFS
+IFS='
+'
+for f in $staged; do
+    IFS=$old_ifs
+
+    case "$f" in
+        data/raw/* | work/* | */work/*)
+            block "'$f' is raw data or a work folder file; these are never committed."
+            ;;
+    esac
+
+    match=$(git check-ignore -v --no-index -- "$f" 2>/dev/null)
+    case "$match" in
+        "$exclude_file":*)
+            block "'$f' is listed in the local exclude file and must stay private."
+            ;;
+    esac
+
+    if printf '%s\n' "$f" | grep -Eiq -- "$ATTRIBUTION"; then
+        block "the path '$f' contains a forbidden attribution string."
+    fi
+
+    size=$(git cat-file -s ":$f" 2>/dev/null || echo 0)
+    if [ "$size" -gt "$MAX_BYTES" ]; then
+        block "'$f' is $size bytes, larger than the 50 MB limit."
+        # Do not scan the content of very large files.
+        IFS='
+'
+        continue
+    fi
+
+    if git cat-file -p ":$f" 2>/dev/null | grep -EIiq -- "$ATTRIBUTION"; then
+        block "'$f' contains a forbidden attribution string."
+    fi
+
+    if git cat-file -p ":$f" 2>/dev/null | grep -EIq -- "$SECRETS"; then
+        block "'$f' appears to contain a secret (key, token or password)."
+    fi
+
+    IFS='
+'
+done
+IFS=$old_ifs
+
+exit $fail

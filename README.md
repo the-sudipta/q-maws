@@ -73,6 +73,7 @@ To be written (milestones M11 to M13).
 | `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
 | `LICENSE` | Q-MAWS Source-Available License v1.0 |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
+| `scripts/` | Development scripts: pre-commit guard and hook installers ([README](scripts/README.md)) |
 
 ## Citation
 
