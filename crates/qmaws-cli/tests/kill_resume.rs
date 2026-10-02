@@ -6,6 +6,7 @@
 //!   uninterrupted run.
 //! - Progress output contains time estimates that are updated during the run.
 //! - `qmaws verify` passes on a finished run and reports a changed input.
+//! - G11 (ignored by default): a Fish mtDNA run killed 10 times and resumed.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -408,4 +409,89 @@ fn verify_command_passes_and_reports_a_changed_input() {
     let (code, text) = verify(&["--inputs"]);
     assert_eq!(code, Some(1), "{text}");
     assert!(text.contains("[FAIL] file"), "{text}");
+}
+
+/// The stage that was running (or the first not done) in `dir`.
+fn current_stage(dir: &Path) -> String {
+    std::fs::read_to_string(dir.join("run.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .and_then(|v| {
+            v["stages"].as_array().and_then(|s| {
+                s.iter()
+                    .find(|st| st["status"] != "done")
+                    .and_then(|st| st["name"].as_str().map(str::to_string))
+            })
+        })
+        .unwrap_or_else(|| "not started".into())
+}
+
+/// Golden test G11: a Fish mtDNA run hard-killed at 10 random moments and
+/// resumed each time gives the root of an uninterrupted run. Needs the
+/// downloaded dataset (`qmaws download --dataset fish_mito`); run with
+/// `cargo test --release -p qmaws-cli --test kill_resume -- --ignored g11`.
+#[test]
+#[ignore]
+fn g11_fish_mtdna_killed_ten_times_gives_the_same_root() {
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data");
+    assert!(
+        data.join("raw/fish_mito").exists(),
+        "Fish mtDNA is not downloaded: run qmaws download --dataset fish_mito"
+    );
+    let tmp = TempDir::new("g11");
+    let args = |dir: &Path| -> Vec<String> {
+        if dir.join("run.json").exists() {
+            resume_args(dir)
+        } else {
+            vec![
+                "--quiet".into(),
+                "run".into(),
+                "--dataset".into(),
+                "fish_mito".into(),
+                "--data-dir".into(),
+                data.display().to_string(),
+                "--output".into(),
+                dir.display().to_string(),
+            ]
+        }
+    };
+    let reference = tmp.0.join("reference");
+    let started = Instant::now();
+    run_to_end(&args(&reference));
+    let uninterrupted = started.elapsed().as_secs_f64();
+    let expected = read_root(&reference);
+
+    let dir = tmp.0.join("killed");
+    let seed = 1_100_011;
+    let mut rng = Lcg(seed);
+    let mut kills = Vec::new();
+    while kills.len() < 10 {
+        let mut child = Command::new(BIN)
+            .args(args(&dir))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let wait = rng.next_in(500, 8000);
+        sleep(Duration::from_millis(wait));
+        if let Some(status) = child.try_wait().unwrap() {
+            assert!(status.success(), "run failed: {status}");
+            break;
+        }
+        child.kill().unwrap();
+        child.wait().unwrap();
+        kills.push(format!("{wait} ms ({})", current_stage(&dir)));
+    }
+    run_to_end(&args(&dir));
+    eprintln!(
+        "G11: uninterrupted run {uninterrupted:.1} s; kills (kill-time seed {seed}): {}",
+        kills.join(", ")
+    );
+    assert_eq!(
+        kills.len(),
+        10,
+        "the run finished after {} kills",
+        kills.len()
+    );
+    assert_eq!(read_root(&dir), expected);
 }
