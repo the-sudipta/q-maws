@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.5-m05-weighting] - 2026-10-02
+
 ### Added
 
 - Quartet weighting: W1 votes; conditioned quartet maximum likelihood under the two-state model (W2-sym, W2-emp) with an exact-derivative Newton optimiser; W2a, W2b and W2c (100 multinomial resamples with per-quartet seeds); golden test G3.
