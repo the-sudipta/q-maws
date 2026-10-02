@@ -1,7 +1,17 @@
 //! Run orchestration for Q-MAWS: stages, checkpoints, chunks, progress events
 //! and the audit log.
 //!
-//! Status: empty skeleton. Functionality is added milestone by milestone.
+//! Every output is written atomically with a SHA-256 hash file, so a run can be
+//! stopped or killed at any moment and resumed later with identical results.
+
+pub mod atomic;
+pub mod clock;
+pub mod hash;
+pub mod rundir;
+pub mod state;
+
+#[cfg(test)]
+mod testutil;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
