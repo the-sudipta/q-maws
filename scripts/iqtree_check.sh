@@ -78,9 +78,9 @@ if [ $status -eq 0 ]; then
 else
     annotate error "IQ-TREE cross-check" "$summary"
 fi
-# One annotation per quartet and model with its three rows, so the numbers
-# can be read without the job log.
-tail -n +2 "$out/comparison.tsv" | awk -F'\t' '{k=$1" "$2; a[k]=a[k] " | t" $3 ": max " $4 ", A " $6 ", max diff " $8 ", B " $10 ", C " $12} END {for (k in a) print k a[k]}' | sort |
+# One annotation per quartet with its six rows, so the numbers can be read
+# without the job log (GitHub shows at most 10 notices per step).
+tail -n +2 "$out/comparison.tsv" | awk -F'\t' '{k="quartet " $1; a[k]=a[k] " | " $2 " t" $3 ": max " $4 ", A " $6 ", max diff " $8 ", B " $10 ", C " $12} END {for (k in a) print k a[k]}' | sort |
     while read -r line; do
         annotate notice "IQ-TREE rows" "$line"
     done

@@ -77,10 +77,19 @@ External tools, services and repositories used during development or by the prog
   - (C, added after the first run) IQ-TREE's optimisation started from Q-MAWS's fitted lengths (`-te` with lengths, without `-blfix`) against Q-MAWS's maximum.
   - The script passes when A, B and C agree within the tolerance and IQ-TREE never finds a higher maximum than Q-MAWS. Rows where IQ-TREE's own maximum (from its default starting lengths) is lower are counted and reported.
   - Tolerance 0.0001. IQ-TREE prints log-likelihoods with 4 decimals, so rounding alone accounts for up to 0.00005.
-- **First run** (workflow run on commit `6f35d7b`, 2026-10-02):
-  - (A) and the second part of (B) agree in all 30 rows within 0.00005, i.e. within IQ-TREE's print precision: the two likelihood functions are the same.
-  - IQ-TREE's own maximum was never higher than Q-MAWS's (at most 0.000048 above, within rounding). In 12 of 30 rows it was lower by more than 0.0001, by up to 0.270115 (quartet 4, W2-emp, ab|cd). IQ-TREE confirmed with `-blfix` that Q-MAWS's lengths give the higher value, so its optimisation from the default starting lengths stopped below the optimum in these rows. 11 of the 12 are fits of a topology that is not the best for its quartet; the other is quartet 4, W2-emp, ac|bd (0.000196 lower).
-  - Comparison C was added after this run to check that IQ-TREE, started from Q-MAWS's lengths, stays at Q-MAWS's maximum.
+- **Results** (2026-10-02):
+  - **First run, on commit `6f35d7b` (comparisons A and B):**
+    - The script failed: its criterion then also required IQ-TREE's own maximum to agree within 0.0001.
+    - (A) and the second part of (B) agreed in every row shown within 0.00005, i.e. within IQ-TREE's print precision.
+    - In several rows IQ-TREE's own maximum was lower than Q-MAWS's, by up to 0.270115 (quartet 4, W2-emp, ab|cd).
+  - **Second run, on commit `afbdb9d` (A, B and C):**
+    - The script passed.
+    - A, B and C agree in all 30 rows within 0.000048: the two likelihood functions are the same, and IQ-TREE started from Q-MAWS's lengths stays at Q-MAWS's maximum.
+    - IQ-TREE's own maximum is never higher than Q-MAWS's (at most 0.000034 above, within rounding).
+    - In 14 of 30 rows it is lower by more than 0.0001, by up to 0.270115. IQ-TREE confirms with `-blfix` that Q-MAWS's lengths give the higher value, so its optimisation from its default starting lengths stops below the optimum in these rows.
+  - **Annotation limit:** GitHub shows at most 10 notices per step, and both runs wrote one notice per quartet and model. The rows of quartet 4 under W2-sym were therefore not shown; the count of 14 comes from the script's summary line.
+  - **Of the 14 rows, 12 were shown:** 11 are fits of a topology that is not the best for its quartet; the other is quartet 4, W2-emp, ac|bd, which is 0.000196 lower.
+  - Since then the script writes one notice per quartet.
 
 ### Not used yet
 
