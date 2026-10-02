@@ -285,6 +285,22 @@ enum Command {
         dir: PathBuf,
     },
 
+    /// Development: run the positive and negative controls into results/controls
+    #[command(hide = true)]
+    Controls {
+        /// Output folder
+        #[arg(long, default_value = "results/controls")]
+        output: PathBuf,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+
+        /// Seed of the simulation, the shuffles, the runs and the random trees
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+    },
+
     /// Development: time S2 bootstrap replicates of a finished run (decision D7)
     #[command(hide = true)]
     S2Cost {
@@ -330,6 +346,7 @@ enum Command {
     },
 }
 
+mod controls_cmd;
 mod data_cmd;
 mod h3_cmd;
 mod iqtree_cmd;
@@ -483,6 +500,11 @@ fn main() -> ExitCode {
     install_interrupt_handler(Arc::clone(&cancel));
 
     let command = match command {
+        Command::Controls {
+            output,
+            data_dir,
+            seed,
+        } => return controls_cmd::run(&output, &data_dir, seed, &cancel),
         Command::Verify {
             output,
             inputs,
@@ -624,6 +646,7 @@ fn main() -> ExitCode {
         | Command::WqfmExport { .. }
         | Command::WqfmCompare { .. }
         | Command::S2Cost { .. }
+        | Command::Controls { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
