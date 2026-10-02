@@ -6,6 +6,7 @@
 //! In this milestone the engine runs a toy computation that exercises chunks,
 //! checkpoints, resume, progress and time estimates.
 
+pub mod analysis;
 pub mod atomic;
 pub mod clock;
 pub mod hash;
@@ -14,6 +15,7 @@ pub mod progress;
 pub mod rundir;
 pub mod runner;
 pub mod state;
+pub mod store;
 pub mod toy;
 
 #[cfg(test)]

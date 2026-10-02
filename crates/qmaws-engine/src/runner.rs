@@ -91,7 +91,7 @@ impl fmt::Display for EngineError {
 
 impl std::error::Error for EngineError {}
 
-fn io_err(path: &Path) -> impl FnOnce(io::Error) -> EngineError + '_ {
+pub(crate) fn io_err(path: &Path) -> impl FnOnce(io::Error) -> EngineError + '_ {
     move |error| EngineError::Io {
         path: path.to_path_buf(),
         error,
@@ -191,6 +191,9 @@ pub fn resume_run(
         path: run_dir.to_path_buf(),
         error,
     })?;
+    if state.kind == crate::analysis::KIND {
+        return crate::analysis::resume(run_dir, state, interface, sink, cancel);
+    }
     if state.kind != "toy" {
         return Err(EngineError::Invalid(format!(
             "runs of kind '{}' are not supported by this version",
@@ -207,7 +210,7 @@ pub fn resume_run(
 
 /// Recomputes the fingerprint of every input file and compares it with the
 /// fingerprint stored when the run started.
-fn verify_inputs(state: &RunState) -> Result<(), EngineError> {
+pub(crate) fn verify_inputs(state: &RunState) -> Result<(), EngineError> {
     for input in &state.inputs {
         let bytes = std::fs::read(&input.path).map_err(io_err(Path::new(&input.path)))?;
         if sha256_hex(&bytes) != input.sha256 {

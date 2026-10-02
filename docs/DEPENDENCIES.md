@@ -27,7 +27,8 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 | `md-5` | 0.11.0 | MIT OR Apache-2.0 | `qmaws-data` | MD5 checksums, as published by AFproject | 2026-10-02 |
 | `zip` (feature `deflate` only) | 8.6.0 | MIT | `qmaws-data` | Extracting dataset archives (newest stable release; 9.0.0 is a pre-release) | 2026-10-02 |
 | `flate2` | 1.1.10 | MIT OR Apache-2.0 | `qmaws-data` | Reading `.gz` sequence files | 2026-10-02 |
-| `qmaws-core` (workspace) | – | Q-MAWS license | `qmaws-data`, `qmaws-engine` | Input cleaning, Newick parsing, MAWs and matrices | – |
+| `qmaws-core` (workspace) | – | Q-MAWS license | `qmaws-data`, `qmaws-engine` | Input cleaning, Newick parsing, MAWs, matrices, quartets | – |
+| `qmaws-data` (workspace) | – | Q-MAWS license | `qmaws-engine` | Reading the input folder of an analysis run | – |
 | `libm` | 0.2.16 | MIT | `qmaws-core` | Pure-Rust `log2` for the entropy of MAW lengths, so the selection is identical on every platform | 2026-10-02 |
 | `rayon` | 1.12.0 | MIT OR Apache-2.0 | `qmaws-engine` | Extracting the MAWs of several taxa in parallel, with a bounded number of threads | 2026-10-02 |
 | `sysinfo` (feature `system` only) | 0.39.6 | MIT | `qmaws-engine` | Measuring the available memory to set the default memory limit (70%) | 2026-10-02 |

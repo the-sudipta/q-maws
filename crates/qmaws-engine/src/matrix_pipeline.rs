@@ -60,7 +60,7 @@ pub struct MatrixSummary {
     pub matrix_seconds: f64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, serde::Deserialize)]
 pub struct EntropyRow {
     pub length: usize,
     pub characters: usize,

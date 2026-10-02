@@ -6,6 +6,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 ## Contents
 | Item | Description |
 |---|---|
+| `analysis.rs` | The analysis run: stages from input to quartet pattern counts, checkpoints, chunked counting in Feistel order, resume, root fingerprint |
 | `atomic.rs` | Atomic writes (temporary file, sync, rename) with SHA-256 hash files; validity checks; removal of stale temporary files |
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
@@ -15,6 +16,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `rundir.rs` | Run folder layout, run identifiers, discovery of unfinished runs |
 | `runner.rs` | Starting, stopping and resuming runs; the chunk loop; final outputs and the root fingerprint |
 | `state.rs` | The `run.json` record: stages, statuses, chunk plans, throughput, elapsed time; saving and verified loading |
+| `store.rs` | Binary formats of MAW lists, the full matrix and count chunks |
 | `testutil.rs` | Temporary folders for unit tests (test builds only) |
 | `toy.rs` | The toy computation (SplitMix64 block sums) used to exercise the engine |
 
