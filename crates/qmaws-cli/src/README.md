@@ -7,6 +7,7 @@ Source code of the `qmaws` binary.
 | Item | Description |
 |---|---|
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
+| `matrix_cmd.rs` | The command `matrix` |
 | `main.rs` | Argument parsing, Ctrl+C handling, and the commands `toy-run` and `resume` |
 
 ## Relationships

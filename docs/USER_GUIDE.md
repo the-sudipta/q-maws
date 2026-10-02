@@ -13,6 +13,7 @@ How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; 
 | `qmaws datasets [--data-dir "<folder>"]` | Lists the benchmark datasets with taxa, size, reference tree and status (ready, not downloaded, checksum mismatch, not extracted) |
 | `qmaws download --dataset <id or all> [--data-dir "<folder>"]` | Downloads, verifies and extracts datasets, then checks the taxon count and the reference tree names. An interrupted download continues where it stopped the next time |
 | `qmaws inspect --input "<folder or file>" [--records per-file\|per-record] [--reference "<tree.nwk>"]` | Reads your own sequences and shows the taxa, their lengths and removed characters, and every problem found with its choices; compares names with a reference tree if given |
+| `qmaws matrix --dataset <id> | --input "<folder>" --output "<folder>" [--no-strand] [--lengths 7,8,9]` | Extracts the minimal absent words, selects the MAW lengths by entropy (or uses the given lengths), builds the full matrix and the ML-MAWS-style matrix, and writes `summary.json`, `entropy.tsv`, `m_ml.phy`, `m_ml_columns.txt` and `m_full_columns.txt` |
 | `qmaws inspect --dataset <id> [--compare-with <id>]` | The same for a downloaded benchmark dataset, compared with its built-in reference tree; `--compare-with` also reports which taxa have an identical cleaned sequence in another downloaded dataset |
 
 Options for every command:

@@ -119,9 +119,41 @@ enum Command {
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
+
+    /// Build the MAW matrices (M_full and M_ml) of a folder or downloaded dataset
+    Matrix {
+        /// Folder of sequence files, or one multi-FASTA file
+        #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
+        input: Option<PathBuf>,
+
+        /// Downloaded benchmark dataset id
+        #[arg(long)]
+        dataset: Option<String>,
+
+        /// Folder for the output files
+        #[arg(long)]
+        output: PathBuf,
+
+        /// Do not apply the strand filter
+        #[arg(long)]
+        no_strand: bool,
+
+        /// Fixed MAW lengths, for example 7,8,9, instead of the entropy selection
+        #[arg(long, value_delimiter = ',')]
+        lengths: Option<Vec<usize>>,
+
+        /// For a folder: one taxon per file (records joined) or one per record
+        #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
+        records: data_cmd::Records,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
 }
 
 mod data_cmd;
+mod matrix_cmd;
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
 /// the current unit; the second exits immediately (safe because every output
@@ -186,6 +218,26 @@ fn main() -> ExitCode {
     let color = !cli.no_color;
     let command = match command {
         Command::Datasets { data_dir } => return data_cmd::datasets(&data_dir),
+        Command::Matrix {
+            input,
+            dataset,
+            output,
+            no_strand,
+            lengths,
+            records,
+            data_dir,
+        } => {
+            return matrix_cmd::run(matrix_cmd::MatrixArgs {
+                input: input.as_deref(),
+                dataset: dataset.as_deref(),
+                output: &output,
+                no_strand,
+                lengths,
+                records,
+                data_dir: &data_dir,
+                quiet: mode != DisplayMode::Normal,
+            })
+        }
         Command::Download { dataset, data_dir } => {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
@@ -247,7 +299,10 @@ fn main() -> ExitCode {
             let result = resume_run(&run_dir, "terminal", &display, &cancel);
             (run_dir, result)
         }
-        Command::Datasets { .. } | Command::Download { .. } | Command::Inspect { .. } => {
+        Command::Datasets { .. }
+        | Command::Download { .. }
+        | Command::Inspect { .. }
+        | Command::Matrix { .. } => {
             unreachable!("data commands return above")
         }
     };
