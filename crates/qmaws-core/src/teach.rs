@@ -839,7 +839,7 @@ mod tests {
     }
 
     #[test]
-    fn g2_production_pipeline_gives_the_worksheet_matrix_and_pattern_counts() {
+    fn g2_production_pipeline_gives_the_worksheet_matrix_pattern_counts_and_tree() {
         use crate::matrix::{build_full, ml_columns, MAX_ML_COLUMNS};
         use crate::maw::extract;
         use crate::quartet::{pattern_counts, quartet_count, rank, CoCounts, PopcountPath};
@@ -880,6 +880,31 @@ mod tests {
             }
             assert_eq!(counts, from_sheet, "quartet {q:?} (rank {})", rank(*q));
         }
+        // The rest of G2: production W1 weights and wQFM-rs give the
+        // worksheet's final tree ((K,L),M,(N,P)); with nRF 0.
+        let names: Vec<String> = EXAMPLE.iter().map(|(n, _)| n.to_string()).collect();
+        let mut weighted = Vec::new();
+        for q in &w.quartets {
+            let n4 = path.and4(
+                &ml.rows[q[0]],
+                &ml.rows[q[1]],
+                &ml.rows[q[2]],
+                &ml.rows[q[3]],
+            );
+            let counts = pattern_counts(&cc, *q, n4);
+            if let Some(w1) = crate::weight::w1(&counts) {
+                weighted.extend(crate::amalgamate::quartets_of(*q, w1));
+            }
+        }
+        let result = crate::amalgamate::wqfm(&names, &weighted, &Default::default());
+        let got = crate::newick::Tree::parse(&result.newick).unwrap();
+        let reference = crate::newick::Tree::parse("((K,L),M,(N,P));").unwrap();
+        assert_eq!(
+            crate::newick::nrf(&got, &reference).1,
+            0.0,
+            "tree {}",
+            result.newick
+        );
     }
 
     #[test]

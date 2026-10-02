@@ -4,6 +4,7 @@
 //! This crate has no knowledge of files, terminals or windows. It receives
 //! data and returns data.
 
+pub mod amalgamate;
 pub mod input;
 pub mod matrix;
 pub mod maw;
