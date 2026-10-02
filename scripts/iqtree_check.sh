@@ -49,7 +49,8 @@ rm -rf "$run" "$out"
 "$qmaws" iqtree-export --run "$run" --output "$out" --quartets 5 --seed 1 || exit 1
 
 # 3. IQ-TREE: each quartet, model and topology with Q-MAWS's branch lengths
-#    fixed (-blfix) and with branch lengths optimised (-te fixes the topology).
+#    fixed (-blfix), with branch lengths optimised (-te fixes the topology),
+#    and optimised starting from Q-MAWS's lengths.
 cd "$out" || exit 1
 tab=$(printf '\t')
 tail -n +2 expected.tsv | while IFS="$tab" read -r q model t iqmodel rest; do
@@ -61,6 +62,9 @@ tail -n +2 expected.tsv | while IFS="$tab" read -r q model t iqmodel rest; do
     # shellcheck disable=SC2086
     "$iq" $common -te "q${q}_t$t.nwk" -me 0.000001 -pre "${p}_opt" >/dev/null 2>&1 \
         || { annotate error "IQ-TREE" "$p optimisation failed: $(tail -n 3 "${p}_opt.log" | tr '\n' ' ')"; exit 1; }
+    # shellcheck disable=SC2086
+    "$iq" $common -te "${p}_fixed.nwk" -me 0.000001 -pre "${p}_warm" >/dev/null 2>&1 \
+        || { annotate error "IQ-TREE" "$p optimisation from Q-MAWS lengths failed: $(tail -n 3 "${p}_warm.log" | tr '\n' ' ')"; exit 1; }
 done || exit 1
 cd "$root" || exit 1
 
@@ -76,7 +80,7 @@ else
 fi
 # One annotation per quartet and model with its three rows, so the numbers
 # can be read without the job log.
-tail -n +2 "$out/comparison.tsv" | awk -F'\t' '{k=$1" "$2; a[k]=a[k] " | t" $3 ": max " $4 ", A " $6 ", max diff " $8 ", B " $10} END {for (k in a) print k a[k]}' | sort |
+tail -n +2 "$out/comparison.tsv" | awk -F'\t' '{k=$1" "$2; a[k]=a[k] " | t" $3 ": max " $4 ", A " $6 ", max diff " $8 ", B " $10 ", C " $12} END {for (k in a) print k a[k]}' | sort |
     while read -r line; do
         annotate notice "IQ-TREE rows" "$line"
     done

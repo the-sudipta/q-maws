@@ -10,7 +10,11 @@
 //! - `iqtree-compare` reads IQ-TREE's results and compares them with Q-MAWS:
 //!   (A) IQ-TREE's log-likelihood at Q-MAWS's branch lengths (`-blfix`);
 //!   (B) IQ-TREE's maximised log-likelihood against Q-MAWS's maximum and
-//!   against Q-MAWS evaluated at IQ-TREE's branch lengths.
+//!   against Q-MAWS evaluated at IQ-TREE's branch lengths; (C) IQ-TREE's
+//!   optimisation started from Q-MAWS's lengths against Q-MAWS's maximum.
+//!   It passes when A, B and C agree within the tolerance and IQ-TREE never
+//!   finds a higher maximum; rows where IQ-TREE's own maximum is lower are
+//!   counted and reported.
 
 use qmaws_core::newick::Tree;
 use qmaws_core::quartet::{self, PatternCounts};
@@ -204,9 +208,15 @@ pub fn compare(run: &Path, dir: &Path) -> ExitCode {
         return fail("quartets.tsv is missing; run iqtree-export first");
     };
     let mut report = String::from(
-        "quartet\tmodel\ttopology\tqmaws_max\tiqtree_at_qmaws_lengths\tdiff_A\tiqtree_max\tdiff_max\tqmaws_at_iqtree_lengths\tdiff_B\n",
+        "quartet\tmodel\ttopology\tqmaws_max\tiqtree_at_qmaws_lengths\tdiff_A\tiqtree_max\tdiff_max\tqmaws_at_iqtree_lengths\tdiff_B\tiqtree_from_qmaws_lengths\tdiff_C\n",
     );
+    // Largest |difference| of A, B and C; how far IQ-TREE's own maximum is
+    // above Q-MAWS's at most; rows where it is lower by more than the
+    // tolerance, and the largest such shortfall.
     let mut worst: f64 = 0.0;
+    let mut above = f64::NEG_INFINITY;
+    let mut below = 0;
+    let mut shortfall: f64 = 0.0;
     let mut rows = 0;
     for line in list.lines().skip(1) {
         let cols: Vec<&str> = line.split('\t').collect();
@@ -220,16 +230,16 @@ pub fn compare(run: &Path, dir: &Path) -> ExitCode {
             for t in 0..3 {
                 let fit = weight::fit(&model, COND, t, &counts).expect("columns");
                 let prefix = format!("q{n}_{model_name}_t{t}");
-                let fixed = read(&format!("{prefix}_fixed.iqtree"))
-                    .ok()
-                    .and_then(|r| iqtree_log_likelihood(&r));
-                let optimised = read(&format!("{prefix}_opt.iqtree"))
-                    .ok()
-                    .and_then(|r| iqtree_log_likelihood(&r));
+                let ll = |suffix: &str| {
+                    read(&format!("{prefix}_{suffix}.iqtree"))
+                        .ok()
+                        .and_then(|r| iqtree_log_likelihood(&r))
+                };
                 let lengths = read(&format!("{prefix}_opt.treefile"))
                     .ok()
                     .and_then(|t| tree_lengths(&t));
-                let (Some(fixed), Some(optimised), Some(lengths)) = (fixed, optimised, lengths)
+                let (Some(fixed), Some(optimised), Some(warm), Some(lengths)) =
+                    (ll("fixed"), ll("opt"), ll("warm"), lengths)
                 else {
                     return fail(format!(
                         "IQ-TREE output for {prefix} is missing or unreadable"
@@ -239,13 +249,19 @@ pub fn compare(run: &Path, dir: &Path) -> ExitCode {
                 let diff_a = fixed - fit.log_likelihood;
                 let diff_max = optimised - fit.log_likelihood;
                 let diff_b = at_iq - optimised;
-                for d in [diff_a, diff_max, diff_b] {
+                let diff_c = warm - fit.log_likelihood;
+                for d in [diff_a, diff_b, diff_c] {
                     worst = worst.max(d.abs());
+                }
+                above = above.max(diff_max);
+                if diff_max < -TOLERANCE {
+                    below += 1;
+                    shortfall = shortfall.max(-diff_max);
                 }
                 rows += 1;
                 let _ = writeln!(
                     report,
-                    "{n}\t{model_name}\t{t}\t{:.6}\t{fixed:.4}\t{diff_a:.6}\t{optimised:.4}\t{diff_max:.6}\t{at_iq:.6}\t{diff_b:.6}",
+                    "{n}\t{model_name}\t{t}\t{:.6}\t{fixed:.4}\t{diff_a:.6}\t{optimised:.4}\t{diff_max:.6}\t{at_iq:.6}\t{diff_b:.6}\t{warm:.4}\t{diff_c:.6}",
                     fit.log_likelihood
                 );
             }
@@ -253,8 +269,13 @@ pub fn compare(run: &Path, dir: &Path) -> ExitCode {
     }
     let _ = std::fs::write(dir.join("comparison.tsv"), &report);
     print!("{report}");
-    println!("{rows} comparisons; largest absolute difference {worst:.6} (tolerance {TOLERANCE})");
-    if worst <= TOLERANCE && rows > 0 {
+    println!(
+        "{rows} comparisons; A, B, C: largest difference {worst:.6}; IQ-TREE's own maximum at most {above:.6} above Q-MAWS's, below it by more than {TOLERANCE} in {below} rows (at most {shortfall:.6}); tolerance {TOLERANCE}"
+    );
+    // The likelihood functions must agree (A, B), IQ-TREE started from
+    // Q-MAWS's lengths must stay at Q-MAWS's maximum (C), and IQ-TREE must
+    // never find a higher maximum.
+    if rows > 0 && worst <= TOLERANCE && above <= TOLERANCE {
         ExitCode::SUCCESS
     } else {
         ExitCode::from(1)
