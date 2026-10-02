@@ -9,6 +9,7 @@ pub mod matrix;
 pub mod maw;
 pub mod newick;
 pub mod quartet;
+pub mod sim;
 pub mod teach;
 pub mod weight;
 
