@@ -5,6 +5,7 @@
 //! data and returns data.
 
 pub mod input;
+pub mod newick;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
