@@ -10,6 +10,7 @@ Project documentation for readers, users and reviewers: the method, design decis
 | `DESIGN.md` | Software design decisions and their justification |
 | `EXTERNAL_TOOLS.md` | External tools, services and repositories, with what was verified about each |
 | `METHOD.md` | Mathematical specification of the method for readers |
+| `milestones/` | One report per completed milestone ([README](milestones/README.md)) |
 | `OPEN_ISSUES.md` | Problems, ambiguities and discrepancies found, with options |
 | `TEACHING.md` | How to use `qmaws teach` in a classroom |
 | `USER_GUIDE.md` | Menus, commands and screenshots |
