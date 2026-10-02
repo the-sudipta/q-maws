@@ -76,6 +76,7 @@ To be written (milestones M11 to M13).
 | `CITATION.cff` | Citation metadata: title, author, affiliation, ORCID |
 | `CONTRIBUTING.md` | Rules for commits, tests and documentation |
 | `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
+| `deny.toml` | Dependency policy (allowed licenses and sources) checked by `cargo deny` in CI |
 | `data/` | Dataset manifests and reference trees; raw data is downloaded, not committed ([README](data/README.md)) |
 | `docs/` | Design, method, user and milestone documentation ([README](docs/README.md)) |
 | `figures/` | Final publication figures ([README](figures/README.md)) |
