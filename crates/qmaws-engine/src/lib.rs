@@ -17,6 +17,7 @@ pub mod runner;
 pub mod state;
 pub mod store;
 pub mod toy;
+pub mod verify;
 
 #[cfg(test)]
 mod testutil;

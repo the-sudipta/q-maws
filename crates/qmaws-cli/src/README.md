@@ -12,10 +12,11 @@ Source code of the `qmaws` binary.
 | `matrix_cmd.rs` | The command `matrix` |
 | `wqfm_cmd.rs` | The hidden development commands `wqfm-export` and `wqfm-compare` of the wQFM jar comparison |
 | `teach_cmd.rs` | The command `teach` |
+| `verify_cmd.rs` | The command `verify`: input check, quick, full and single-quartet verification of a finished run; prints the report |
 | `main.rs` | Argument parsing, Ctrl+C handling, and the commands `run`, `toy-run` and `resume` |
 
 ## Relationships
 Calls `qmaws-engine` for runs, `qmaws-data` for datasets and input, and `qmaws-tui` for progress display.
 
 ## Notes
-Exit status: 0 success, 1 error, 2 usage error, 3 run stopped on request (resumable).
+Exit status: 0 success, 1 error (for `verify`: also a failed comparison), 2 usage error, 3 run stopped on request (resumable).

@@ -61,9 +61,9 @@ pub const AMALGAMATE: &str = "amalgamate";
 pub const SUPPORT: &str = "support";
 pub const FINALIZE: &str = "finalize";
 /// Quartets per parallel block when counting.
-const COUNT_BLOCK: u64 = 4096;
+pub(crate) const COUNT_BLOCK: u64 = 4096;
 /// Quartets per parallel block when weighting.
-const WEIGHT_BLOCK: u64 = 16;
+pub(crate) const WEIGHT_BLOCK: u64 = 16;
 
 /// Largest chunk of records held in memory (bytes).
 const MAX_CHUNK_BYTES: usize = 64 << 20;
@@ -142,7 +142,7 @@ pub struct AnalysisOptions {
 }
 
 impl AnalysisConfig {
-    fn mode(&self) -> RecordMode {
+    pub(crate) fn mode(&self) -> RecordMode {
         if self.records == "per_record" {
             RecordMode::OneTaxonPerRecord
         } else {
@@ -152,23 +152,23 @@ impl AnalysisConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct TaxonRecord {
-    name: String,
-    original_name: String,
-    source_file: String,
-    original_length: u64,
-    cleaned_length: u64,
-    removed: BTreeMap<char, u64>,
-    cleaned_sha256: String,
+pub(crate) struct TaxonRecord {
+    pub name: String,
+    pub original_name: String,
+    pub source_file: String,
+    pub original_length: u64,
+    pub cleaned_length: u64,
+    pub removed: BTreeMap<char, u64>,
+    pub cleaned_sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct InputsRecord {
-    taxa: Vec<TaxonRecord>,
-    files: Vec<InputFingerprint>,
-    lmin: usize,
-    lmax: usize,
-    average_length: u64,
+pub(crate) struct InputsRecord {
+    pub taxa: Vec<TaxonRecord>,
+    pub files: Vec<InputFingerprint>,
+    pub lmin: usize,
+    pub lmax: usize,
+    pub average_length: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -184,6 +184,38 @@ pub fn start(
     interface: &str,
     sink: &dyn ProgressSink,
     cancel: &AtomicBool,
+) -> Result<Outcome, EngineError> {
+    start_session(run_dir, options, interface, sink, cancel, false)
+}
+
+/// Runs only the stages up to `matrix_build` in a new folder `run_dir` and
+/// returns the full matrix (`None` if stopped). Used by verification.
+pub fn build_matrix_only(
+    run_dir: &Path,
+    options: &AnalysisOptions,
+    sink: &dyn ProgressSink,
+    cancel: &AtomicBool,
+) -> Result<Option<Matrix>, EngineError> {
+    match start_session(run_dir, options, "terminal", sink, cancel, true)? {
+        Outcome::Stopped => Ok(None),
+        Outcome::Finished { .. } => {
+            let bytes =
+                atomic::read_verified(&RunDir::new(run_dir).work().join("matrix/m_full.bin"))
+                    .ok_or_else(|| EngineError::Invalid("the rebuilt matrix is missing".into()))?;
+            store::matrix_from_bytes(&bytes)
+                .map(Some)
+                .map_err(|e| EngineError::Invalid(e.to_string()))
+        }
+    }
+}
+
+fn start_session(
+    run_dir: &Path,
+    options: &AnalysisOptions,
+    interface: &str,
+    sink: &dyn ProgressSink,
+    cancel: &AtomicBool,
+    until_matrix: bool,
 ) -> Result<Outcome, EngineError> {
     let dir = RunDir::new(run_dir);
     if dir.run_json().exists() {
@@ -226,6 +258,7 @@ pub fn start(
         .save(&dir.run_json())
         .map_err(io_err(&dir.run_json()))?;
     let mut s = Session::new(dir, state, options.clone(), sink, cancel);
+    s.until_matrix = until_matrix;
     s.emit(Event::Started {
         run_id: s.state.run_id.clone(),
         run_dir: s.dir.root().display().to_string(),
@@ -272,6 +305,8 @@ struct Session<'a> {
     started: Instant,
     elapsed_before: f64,
     estimator: Estimator,
+    /// Stop after `matrix_build` (verification).
+    until_matrix: bool,
 }
 
 fn maws_dir(dir: &RunDir) -> PathBuf {
@@ -302,6 +337,7 @@ impl<'a> Session<'a> {
             started: Instant::now(),
             elapsed_before,
             estimator: Estimator::new(&[]),
+            until_matrix: false,
         }
     }
 
@@ -483,6 +519,12 @@ impl<'a> Session<'a> {
         }
         if self.status(MATRIX_BUILD) != StageStatus::Done {
             self.matrix_build(&inputs)?;
+        }
+        if self.until_matrix {
+            self.save()?;
+            return Ok(Outcome::Finished {
+                root: String::new(),
+            });
         }
         if let Some(outcome) = self.quartet_count(m)? {
             return Ok(outcome);

@@ -126,6 +126,33 @@ enum Command {
         output: Option<PathBuf>,
     },
 
+    /// Check a finished run against its audit record (default: input check and quick check)
+    Verify {
+        /// Run folder to verify
+        #[arg(long)]
+        output: PathBuf,
+
+        /// Only the input check
+        #[arg(long, conflicts_with_all = ["full", "quartet"])]
+        inputs: bool,
+
+        /// Recompute the whole run and compare the root fingerprint
+        #[arg(long, conflicts_with = "quartet")]
+        full: bool,
+
+        /// Recompute one quartet, e.g. A,B,C,D, print its worksheet and compare its decision
+        #[arg(long, value_delimiter = ',')]
+        quartet: Option<Vec<String>>,
+
+        /// Seed of the quick check's chunk draw [default: a fresh seed, printed]
+        #[arg(long)]
+        seed: Option<u64>,
+
+        /// Input folder or file, if the data are no longer where the run read them
+        #[arg(long)]
+        input: Option<PathBuf>,
+    },
+
     /// List the benchmark datasets and whether they are downloaded
     Datasets {
         /// Data folder [default: data]
@@ -292,6 +319,7 @@ mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod teach_cmd;
+mod verify_cmd;
 mod wqfm_cmd;
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
@@ -432,6 +460,31 @@ fn main() -> ExitCode {
     let cancel = Arc::new(AtomicBool::new(false));
     install_interrupt_handler(Arc::clone(&cancel));
 
+    let command = match command {
+        Command::Verify {
+            output,
+            inputs,
+            full,
+            quartet,
+            seed,
+            input,
+        } => {
+            return verify_cmd::run(
+                verify_cmd::VerifyArgs {
+                    output: &output,
+                    inputs,
+                    full,
+                    quartet,
+                    seed,
+                    input: input.as_deref(),
+                    quiet: mode != DisplayMode::Normal,
+                },
+                &cancel,
+            )
+        }
+        other => other,
+    };
+
     let (run_dir, result) = match command {
         Command::Run {
             input,
@@ -547,7 +600,8 @@ fn main() -> ExitCode {
         | Command::IqtreeExport { .. }
         | Command::IqtreeCompare { .. }
         | Command::WqfmExport { .. }
-        | Command::WqfmCompare { .. } => {
+        | Command::WqfmCompare { .. }
+        | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
     };

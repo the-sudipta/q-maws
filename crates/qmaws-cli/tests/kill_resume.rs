@@ -1,9 +1,11 @@
-//! Acceptance tests for milestone M1, run against the real `qmaws` binary.
+//! Acceptance tests run against the real `qmaws` binary (from M1; the
+//! verification command from M8).
 //!
 //! - A toy run killed at random moments (hard kill, no clean shutdown) and
 //!   resumed each time finishes with the same root fingerprint as an
 //!   uninterrupted run.
 //! - Progress output contains time estimates that are updated during the run.
+//! - `qmaws verify` passes on a finished run and reports a changed input.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -373,4 +375,37 @@ fn killed_and_resumed_weighting_gives_the_same_root() {
         true,
     );
     assert!(during >= 1, "no kill landed during the weighting");
+}
+
+#[test]
+fn verify_command_passes_and_reports_a_changed_input() {
+    let tmp = TempDir::new("verify_cli");
+    let input = tmp.0.join("input");
+    synthetic_inputs(&input, 7, 1500);
+    let run = tmp.0.join("run");
+    run_to_end(&analysis_args(&input, &run, 5, &["--replicates", "3"]));
+    let verify = |extra: &[&str]| {
+        let mut args = vec!["verify", "--output", run.to_str().unwrap()];
+        args.extend_from_slice(extra);
+        let out = Command::new(BIN).args(&args).output().unwrap();
+        (
+            out.status.code(),
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+        )
+    };
+    let (code, text) = verify(&["--seed", "4"]);
+    assert_eq!(code, Some(0), "{text}");
+    assert!(text.contains("drawn with seed 4"), "{text}");
+    assert!(text.contains("Verdict: PASS"), "{text}");
+    let (code, text) = verify(&["--quartet", "S00,S02,S04,S06"]);
+    assert_eq!(code, Some(0), "{text}");
+    assert!(text.contains("[PASS] decision"), "{text}");
+    let (code, _) = verify(&["--quartet", "S00,S02"]);
+    assert_eq!(code, Some(2));
+    let f = input.join("S03.fasta");
+    let body = std::fs::read_to_string(&f).unwrap().replace('A', "C");
+    std::fs::write(&f, body).unwrap();
+    let (code, text) = verify(&["--inputs"]);
+    assert_eq!(code, Some(1), "{text}");
+    assert!(text.contains("[FAIL] file"), "{text}");
 }
