@@ -12,6 +12,7 @@ One report per completed milestone: what was built, how it was verified, measure
 | `M03.md` | M3: MAW extraction, strand filter, length selection, matrices |
 | `M04.md` | M4: quartet pattern counting and teaching mode |
 | `M05.md` | M5: quartet weighting |
+| `M06.md` | M6: long-branch simulation (H3) |
 
 ## Relationships
 Reports refer to code in `crates/`, scripts in `scripts/`, and run records in `results/`. Each report corresponds to a milestone tag.
