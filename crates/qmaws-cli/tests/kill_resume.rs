@@ -229,8 +229,8 @@ fn synthetic_inputs(dir: &Path, m: usize, len: usize) {
     }
 }
 
-fn analysis_args(input: &Path, out: &Path, chunk: u64) -> Vec<String> {
-    vec![
+fn analysis_args(input: &Path, out: &Path, chunk: u64, extra: &[&str]) -> Vec<String> {
+    let mut args: Vec<String> = vec![
         "--quiet".into(),
         "run".into(),
         "--input".into(),
@@ -239,42 +239,82 @@ fn analysis_args(input: &Path, out: &Path, chunk: u64) -> Vec<String> {
         chunk.to_string(),
         "--output".into(),
         out.display().to_string(),
-    ]
+    ];
+    args.extend(extra.iter().map(|s| s.to_string()));
+    args
 }
 
-#[test]
-fn killed_and_resumed_analysis_gives_the_same_root() {
-    let tmp = TempDir::new("kill_analysis");
+/// True if the run in `dir` has a chunk plan for the weighting but no root
+/// yet, so a kill at this moment interrupted the weighting.
+fn inside_weighting(dir: &Path) -> bool {
+    let planned = std::fs::read_to_string(dir.join("run.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .is_some_and(|v| v["chunk_plans"].get("quartet_weight").is_some());
+    planned && !dir.join("audit").join("root.txt").exists()
+}
+
+/// Runs an analysis with hard kills at random moments, resumes it, and
+/// checks the root against an uninterrupted run with another chunk size.
+fn kill_and_compare(
+    label: &str,
+    taxa: usize,
+    chunk: u64,
+    extra: &[&str],
+    kill_ms: (u64, u64),
+    first_until_weighting: bool,
+) -> u32 {
+    let tmp = TempDir::new(label);
     let input = tmp.0.join("input");
-    let (taxa, chunk) = if cfg!(debug_assertions) {
-        (40, 20)
-    } else {
-        (70, 100)
-    };
     synthetic_inputs(&input, taxa, 3000);
 
     let reference = tmp.0.join("reference");
-    run_to_end(&analysis_args(&input, &reference, 997));
+    run_to_end(&analysis_args(&input, &reference, 997, extra));
     let expected = read_root(&reference);
 
     let dir = tmp.0.join("killed");
     let mut rng = Lcg(424242);
     let mut kills = 0;
+    let mut weighting_kills = 0;
     let deadline = Instant::now() + Duration::from_secs(600);
-    while kills < 6 {
-        assert!(Instant::now() < deadline, "test took too long");
-        let args = if dir.join("run.json").exists() {
-            resume_args(&dir)
+    let next_args = |dir: &Path| {
+        if dir.join("run.json").exists() {
+            resume_args(dir)
         } else {
-            analysis_args(&input, &dir, chunk)
-        };
+            analysis_args(&input, dir, chunk, extra)
+        }
+    };
+    if first_until_weighting {
+        // The chunk size given on the command line is not stored; let the
+        // first process fix the weighting plan with it, then kill it.
         let mut child = Command::new(BIN)
-            .args(args)
+            .args(next_args(&dir))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
             .unwrap();
-        sleep(Duration::from_millis(rng.next_in(20, 250)));
+        while !inside_weighting(&dir) {
+            assert!(Instant::now() < deadline, "the weighting did not start");
+            assert!(
+                child.try_wait().unwrap().is_none(),
+                "the run ended before the weighting"
+            );
+            sleep(Duration::from_millis(5));
+        }
+        child.kill().unwrap();
+        child.wait().unwrap();
+        kills += 1;
+        weighting_kills += 1;
+    }
+    while kills < 6 {
+        assert!(Instant::now() < deadline, "test took too long");
+        let mut child = Command::new(BIN)
+            .args(next_args(&dir))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        sleep(Duration::from_millis(rng.next_in(kill_ms.0, kill_ms.1)));
         match child.try_wait().unwrap() {
             Some(status) => {
                 assert!(status.success(), "run failed before the kill: {status}");
@@ -284,16 +324,14 @@ fn killed_and_resumed_analysis_gives_the_same_root() {
                 child.kill().unwrap();
                 child.wait().unwrap();
                 kills += 1;
+                if inside_weighting(&dir) {
+                    weighting_kills += 1;
+                }
             }
         }
     }
-    let finish = if dir.join("run.json").exists() {
-        resume_args(&dir)
-    } else {
-        analysis_args(&input, &dir, chunk)
-    };
-    run_to_end(&finish);
-    eprintln!("analysis kills: {kills}");
+    run_to_end(&next_args(&dir));
+    eprintln!("{label} kills: {kills} ({weighting_kills} during weighting)");
     assert_eq!(
         read_root(&dir),
         expected,
@@ -303,4 +341,36 @@ fn killed_and_resumed_analysis_gives_the_same_root() {
         kills >= 3,
         "only {kills} kills happened; the run is too short"
     );
+    weighting_kills
+}
+
+#[test]
+fn killed_and_resumed_analysis_gives_the_same_root() {
+    let (taxa, chunk) = if cfg!(debug_assertions) {
+        (40, 20)
+    } else {
+        (70, 100)
+    };
+    let _ = kill_and_compare(
+        "kill_analysis",
+        taxa,
+        chunk,
+        &["--weighting", "none"],
+        (20, 250),
+        false,
+    );
+}
+
+#[test]
+fn killed_and_resumed_weighting_gives_the_same_root() {
+    let taxa = if cfg!(debug_assertions) { 14 } else { 18 };
+    let during = kill_and_compare(
+        "kill_weighting",
+        taxa,
+        9,
+        &["--replicates", "5"],
+        (100, 600),
+        true,
+    );
+    assert!(during >= 1, "no kill landed during the weighting");
 }

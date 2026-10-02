@@ -1,6 +1,6 @@
-//! The analysis run: from sequence files to quartet pattern counts, as a
-//! resumable sequence of stages. (Weighting, amalgamation and the later
-//! stages are added in later milestones.)
+//! The analysis run: from sequence files to quartet weights, as a
+//! resumable sequence of stages. (Amalgamation and the later stages are
+//! added in later milestones.)
 //!
 //! | Stage | Unit of work | Output |
 //! |---|---|---|
@@ -9,12 +9,14 @@
 //! | `length_select` | whole stage | `work/matrix/selection.json` |
 //! | `matrix_build` | whole stage | `work/matrix/m_full.bin`, `report/m_ml.phy` |
 //! | `quartet_count` | one chunk of quartets in Feistel order | `work/chunks/quartet_count_<n>.bin` |
+//! | `quartet_weight` | one chunk of quartets in Feistel order (counts recomputed from `M_full`) | `work/chunks/quartet_weight_<n>.bin` |
 //! | `finalize` | whole stage | `audit/stages.json`, `audit/chunks.json`, `audit/root.txt` |
 //!
 //! Every file is written atomically with a hash file; a unit is done exactly
 //! when its file is valid. The root fingerprint covers each stage's content
 //! hash; for chunked stages the content hash is taken over all outputs in
-//! order, so it does not depend on chunk boundaries.
+//! order, so it does not depend on chunk boundaries. Weights are hashed as
+//! text with every floating-point value rounded to 9 significant digits.
 
 use crate::atomic;
 use crate::clock::UtcDateTime;
@@ -31,6 +33,7 @@ use qmaws_core::input::RecordMode;
 use qmaws_core::matrix::{self, Matrix};
 use qmaws_core::maw::{self, MawSet};
 use qmaws_core::quartet::{self, CoCounts, Permutation, PopcountPath};
+use qmaws_core::weight::{self, Conditioning, Model};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -48,19 +51,36 @@ pub const MAW_EXTRACT: &str = "maw_extract";
 pub const LENGTH_SELECT: &str = "length_select";
 pub const MATRIX_BUILD: &str = "matrix_build";
 pub const QUARTET_COUNT: &str = "quartet_count";
+pub const QUARTET_WEIGHT: &str = "quartet_weight";
 pub const FINALIZE: &str = "finalize";
 /// Quartets per parallel block when counting.
 const COUNT_BLOCK: u64 = 4096;
+/// Quartets per parallel block when weighting.
+const WEIGHT_BLOCK: u64 = 16;
 
-/// Largest chunk of count records held in memory (bytes).
+/// Largest chunk of records held in memory (bytes).
 const MAX_CHUNK_BYTES: usize = 64 << 20;
 
-pub const STAGES: [&str; 6] = [
+/// Description of a chunked stage for [`Session::run_chunks`].
+struct ChunkedStage {
+    stage: &'static str,
+    /// Name in the log.
+    label: &'static str,
+    /// Quartets per parallel block.
+    block: u64,
+    /// Bytes per record.
+    record: usize,
+    /// Extra text for the calibration log line.
+    note: String,
+}
+
+pub const STAGES: [&str; 7] = [
     INGEST,
     MAW_EXTRACT,
     LENGTH_SELECT,
     MATRIX_BUILD,
     QUARTET_COUNT,
+    QUARTET_WEIGHT,
     FINALIZE,
 ];
 
@@ -74,10 +94,31 @@ pub struct AnalysisConfig {
     pub strand: bool,
     /// Fixed MAW lengths instead of the entropy selection.
     pub lengths: Option<Vec<usize>>,
-    /// Seed of the quartet processing order.
+    /// Seed of the quartet processing order and of the W2c resamples.
     pub seed: u64,
     pub ml_max_columns: usize,
+    /// Quartet weighting: `w2_sym`, `w2_emp` or `none` (counts only).
+    #[serde(default = "default_weighting")]
+    pub weighting: String,
+    /// Number of W2c resamples per quartet (0: no W2c).
+    #[serde(default = "default_replicates")]
+    pub replicates: u32,
 }
+
+fn default_weighting() -> String {
+    WEIGHTING_SYM.to_string()
+}
+
+fn default_replicates() -> u32 {
+    weight::REPLICATES
+}
+
+/// Weighting with the two-state symmetric model (the default).
+pub const WEIGHTING_SYM: &str = "w2_sym";
+/// Weighting with the frequencies of 0 and 1 of `M_full`.
+pub const WEIGHTING_EMP: &str = "w2_emp";
+/// No weighting stage.
+pub const WEIGHTING_NONE: &str = "none";
 
 /// Settings of how the work is split; they do not change results.
 #[derive(Debug, Clone, PartialEq)]
@@ -143,6 +184,13 @@ pub fn start(
         return Err(EngineError::Invalid(
             "the chunk duration must be a positive number of seconds".into(),
         ));
+    }
+    if ![WEIGHTING_SYM, WEIGHTING_EMP, WEIGHTING_NONE].contains(&options.config.weighting.as_str())
+    {
+        return Err(EngineError::Invalid(format!(
+            "unknown weighting {}",
+            options.config.weighting
+        )));
     }
     dir.create_layout().map_err(io_err(run_dir))?;
     let created = UtcDateTime::now();
@@ -398,9 +446,13 @@ impl<'a> Session<'a> {
         let inputs = self.inputs()?;
         let m = inputs.taxa.len();
         let q = quartet::quartet_count(m);
-        self.estimator = Estimator::new(&[(MAW_EXTRACT, m as u64), (QUARTET_COUNT, q)]);
+        let mut units = vec![(MAW_EXTRACT, m as u64), (QUARTET_COUNT, q)];
+        if self.weighted() {
+            units.push((QUARTET_WEIGHT, q));
+        }
+        self.estimator = Estimator::new(&units);
         for (stage, rate) in self.state.throughput.clone() {
-            if stage == MAW_EXTRACT || stage == QUARTET_COUNT {
+            if units.iter().any(|(s, _)| *s == stage) {
                 self.estimator.set_rate(&stage, rate);
             }
         }
@@ -417,6 +469,9 @@ impl<'a> Session<'a> {
             self.matrix_build(&inputs)?;
         }
         if let Some(outcome) = self.quartet_count(m)? {
+            return Ok(outcome);
+        }
+        if let Some(outcome) = self.quartet_weight(m)? {
             return Ok(outcome);
         }
         if self.status(FINALIZE) != StageStatus::Done {
@@ -684,97 +739,193 @@ impl<'a> Session<'a> {
         )
     }
 
-    fn chunk_file(&self, index: u64) -> PathBuf {
-        self.dir.chunk_file(QUARTET_COUNT, index)
+    fn weighted(&self) -> bool {
+        self.options.config.weighting != WEIGHTING_NONE
+    }
+
+    fn load_full(&self) -> Result<Matrix, EngineError> {
+        store::matrix_from_bytes(&self.read("work/matrix/m_full.bin")?)
+            .map_err(|e| EngineError::Invalid(e.to_string()))
     }
 
     fn quartet_count(&mut self, m: usize) -> Result<Option<Outcome>, EngineError> {
         let q = quartet::quartet_count(m);
-        let full = store::matrix_from_bytes(&self.read("work/matrix/m_full.bin")?)
-            .map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let full = self.load_full()?;
         let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
         let path = PopcountPath::detect();
         let perm = Permutation::new(q, self.options.config.seed);
-        let count_one = |pos: u64, out: &mut Vec<u8>| {
-            let r = perm.apply(pos);
-            let quad = quartet::unrank(r);
-            let n4 = path.and4(
-                &full.rows[quad[0]],
-                &full.rows[quad[1]],
-                &full.rows[quad[2]],
-                &full.rows[quad[3]],
-            );
-            store::push_count_record(out, r, &quartet::pattern_counts(&cc, quad, n4));
-        };
-        // Positions s..e, counted in parallel blocks and joined in order, so
-        // the bytes do not depend on the number of threads.
         let count_range = |s: u64, e: u64| -> Vec<u8> {
-            let blocks: Vec<(u64, u64)> = (s..e)
-                .step_by(COUNT_BLOCK as usize)
-                .map(|b| (b, (b + COUNT_BLOCK).min(e)))
-                .collect();
-            let parts: Vec<Vec<u8>> = blocks
-                .par_iter()
-                .map(|&(b0, b1)| {
-                    let mut part = Vec::with_capacity(((b1 - b0) as usize) * store::COUNT_RECORD);
-                    for pos in b0..b1 {
-                        count_one(pos, &mut part);
+            let mut part = Vec::with_capacity(((e - s) as usize) * store::COUNT_RECORD);
+            for pos in s..e {
+                let r = perm.apply(pos);
+                let quad = quartet::unrank(r);
+                let n4 = path.and4(
+                    &full.rows[quad[0]],
+                    &full.rows[quad[1]],
+                    &full.rows[quad[2]],
+                    &full.rows[quad[3]],
+                );
+                store::push_count_record(&mut part, r, &quartet::pattern_counts(&cc, quad, n4));
+            }
+            part
+        };
+        self.run_chunks(
+            ChunkedStage {
+                stage: QUARTET_COUNT,
+                label: "Quartet counting",
+                block: COUNT_BLOCK,
+                record: store::COUNT_RECORD,
+                note: format!("; popcount {path:?}"),
+            },
+            q,
+            &count_range,
+        )
+    }
+
+    /// The substitution model of the run's weighting.
+    fn weight_model(&self, full: &Matrix) -> Result<Model, EngineError> {
+        if self.options.config.weighting != WEIGHTING_EMP {
+            return Ok(Model::symmetric());
+        }
+        let ones: u64 = full.ones.iter().map(|&o| o as u64).sum();
+        let cells = full.taxa as f64 * full.columns_len() as f64;
+        let pi1 = ones as f64 / cells;
+        if !(pi1 > 0.0 && pi1 < 1.0) {
+            return Err(EngineError::Invalid(
+                "W2-emp needs both 0 and 1 in the full matrix".into(),
+            ));
+        }
+        Ok(Model::with_frequency_of_one(pi1))
+    }
+
+    fn quartet_weight(&mut self, m: usize) -> Result<Option<Outcome>, EngineError> {
+        if !self.weighted() {
+            if self.status(QUARTET_WEIGHT) != StageStatus::Done {
+                self.set_done(QUARTET_WEIGHT, BTreeMap::new())?;
+            }
+            return Ok(None);
+        }
+        let q = quartet::quartet_count(m);
+        let full = self.load_full()?;
+        let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
+        let path = PopcountPath::detect();
+        let perm = Permutation::new(q, self.options.config.seed);
+        let model = self.weight_model(&full)?;
+        let seed = self.options.config.seed;
+        let replicates = self.options.config.replicates;
+        let cond = Conditioning::NotAllZero;
+        let weigh_range = |s: u64, e: u64| -> Vec<u8> {
+            let mut part = Vec::with_capacity(((e - s) as usize) * store::WEIGHT_RECORD);
+            for pos in s..e {
+                let r = perm.apply(pos);
+                let quad = quartet::unrank(r);
+                let n4 = path.and4(
+                    &full.rows[quad[0]],
+                    &full.rows[quad[1]],
+                    &full.rows[quad[2]],
+                    &full.rows[quad[3]],
+                );
+                let counts = quartet::pattern_counts(&cc, quad, n4);
+                let mut rec = store::WeightRecord {
+                    rank: r,
+                    flags: 0,
+                    log_likelihoods: [0.0; 3],
+                    w2c: [0.0; 3],
+                };
+                if let Some(fits) = weight::fit_all(&model, cond, &counts) {
+                    rec.flags |= store::WEIGHT_FITTED;
+                    rec.log_likelihoods = fits.map(|f| f.log_likelihood);
+                    let qs = weight::quartet_seed(seed, r);
+                    if let Some(w) = weight::w2c(&model, cond, &counts, qs, replicates) {
+                        rec.flags |= store::WEIGHT_RESAMPLED;
+                        rec.w2c = w;
                     }
-                    part
-                })
+                }
+                store::push_weight_record(&mut part, &rec);
+            }
+            part
+        };
+        self.run_chunks(
+            ChunkedStage {
+                stage: QUARTET_WEIGHT,
+                label: "Quartet weighting",
+                block: WEIGHT_BLOCK,
+                record: store::WEIGHT_RECORD,
+                note: format!("; model pi1 = {:.6}, {replicates} resamples", model.pi[1]),
+            },
+            q,
+            &weigh_range,
+        )
+    }
+
+    /// Runs a stage over all q processing positions in chunks: the chunk
+    /// plan is fixed by a calibration on the first run and stored; chunks
+    /// with a valid file are skipped. Positions are processed in parallel
+    /// blocks joined in order, so the bytes do not depend on the number of
+    /// threads.
+    fn run_chunks(
+        &mut self,
+        spec: ChunkedStage,
+        q: u64,
+        range: &(dyn Fn(u64, u64) -> Vec<u8> + Sync),
+    ) -> Result<Option<Outcome>, EngineError> {
+        let stage = spec.stage;
+        let block = spec.block;
+        let run_range = |s: u64, e: u64| -> Vec<u8> {
+            let blocks: Vec<(u64, u64)> = (s..e)
+                .step_by(block as usize)
+                .map(|b| (b, (b + block).min(e)))
                 .collect();
+            let parts: Vec<Vec<u8>> = blocks.par_iter().map(|&(b0, b1)| range(b0, b1)).collect();
             parts.concat()
         };
-        let plan = match self.state.chunk_plans.get(QUARTET_COUNT) {
+        let plan = match self.state.chunk_plans.get(stage) {
             Some(p) => *p,
             None => {
                 // Calibration: time a sample of quartets the same way chunks
-                // are counted, then fix the plan.
+                // are processed, then fix the plan.
                 let threads = rayon::current_num_threads() as u64;
-                let sample = q.min(COUNT_BLOCK * threads);
+                let sample = q.min(block * threads);
                 let t0 = Instant::now();
-                std::hint::black_box(count_range(0, sample));
+                std::hint::black_box(run_range(0, sample));
                 let rate = sample as f64 / t0.elapsed().as_secs_f64().max(1e-9);
-                self.estimator.set_rate(QUARTET_COUNT, rate);
+                self.estimator.set_rate(stage, rate);
                 // Target duration, but never more than MAX_CHUNK_BYTES of
                 // records in memory at once.
-                let max_per = (MAX_CHUNK_BYTES / store::COUNT_RECORD) as u64;
-                let per = self
-                    .options
-                    .chunk_quartets
-                    .unwrap_or(((rate * self.options.chunk_seconds).round() as u64).min(max_per));
+                let max_per = (MAX_CHUNK_BYTES / spec.record) as u64;
+                let per = self.options.chunk_quartets.unwrap_or(
+                    ((rate * self.options.chunk_seconds).round() as u64).clamp(1, max_per),
+                );
                 let plan = ChunkPlan::new(q, per);
-                self.state
-                    .chunk_plans
-                    .insert(QUARTET_COUNT.to_string(), plan);
+                self.state.chunk_plans.insert(stage.to_string(), plan);
                 self.save()?;
                 self.log(&format!(
-                    "Quartet counting: {q} quartets, {} chunks of up to {} (calibration {:.0} quartets per second; popcount {:?}).",
+                    "{}: {q} quartets, {} chunks of up to {} (calibration {:.0} quartets per second{}).",
+                    spec.label,
                     plan.chunk_count(),
                     plan.units_per_chunk,
                     rate,
-                    path
+                    spec.note
                 ))?;
                 plan
             }
         };
         let chunks = plan.chunk_count();
-        let valid: Vec<bool> = (0..chunks)
-            .map(|i| atomic::is_valid(&self.chunk_file(i)))
-            .collect();
+        let file = |i: u64| self.dir.chunk_file(stage, i);
+        let valid: Vec<bool> = (0..chunks).map(|i| atomic::is_valid(&file(i))).collect();
         let done_units: u64 = (0..chunks)
             .filter(|&i| valid[i as usize])
             .map(|i| plan.range(i).1 - plan.range(i).0)
             .sum();
-        self.estimator.set_done(QUARTET_COUNT, done_units);
+        self.estimator.set_done(stage, done_units);
         if valid.iter().all(|&v| v) {
-            if self.status(QUARTET_COUNT) != StageStatus::Done {
-                self.set_done(QUARTET_COUNT, BTreeMap::new())?;
+            if self.status(stage) != StageStatus::Done {
+                self.set_done(stage, BTreeMap::new())?;
             }
             return Ok(None);
         }
-        self.reset_from(QUARTET_COUNT);
-        self.set_running(QUARTET_COUNT)?;
+        self.reset_from(stage);
+        self.set_running(stage)?;
         let mut done = done_units;
         for i in 0..chunks {
             if valid[i as usize] {
@@ -785,22 +936,22 @@ impl<'a> Session<'a> {
             }
             let (s, e) = plan.range(i);
             self.progress(
-                QUARTET_COUNT,
+                stage,
                 done,
                 q,
                 format!("chunk {} of {chunks} (positions {s} to {})", i + 1, e - 1),
             );
             let t0 = Instant::now();
-            let out = count_range(s, e);
-            let p = self.chunk_file(i);
+            let out = run_range(s, e);
+            let p = self.dir.chunk_file(stage, i);
             atomic::write_verified(&p, &out).map_err(io_err(&p))?;
             self.estimator
-                .record(QUARTET_COUNT, e - s, t0.elapsed().as_secs_f64());
+                .record(stage, e - s, t0.elapsed().as_secs_f64());
             done += e - s;
             self.save()?;
         }
-        self.progress(QUARTET_COUNT, q, q, format!("all {chunks} chunks done"));
-        self.set_done(QUARTET_COUNT, BTreeMap::new())?;
+        self.progress(stage, q, q, format!("all {chunks} chunks done"));
+        self.set_done(stage, BTreeMap::new())?;
         Ok(None)
     }
 
@@ -816,27 +967,62 @@ impl<'a> Session<'a> {
                 EngineError::Invalid(format!("{} is missing or damaged", p.display()))
             })?);
         }
+        let read_chunk = |p: &Path| {
+            atomic::read_verified(p).ok_or_else(|| {
+                EngineError::Invalid(format!("{} is missing or damaged", p.display()))
+            })
+        };
         let plan = self.state.chunk_plans[QUARTET_COUNT];
         let mut counts = StreamHasher::new();
         let mut chunk_list = Vec::new();
         for i in 0..plan.chunk_count() {
-            let p = self.chunk_file(i);
-            let bytes = atomic::read_verified(&p).ok_or_else(|| {
-                EngineError::Invalid(format!("{} is missing or damaged", p.display()))
-            })?;
+            let bytes = read_chunk(&self.dir.chunk_file(QUARTET_COUNT, i))?;
             counts.update(&bytes);
             let (s, e) = plan.range(i);
             chunk_list.push(serde_json::json!({
                 "index": i, "start": s, "end": e, "sha256": sha256_hex(&bytes)
             }));
         }
-        let stage_hashes = vec![
+        let mut stage_hashes = vec![
             (INGEST, file_hash("audit/inputs.json")?),
             (MAW_EXTRACT, maws.finish_hex()),
             (LENGTH_SELECT, file_hash("work/matrix/selection.json")?),
             (MATRIX_BUILD, file_hash("work/matrix/m_full.bin")?),
             (QUARTET_COUNT, counts.finish_hex()),
         ];
+        let mut chunk_stages = vec![serde_json::json!({
+            "stage": QUARTET_COUNT,
+            "units_per_chunk": plan.units_per_chunk,
+            "chunks": chunk_list,
+        })];
+        if self.weighted() {
+            // Floating-point content is hashed as text rounded to 9
+            // significant digits (determinism contract).
+            let plan = self.state.chunk_plans[QUARTET_WEIGHT];
+            let mut weights = StreamHasher::new();
+            let mut chunk_list = Vec::new();
+            for i in 0..plan.chunk_count() {
+                let bytes = read_chunk(&self.dir.chunk_file(QUARTET_WEIGHT, i))?;
+                let recs = store::weight_records(&bytes)
+                    .map_err(|e| EngineError::Invalid(e.to_string()))?;
+                let mut text = String::with_capacity(recs.len() * 120);
+                for r in &recs {
+                    text.push_str(&r.canonical());
+                }
+                weights.update(text.as_bytes());
+                let (s, e) = plan.range(i);
+                chunk_list.push(serde_json::json!({
+                    "index": i, "start": s, "end": e, "sha256": sha256_hex(&bytes),
+                    "rounded_sha256": sha256_hex(text.as_bytes())
+                }));
+            }
+            stage_hashes.push((QUARTET_WEIGHT, weights.finish_hex()));
+            chunk_stages.push(serde_json::json!({
+                "stage": QUARTET_WEIGHT,
+                "units_per_chunk": plan.units_per_chunk,
+                "chunks": chunk_list,
+            }));
+        }
         let mut root_text = format!(
             "qmaws-root-v1\nkind {KIND}\nconfig {}\n",
             self.state.config_sha256
@@ -850,11 +1036,7 @@ impl<'a> Session<'a> {
             "quartets": quartet::quartet_count(m),
             "seed": self.options.config.seed,
         });
-        let chunks_json = serde_json::json!({
-            "stage": QUARTET_COUNT,
-            "units_per_chunk": plan.units_per_chunk,
-            "chunks": chunk_list,
-        });
+        let chunks_json = serde_json::json!({ "stages": chunk_stages });
         let mut outputs = BTreeMap::new();
         for (rel, text) in [
             (
@@ -890,6 +1072,43 @@ pub fn read_counts(run_dir: &Path) -> Result<Vec<(u64, [u32; 16])>, EngineError>
         if let Some(bytes) = atomic::read_verified(&p) {
             out.extend(
                 store::count_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?,
+            );
+        }
+    }
+    Ok(out)
+}
+
+/// Taxon names and the full matrix of a run whose matrix stage is done.
+pub fn load_matrix(run_dir: &Path) -> Result<(Vec<String>, Matrix), EngineError> {
+    let dir = RunDir::new(run_dir);
+    let read = |p: PathBuf| {
+        atomic::read_verified(&p)
+            .ok_or_else(|| EngineError::Invalid(format!("{} is missing or damaged", p.display())))
+    };
+    let inputs: InputsRecord = serde_json::from_slice(&read(dir.audit().join("inputs.json"))?)
+        .map_err(|e| EngineError::Invalid(format!("audit/inputs.json: {e}")))?;
+    let full = store::matrix_from_bytes(&read(dir.work().join("matrix").join("m_full.bin"))?)
+        .map_err(|e| EngineError::Invalid(e.to_string()))?;
+    Ok((inputs.taxa.into_iter().map(|t| t.name).collect(), full))
+}
+
+/// Reads every weight record of a finished (or partly finished) run, in
+/// processing order. For tests and inspection.
+pub fn read_weights(run_dir: &Path) -> Result<Vec<store::WeightRecord>, EngineError> {
+    let dir = RunDir::new(run_dir);
+    let state = RunState::load(&dir.run_json()).map_err(|error| EngineError::State {
+        path: run_dir.to_path_buf(),
+        error,
+    })?;
+    let Some(plan) = state.chunk_plans.get(QUARTET_WEIGHT) else {
+        return Ok(Vec::new());
+    };
+    let mut out = Vec::new();
+    for i in 0..plan.chunk_count() {
+        let p = dir.chunk_file(QUARTET_WEIGHT, i);
+        if let Some(bytes) = atomic::read_verified(&p) {
+            out.extend(
+                store::weight_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?,
             );
         }
     }
@@ -937,6 +1156,8 @@ mod tests {
                 lengths: None,
                 seed: 7,
                 ml_max_columns: matrix::MAX_ML_COLUMNS,
+                weighting: WEIGHTING_SYM.into(),
+                replicates: 3,
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(chunk),
@@ -1037,6 +1258,7 @@ mod tests {
         let run = RunDir::new(&dir);
         std::fs::write(maw_file(&run, 2), b"damaged").unwrap();
         std::fs::remove_file(run.chunk_file(QUARTET_COUNT, 1)).unwrap();
+        std::fs::write(run.chunk_file(QUARTET_WEIGHT, 0), b"damaged").unwrap();
         std::fs::write(run.root().join("work/matrix/m_full.bin"), b"x").unwrap();
         let cancel = AtomicBool::new(false);
         let again = crate::runner::resume_run(&dir, "terminal", &NullSink, &cancel).unwrap();
@@ -1059,5 +1281,76 @@ mod tests {
         let cancel = AtomicBool::new(false);
         let err = crate::runner::resume_run(&dir, "terminal", &NullSink, &cancel).unwrap_err();
         assert!(matches!(err, EngineError::InputChanged(_)), "{err}");
+    }
+
+    #[test]
+    fn stored_weights_equal_a_direct_computation_with_per_quartet_seeds() {
+        let tmp = TempDir::new("analysis_weights");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 7, 800, 3);
+        for weighting in [WEIGHTING_SYM, WEIGHTING_EMP] {
+            let run = tmp.path().join(weighting);
+            let mut opts = options(&input, 6);
+            opts.config.weighting = weighting.into();
+            finish(&run, &opts);
+            let counts = read_counts(&run).unwrap();
+            let weights = read_weights(&run).unwrap();
+            assert_eq!(weights.len(), counts.len());
+            let full = store::matrix_from_bytes(
+                &atomic::read_verified(&RunDir::new(&run).work().join("matrix/m_full.bin"))
+                    .unwrap(),
+            )
+            .unwrap();
+            let model = if weighting == WEIGHTING_EMP {
+                let ones: u64 = full.ones.iter().map(|&o| o as u64).sum();
+                Model::with_frequency_of_one(
+                    ones as f64 / (full.taxa as f64 * full.columns_len() as f64),
+                )
+            } else {
+                Model::symmetric()
+            };
+            for ((rank, c), w) in counts.iter().zip(&weights) {
+                assert_eq!(*rank, w.rank);
+                let c: [u64; 16] = c.map(|x| x as u64);
+                let cond = Conditioning::NotAllZero;
+                let fits = weight::fit_all(&model, cond, &c);
+                assert_eq!(w.fitted(), fits.is_some());
+                if let Some(fits) = fits {
+                    assert_eq!(w.log_likelihoods, fits.map(|f| f.log_likelihood));
+                    let seed = weight::quartet_seed(7, *rank);
+                    assert_eq!(Some(w.w2c), weight::w2c(&model, cond, &c, seed, 3));
+                    assert!(w.resampled());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn weighting_none_has_no_weight_stage() {
+        let tmp = TempDir::new("analysis_none");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 6, 500, 4);
+        let mut opts = options(&input, 5);
+        let with = finish(&tmp.path().join("with"), &opts);
+        opts.config.weighting = WEIGHTING_NONE.into();
+        let run = tmp.path().join("none");
+        let without = finish(&run, &opts);
+        assert_ne!(with, without);
+        assert!(read_weights(&run).unwrap().is_empty());
+        let stages = String::from_utf8(
+            atomic::read_verified(&RunDir::new(&run).audit().join("stages.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(!stages.contains(QUARTET_WEIGHT));
+        opts.config.weighting = "w9".into();
+        let err = start(
+            &tmp.path().join("bad"),
+            &opts,
+            "terminal",
+            &NullSink,
+            &AtomicBool::new(false),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("unknown weighting"), "{err}");
     }
 }

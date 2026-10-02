@@ -12,6 +12,10 @@
 //!   (u64 words each, one row after another).
 //! - Count chunks (`work/chunks/quartet_count_<n>.bin`): one record per quartet
 //!   in processing order: rank (u64), then the 16 pattern counts (u32 each).
+//! - Weight chunks (`work/chunks/quartet_weight_<n>.bin`): one record per
+//!   quartet in processing order: rank (u64), flags (u32: bit 0 = the W2
+//!   fits exist, bit 1 = W2c exists), the three W2 log-likelihoods (f64
+//!   each) and the three W2c weights (f64 each); absent values are 0.
 
 use qmaws_core::matrix::Matrix;
 use qmaws_core::maw::{Codes, MawSet};
@@ -20,6 +24,13 @@ pub const MAW_MAGIC: &[u8; 8] = b"QMAWMAW1";
 pub const MATRIX_MAGIC: &[u8; 8] = b"QMAWMAT1";
 /// Bytes per quartet record in a count chunk.
 pub const COUNT_RECORD: usize = 8 + 16 * 4;
+/// Bytes per quartet record in a weight chunk.
+pub const WEIGHT_RECORD: usize = 8 + 4 + 3 * 8 + 3 * 8;
+
+/// Flag of a weight record: the W2 log-likelihoods exist.
+pub const WEIGHT_FITTED: u32 = 1;
+/// Flag of a weight record: the W2c weights exist.
+pub const WEIGHT_RESAMPLED: u32 = 2;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StoreError(pub String);
@@ -240,6 +251,76 @@ pub fn count_records(bytes: &[u8]) -> Result<Vec<(u64, [u32; 16])>, StoreError> 
         .collect())
 }
 
+/// One quartet's stored weighting result.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct WeightRecord {
+    pub rank: u64,
+    pub flags: u32,
+    /// W2 log-likelihoods of ab|cd, ac|bd, ad|bc.
+    pub log_likelihoods: [f64; 3],
+    /// W2c weights of ab|cd, ac|bd, ad|bc.
+    pub w2c: [f64; 3],
+}
+
+impl WeightRecord {
+    pub fn fitted(&self) -> bool {
+        self.flags & WEIGHT_FITTED != 0
+    }
+
+    pub fn resampled(&self) -> bool {
+        self.flags & WEIGHT_RESAMPLED != 0
+    }
+
+    /// Canonical text for hashing: floating-point values rounded to 9
+    /// significant digits (determinism contract).
+    pub fn canonical(&self) -> String {
+        let f = |v: &[f64; 3]| {
+            v.iter()
+                .map(|x| format!("{x:.8e}"))
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+        format!(
+            "{} {} {} {}\n",
+            self.rank,
+            self.flags,
+            f(&self.log_likelihoods),
+            f(&self.w2c)
+        )
+    }
+}
+
+pub fn push_weight_record(out: &mut Vec<u8>, r: &WeightRecord) {
+    out.extend_from_slice(&r.rank.to_le_bytes());
+    out.extend_from_slice(&r.flags.to_le_bytes());
+    for v in r.log_likelihoods.iter().chain(&r.w2c) {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+}
+
+pub fn weight_records(bytes: &[u8]) -> Result<Vec<WeightRecord>, StoreError> {
+    if !bytes.len().is_multiple_of(WEIGHT_RECORD) {
+        return Err(StoreError("weight chunk has a partial record".into()));
+    }
+    Ok(bytes
+        .as_chunks::<WEIGHT_RECORD>()
+        .0
+        .iter()
+        .map(|rec| {
+            let f = |i: usize| {
+                let s = 12 + 8 * i;
+                f64::from_le_bytes(rec[s..s + 8].try_into().unwrap())
+            };
+            WeightRecord {
+                rank: u64::from_le_bytes(rec[..8].try_into().unwrap()),
+                flags: u32::from_le_bytes(rec[8..12].try_into().unwrap()),
+                log_likelihoods: [f(0), f(1), f(2)],
+                w2c: [f(3), f(4), f(5)],
+            }
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -289,5 +370,38 @@ mod tests {
         assert_eq!(recs[0].1[5], 15);
         assert_eq!(recs[1].1, [1; 16]);
         assert!(count_records(&out[..10]).is_err());
+    }
+
+    #[test]
+    fn weight_records_round_trip_and_round_for_hashing() {
+        let recs = [
+            WeightRecord {
+                rank: 12,
+                flags: WEIGHT_FITTED | WEIGHT_RESAMPLED,
+                log_likelihoods: [-1234.567890123, -1240.0, -1236.25],
+                w2c: [0.9, 0.05, 0.05],
+            },
+            WeightRecord {
+                rank: 3,
+                flags: 0,
+                log_likelihoods: [0.0; 3],
+                w2c: [0.0; 3],
+            },
+        ];
+        let mut bytes = Vec::new();
+        for r in &recs {
+            push_weight_record(&mut bytes, r);
+        }
+        assert_eq!(bytes.len(), 2 * WEIGHT_RECORD);
+        assert_eq!(weight_records(&bytes).unwrap(), recs.to_vec());
+        assert!(weight_records(&bytes[..WEIGHT_RECORD + 1]).is_err());
+        assert_eq!(
+            recs[0].canonical(),
+            "12 3 -1.23456789e3 -1.24000000e3 -1.23625000e3 9.00000000e-1 5.00000000e-2 5.00000000e-2\n"
+        );
+        // Differences beyond 9 significant digits do not change the text.
+        let mut close = recs[0];
+        close.log_likelihoods[0] += 1e-7;
+        assert_eq!(close.canonical(), recs[0].canonical());
     }
 }

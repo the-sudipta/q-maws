@@ -79,6 +79,14 @@ enum Command {
         #[arg(long, hide = true)]
         chunk_quartets: Option<u64>,
 
+        /// Quartet weighting model
+        #[arg(long, value_enum, default_value_t = Weighting::W2Sym)]
+        weighting: Weighting,
+
+        /// Number of W2c resamples per quartet (0: no W2c)
+        #[arg(long, default_value_t = qmaws_core::weight::REPLICATES)]
+        replicates: u32,
+
         /// For a folder: one taxon per file (records joined) or one per record
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
@@ -339,6 +347,8 @@ fn main() -> ExitCode {
             seed,
             chunk_seconds,
             chunk_quartets,
+            weighting,
+            replicates,
             records,
             data_dir,
         } => {
@@ -389,6 +399,8 @@ fn main() -> ExitCode {
                     lengths,
                     seed,
                     ml_max_columns: qmaws_core::matrix::MAX_ML_COLUMNS,
+                    weighting: weighting.config_name().to_string(),
+                    replicates,
                 },
                 chunk_seconds,
                 chunk_quartets,
@@ -514,5 +526,26 @@ mod tests {
     #[test]
     fn unknown_commands_are_rejected() {
         assert!(Cli::try_parse_from(["qmaws", "frobnicate"]).is_err());
+    }
+}
+
+/// Quartet weighting of `qmaws run`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum Weighting {
+    /// Conditioned likelihood under the two-state symmetric model
+    W2Sym,
+    /// Conditioned likelihood with the frequencies of 0 and 1 of the full matrix
+    W2Emp,
+    /// No weighting (pattern counts only)
+    None,
+}
+
+impl Weighting {
+    fn config_name(self) -> &'static str {
+        match self {
+            Self::W2Sym => qmaws_engine::analysis::WEIGHTING_SYM,
+            Self::W2Emp => qmaws_engine::analysis::WEIGHTING_EMP,
+            Self::None => qmaws_engine::analysis::WEIGHTING_NONE,
+        }
     }
 }
