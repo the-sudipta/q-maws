@@ -8,6 +8,7 @@ pub mod input;
 pub mod matrix;
 pub mod maw;
 pub mod newick;
+pub mod quartet;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
