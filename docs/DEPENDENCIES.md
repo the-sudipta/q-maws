@@ -27,13 +27,16 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 | `md-5` | 0.11.0 | MIT OR Apache-2.0 | `qmaws-data` | MD5 checksums, as published by AFproject | 2026-10-02 |
 | `zip` (feature `deflate` only) | 8.6.0 | MIT | `qmaws-data` | Extracting dataset archives (newest stable release; 9.0.0 is a pre-release) | 2026-10-02 |
 | `flate2` | 1.1.10 | MIT OR Apache-2.0 | `qmaws-data` | Reading `.gz` sequence files | 2026-10-02 |
-| `qmaws-core` (workspace) | – | Q-MAWS license | `qmaws-data` | Input cleaning and Newick parsing | – |
+| `qmaws-core` (workspace) | – | Q-MAWS license | `qmaws-data`, `qmaws-engine` | Input cleaning, Newick parsing, MAWs and matrices | – |
+| `libm` | 0.2.16 | MIT | `qmaws-core` | Pure-Rust `log2` for the entropy of MAW lengths, so the selection is identical on every platform | 2026-10-02 |
+| `rayon` | 1.12.0 | MIT OR Apache-2.0 | `qmaws-engine` | Extracting the MAWs of several taxa in parallel, with a bounded number of threads | 2026-10-02 |
+| `sysinfo` (feature `system` only) | 0.39.6 | MIT | `qmaws-engine` | Measuring the available memory to set the default memory limit (70%) | 2026-10-02 |
 
 `ureq` is used without its default features, because the default adds `webpki-roots`, whose certificate data is licensed CDLA-Permissive-2.0, a license not on the allowed list. Certificates are instead verified by the operating system (`rustls-platform-verifier`).
 
 ## Indirect dependencies
 
-The direct dependencies bring in further crates; 100 crates in total are used to build Q-MAWS for the release platforms. Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-02): MIT, Apache-2.0, ISC, BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
+The direct dependencies bring in further crates; 123 crates in total are used to build Q-MAWS for the release platforms (2026-10-02). Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-02): MIT, Apache-2.0, ISC, BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
 
 ## Considered and not used
 
