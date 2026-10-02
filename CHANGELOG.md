@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.3-m03-matrices] - 2026-10-02
+
 ### Added
 
 - MAW extraction with a suffix automaton (lengths up to 64 letters), strand filter, and a brute-force oracle; golden test G4 (2,000 random strings).
