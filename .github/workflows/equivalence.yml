@@ -1,0 +1,41 @@
+name: ML-MAWS equivalence
+
+# Development check: the M_ml matrix of Q-MAWS must equal the matrix ML-MAWS
+# writes for the same data (Fish mtDNA and Yersinia HGT). ML-MAWS is built
+# from its repository at a fixed commit on the runner; it is not part of
+# Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "crates/qmaws-core/**"
+      - "crates/qmaws-engine/src/matrix_pipeline.rs"
+      - "crates/qmaws-cli/src/matrix_cmd.rs"
+      - "scripts/equivalence.sh"
+      - ".github/workflows/equivalence.yml"
+  workflow_dispatch:
+
+jobs:
+  equivalence:
+    name: Compare M_ml with ML-MAWS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Q-MAWS
+        run: cargo build --release
+
+      - name: Download the two datasets
+        run: |
+          ./target/release/qmaws download --dataset fish_mito
+          ./target/release/qmaws download --dataset yersinia_hgt
+
+      - name: Show the compiler
+        run: g++ --version
+
+      - name: Build ML-MAWS and compare
+        run: sh scripts/equivalence.sh "$RUNNER_TEMP/external"

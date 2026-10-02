@@ -6,6 +6,7 @@ Continuous integration and release workflows run by GitHub Actions.
 ## Contents
 | Item | Description |
 |---|---|
+| `equivalence.yml` | Development check on Linux, when MAW or matrix code changes: downloads Fish mtDNA and Yersinia HGT, builds ML-MAWS on the runner and runs `scripts/equivalence.sh`; the result of each dataset is shown as an annotation |
 | `ci.yml` | On every push and pull request: formatting, lints, tests in release mode, the guard self-test and the README check on Windows, macOS and Linux; dependency licenses, bans and sources with `cargo deny` on Linux |
 
 ## Relationships

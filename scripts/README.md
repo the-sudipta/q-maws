@@ -7,6 +7,7 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | Item | Description |
 |---|---|
 | `check-readmes.sh` | Checks that every folder has a README listing every item in it |
+| `equivalence.sh` | Development check: builds ML-MAWS at a fixed commit (needs g++ with OpenMP), runs it and `qmaws matrix` on Fish mtDNA and Yersinia HGT, and compares the matrices byte for byte and the entropy tables |
 | `install-hooks.bat` | Installs the guard as the `pre-commit` and `commit-msg` hooks (Windows) |
 | `install-hooks.sh` | Installs the guard as the `pre-commit` and `commit-msg` hooks (macOS, Linux, Git Bash) |
 | `pre-commit` | The guard: blocks unsafe commits (see Notes) |
