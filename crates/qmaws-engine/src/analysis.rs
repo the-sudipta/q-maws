@@ -1239,7 +1239,7 @@ impl<'a> Session<'a> {
             }));
         }
         let mut stage_hashes = vec![
-            (INGEST, file_hash("audit/inputs.json")?),
+            (INGEST, ingest_content_hash(&self.inputs()?)),
             (MAW_EXTRACT, maws.finish_hex()),
             (LENGTH_SELECT, file_hash("work/matrix/selection.json")?),
             (MATRIX_BUILD, file_hash("work/matrix/m_full.bin")?),
@@ -1299,8 +1299,8 @@ impl<'a> Session<'a> {
             self.write("audit/environment.json", env.as_bytes())?,
         );
         let mut root_text = format!(
-            "qmaws-root-v1\nkind {KIND}\nconfig {}\n",
-            self.state.config_sha256
+            "qmaws-root-v2\nkind {KIND}\nconfig {}\n",
+            root_config_hash(&self.options.config)
         );
         for (stage, h) in &stage_hashes {
             root_text.push_str(&format!("stage {stage} {h}\n"));
@@ -1539,6 +1539,30 @@ fn environment(config: &AnalysisConfig) -> serde_json::Value {
             "sample_worksheets": "quartet_seed(global, 2^64 - 1)",
         },
     })
+}
+
+/// SHA-256 of the configuration without the input location, for the root
+/// fingerprint: the inputs enter the root through their content.
+pub(crate) fn root_config_hash(config: &AnalysisConfig) -> String {
+    let mut c = config.clone();
+    c.input = String::new();
+    let value = serde_json::to_value(&c).expect("configuration serialises");
+    sha256_hex(value.to_string().as_bytes())
+}
+
+/// Content hash of the ingest stage for the root fingerprint:
+/// `audit/inputs.json` with each file path reduced to its file name, so the
+/// root does not depend on where the data are kept.
+pub(crate) fn ingest_content_hash(inputs: &InputsRecord) -> String {
+    let mut r = inputs.clone();
+    for f in &mut r.files {
+        f.path = Path::new(&f.path.replace('\\', "/"))
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+    }
+    let text = serde_json::to_string_pretty(&r).expect("inputs serialise") + "\n";
+    sha256_hex(text.as_bytes())
 }
 
 /// A number rounded to 9 significant digits (determinism contract).
@@ -1902,6 +1926,26 @@ mod tests {
         let again = crate::runner::resume_run(&run, "terminal", &NullSink, &cancel).unwrap();
         assert_eq!(again, Outcome::Finished { root });
         assert_eq!(String::from_utf8(read("report/halo.tsv")).unwrap(), halo);
+    }
+
+    #[test]
+    fn the_root_does_not_depend_on_where_the_data_are() {
+        let tmp = TempDir::new("analysis_location");
+        let a = tmp.path().join("one").join("in");
+        write_inputs(&a, 6, 500, 13);
+        let b = tmp.path().join("two").join("deeper").join("data");
+        std::fs::create_dir_all(&b).unwrap();
+        for e in std::fs::read_dir(&a).unwrap() {
+            let e = e.unwrap();
+            std::fs::copy(e.path(), b.join(e.file_name())).unwrap();
+        }
+        let ra = finish(&tmp.path().join("ra"), &options(&a, 4));
+        let rb = finish(&tmp.path().join("rb"), &options(&b, 7));
+        assert_eq!(ra, rb);
+        // Another setting changes it.
+        let mut o = options(&b, 7);
+        o.config.seed = 8;
+        assert_ne!(finish(&tmp.path().join("rc"), &o), ra);
     }
 
     #[test]

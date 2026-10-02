@@ -665,6 +665,9 @@ mod tests {
         assert!(verify(&run, &Mode::Inputs, None, &cancel).unwrap().failures > 0);
         let r = verify(&run, &Mode::Inputs, Some(&moved), &cancel).unwrap();
         assert!(r.passed(), "{}", r.lines.join("\n"));
+        // The root does not depend on where the data are.
+        let r = verify(&run, &Mode::Full, Some(&moved), &cancel).unwrap();
+        assert!(r.passed(), "{}", r.lines.join("\n"));
         // A changed stored chunk hash is reported.
         let chunks = run.join("audit").join("chunks.json");
         let text = std::fs::read_to_string(&chunks).unwrap();
