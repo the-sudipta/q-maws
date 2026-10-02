@@ -12,3 +12,5 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - Pre-commit guard with hook installers and a self-test.
 - Launch scripts `run.bat` and `run.sh`.
 - `qmaws --help` and `qmaws --version`.
+- Pre-registration of hypotheses H1 to H4 (`docs/PREREGISTRATION.md`).
+- Citation metadata (`CITATION.cff`).

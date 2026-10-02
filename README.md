@@ -73,6 +73,7 @@ To be written (milestones M11 to M13).
 | `Cargo.lock` | Exact dependency versions of the Rust workspace |
 | `Cargo.toml` | Rust workspace manifest listing the seven crates |
 | `CHANGELOG.md` | Changes per tagged version |
+| `CITATION.cff` | Citation metadata: title, author, affiliation, ORCID |
 | `CONTRIBUTING.md` | Rules for commits, tests and documentation |
 | `crates/` | Rust source code, one crate per concern ([README](crates/README.md)) |
 | `data/` | Dataset manifests and reference trees; raw data is downloaded, not committed ([README](data/README.md)) |
@@ -89,7 +90,7 @@ To be written (milestones M11 to M13).
 
 ## Citation
 
-Citation details will be provided in `CITATION.cff`.
+Citation metadata is in `CITATION.cff`. A publication will be added to it when one exists.
 
 ## License
 
@@ -102,4 +103,4 @@ Institutional use, commercial use, and derivative works require a written licens
 
 ## Contact
 
-Sudipta Kumar Das. See Section 12 of `LICENSE` for license requests.
+Sudipta Kumar Das, Department of Computer Science, AIUB. Email: sudiptakumar400@gmail.com. ORCID: [0009-0000-7521-7763](https://orcid.org/0009-0000-7521-7763). License requests: see Section 12 of `LICENSE`.
