@@ -7,6 +7,7 @@ Source code of the `qmaws` binary.
 | Item | Description |
 |---|---|
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
+| `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
 | `teach_cmd.rs` | The command `teach` |
 | `main.rs` | Argument parsing, Ctrl+C handling, and the commands `run`, `toy-run` and `resume` |

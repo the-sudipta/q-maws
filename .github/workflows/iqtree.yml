@@ -1,0 +1,35 @@
+name: IQ-TREE cross-check
+
+# Development check: the conditioned quartet log-likelihoods of Q-MAWS must
+# match IQ-TREE's (two-state models with ascertainment correction) within
+# 0.0001 on 5 quartets of Fish mtDNA. IQ-TREE is downloaded from its official
+# release on the runner; it is not part of Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "crates/qmaws-core/src/weight.rs"
+      - "crates/qmaws-cli/src/iqtree_cmd.rs"
+      - "scripts/iqtree_check.sh"
+      - ".github/workflows/iqtree.yml"
+  workflow_dispatch:
+
+jobs:
+  iqtree:
+    name: Compare log-likelihoods with IQ-TREE
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Q-MAWS
+        run: cargo build --release
+
+      - name: Download Fish mtDNA
+        run: ./target/release/qmaws download --dataset fish_mito
+
+      - name: Run IQ-TREE and compare
+        run: sh scripts/iqtree_check.sh "$RUNNER_TEMP/external"

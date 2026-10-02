@@ -216,9 +216,38 @@ enum Command {
         #[arg(long, requires = "input")]
         reference: Option<PathBuf>,
     },
+
+    /// Development: export quartets of a run for the IQ-TREE cross-check
+    #[command(hide = true)]
+    IqtreeExport {
+        /// Finished run folder (its matrix stage must be done)
+        #[arg(long)]
+        run: PathBuf,
+        /// Folder for the alignments, trees and expected values
+        #[arg(long)]
+        output: PathBuf,
+        /// Number of quartets
+        #[arg(long, default_value_t = 5)]
+        quartets: usize,
+        /// Seed of the quartet draw
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+    },
+
+    /// Development: compare IQ-TREE's results with Q-MAWS
+    #[command(hide = true)]
+    IqtreeCompare {
+        /// The run folder given to iqtree-export
+        #[arg(long)]
+        run: PathBuf,
+        /// The folder written by iqtree-export, with IQ-TREE's outputs
+        #[arg(long)]
+        dir: PathBuf,
+    },
 }
 
 mod data_cmd;
+mod iqtree_cmd;
 mod matrix_cmd;
 mod teach_cmd;
 
@@ -285,6 +314,13 @@ fn main() -> ExitCode {
     let color = !cli.no_color;
     let command = match command {
         Command::Datasets { data_dir } => return data_cmd::datasets(&data_dir),
+        Command::IqtreeExport {
+            run,
+            output,
+            quartets,
+            seed,
+        } => return iqtree_cmd::export(&run, &output, quartets, seed),
+        Command::IqtreeCompare { run, dir } => return iqtree_cmd::compare(&run, &dir),
         Command::Teach {
             example,
             input,
@@ -447,7 +483,9 @@ fn main() -> ExitCode {
         | Command::Download { .. }
         | Command::Inspect { .. }
         | Command::Matrix { .. }
-        | Command::Teach { .. } => {
+        | Command::Teach { .. }
+        | Command::IqtreeExport { .. }
+        | Command::IqtreeCompare { .. } => {
             unreachable!("data commands return above")
         }
     };

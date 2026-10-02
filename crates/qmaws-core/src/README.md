@@ -16,7 +16,7 @@ Source code of the science crate. Each module receives data and returns data; no
 | `newick.rs` | Newick parsing and writing; comparison of leaf names with taxon names; splits and normalised Robinson–Foulds distance |
 
 ## Relationships
-Used by `qmaws-data` (reading folders and datasets, reference trees), by `qmaws-engine` for every stage, and by `qmaws-cli` (teaching worksheet).
+Used by `qmaws-data` (reading folders and datasets, reference trees), by `qmaws-engine` for every stage, and by `qmaws-cli` (teaching worksheet, IQ-TREE cross-check).
 
 ## Notes
 Further modules (amalgamation, support, metrics) are added from M7.
