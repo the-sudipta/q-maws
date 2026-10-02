@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.4-m04-counting] - 2026-10-02
+
 ### Added
 
 - Quartet ranks and unranking (G6), a keyed Feistel processing order (G7), and the inclusion–exclusion pattern-count kernel with run-time popcount dispatch (G5).
