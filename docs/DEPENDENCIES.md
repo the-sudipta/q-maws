@@ -18,7 +18,7 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 |---|---|---|---|---|---|
 | `serde` (feature `derive`) | 1.0.229 | MIT OR Apache-2.0 | `qmaws-engine` | Serialisation of `run.json` and other records | 2026-10-02 |
 | `serde_json` | 1.0.151 | MIT OR Apache-2.0 | `qmaws-engine`, `qmaws-tui`; tests of `qmaws-cli` | JSON for `run.json`, audit files and `--json-progress` output | 2026-10-02 |
-| `sha2` | 0.11.0 | MIT OR Apache-2.0 | `qmaws-engine` | SHA-256 of every output file and of the root fingerprint (pure Rust, RustCrypto) | 2026-10-02 |
+| `sha2` | 0.11.0 | MIT OR Apache-2.0 | `qmaws-engine`, `qmaws-core` (from M5) | SHA-256 of every output file and of the root fingerprint; per-quartet seeds of W2c (pure Rust, RustCrypto) | 2026-10-02 |
 | `indicatif` | 0.18.6 | MIT | `qmaws-tui` | Terminal progress bars (overall and stage bars, log lines above the bars) | 2026-10-02 |
 | `clap` (feature `derive`) | 4.6.7 | MIT OR Apache-2.0 | `qmaws-cli` | Command-line parsing, help and version output | 2026-10-02 |
 | `ctrlc` | 3.5.2 | MIT/Apache-2.0 | `qmaws-cli` | Ctrl+C handling on Windows, macOS and Linux for clean stopping | 2026-10-02 |
@@ -29,7 +29,7 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 | `flate2` | 1.1.10 | MIT OR Apache-2.0 | `qmaws-data` | Reading `.gz` sequence files | 2026-10-02 |
 | `qmaws-core` (workspace) | – | Q-MAWS license | `qmaws-data`, `qmaws-engine` | Input cleaning, Newick parsing, MAWs, matrices, quartets | – |
 | `qmaws-data` (workspace) | – | Q-MAWS license | `qmaws-engine` | Reading the input folder of an analysis run | – |
-| `libm` | 0.2.16 | MIT | `qmaws-core` | Pure-Rust `log2` for the entropy of MAW lengths, so the selection is identical on every platform | 2026-10-02 |
+| `libm` | 0.2.16 | MIT | `qmaws-core` | Pure-Rust `log2` for the entropy of MAW lengths, and (from M5) `exp`, `log`, `log1p`, `expm1` and `lgamma` for quartet weighting, so results are identical on every platform | 2026-10-02 |
 | `rayon` | 1.12.0 | MIT OR Apache-2.0 | `qmaws-engine` | Extracting the MAWs of several taxa in parallel, with a bounded number of threads | 2026-10-02 |
 | `sysinfo` (feature `system` only) | 0.39.6 | MIT | `qmaws-engine` | Measuring the available memory to set the default memory limit (70%) | 2026-10-02 |
 
