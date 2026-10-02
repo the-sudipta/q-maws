@@ -16,6 +16,10 @@
 //!   quartet in processing order: rank (u64), flags (u32: bit 0 = the W2
 //!   fits exist, bit 1 = W2c exists), the three W2 log-likelihoods (f64
 //!   each) and the three W2c weights (f64 each); absent values are 0.
+//! - Quartet decisions (`audit/quartet_decisions.bin.zst`, zstd-compressed):
+//!   magic `QMAWDEC1`, number of quartets (u64), then per quartet in rank
+//!   order the winning topology (u8: 0 ab|cd, 1 ac|bd, 2 ad|bc, 3 no weight;
+//!   the first on equal weights) and its weight times 65,535, rounded (u16).
 
 use qmaws_core::matrix::Matrix;
 use qmaws_core::maw::{Codes, MawSet};
@@ -271,6 +275,18 @@ impl WeightRecord {
         self.flags & WEIGHT_RESAMPLED != 0
     }
 
+    /// The weights used for the tree: W2c, or W2b when no resamples were
+    /// made; `None` without a fit.
+    pub fn tree_weights(&self) -> Option<[f64; 3]> {
+        if !self.fitted() {
+            None
+        } else if self.resampled() {
+            Some(self.w2c)
+        } else {
+            Some(qmaws_core::weight::w2b(&self.log_likelihoods))
+        }
+    }
+
     /// Canonical text for hashing: floating-point values rounded to 9
     /// significant digits (determinism contract).
     pub fn canonical(&self) -> String {
@@ -318,6 +334,64 @@ pub fn weight_records(bytes: &[u8]) -> Result<Vec<WeightRecord>, StoreError> {
                 w2c: [f(3), f(4), f(5)],
             }
         })
+        .collect())
+}
+
+pub const DECISIONS_MAGIC: &[u8; 8] = b"QMAWDEC1";
+
+/// No weight (topology code 3 in the decisions file).
+pub const NO_DECISION: u8 = 3;
+
+/// The winning topology of a quartet's weights (the first on equal weights)
+/// and its weight quantised to 16 bits.
+pub fn decision(w: Option<[f64; 3]>) -> (u8, u16) {
+    match w {
+        None => (NO_DECISION, 0),
+        Some(w) => {
+            let mut best = 0;
+            for t in 1..3 {
+                if w[t] > w[best] {
+                    best = t;
+                }
+            }
+            (
+                best as u8,
+                (w[best].clamp(0.0, 1.0) * 65_535.0).round() as u16,
+            )
+        }
+    }
+}
+
+/// Uncompressed decisions file of weights in rank order.
+pub fn decisions_to_bytes(weights: &[Option<[f64; 3]>]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(16 + 3 * weights.len());
+    out.extend_from_slice(DECISIONS_MAGIC);
+    out.extend_from_slice(&(weights.len() as u64).to_le_bytes());
+    for w in weights {
+        let (t, v) = decision(*w);
+        out.push(t);
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    out
+}
+
+/// Reads an uncompressed decisions file.
+pub fn decisions_from_bytes(bytes: &[u8]) -> Result<Vec<(u8, u16)>, StoreError> {
+    if bytes.len() < 16 || &bytes[..8] != DECISIONS_MAGIC {
+        return Err(StoreError("not a quartet decisions file".into()));
+    }
+    let n = u64::from_le_bytes(bytes[8..16].try_into().unwrap()) as usize;
+    let body = &bytes[16..];
+    if body.len() != 3 * n {
+        return Err(StoreError(
+            "quartet decisions file has the wrong length".into(),
+        ));
+    }
+    Ok(body
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| (c[0], u16::from_le_bytes([c[1], c[2]])))
         .collect())
 }
 

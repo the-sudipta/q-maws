@@ -32,12 +32,13 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 | `libm` | 0.2.16 | MIT | `qmaws-core` | Pure-Rust `log2` for the entropy of MAW lengths, and (from M5) `exp`, `log`, `log1p`, `expm1` and `lgamma` for quartet weighting, so results are identical on every platform | 2026-10-02 |
 | `rayon` | 1.12.0 | MIT OR Apache-2.0 | `qmaws-engine` | Extracting the MAWs of several taxa in parallel, with a bounded number of threads | 2026-10-02 |
 | `sysinfo` (feature `system` only) | 0.39.6 | MIT | `qmaws-engine` | Measuring the available memory to set the default memory limit (70%) | 2026-10-02 |
+| `zstd` | 0.14.0 | BSD-3-Clause (also the bundled Zstandard C library in `zstd-sys`) | `qmaws-engine` (from M8) | Compressing `audit/quartet_decisions.bin.zst`, the format named in the design. Not pure Rust: the C library is compiled from the bundled source by `cc` on every platform, with no system library needed. | 2026-10-02 |
 
 `ureq` is used without its default features, because the default adds `webpki-roots`, whose certificate data is licensed CDLA-Permissive-2.0, a license not on the allowed list. Certificates are instead verified by the operating system (`rustls-platform-verifier`).
 
 ## Indirect dependencies
 
-The direct dependencies bring in further crates; 123 crates in total are used to build Q-MAWS for the release platforms (2026-10-02). Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-02): MIT, Apache-2.0, ISC, BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
+The direct dependencies bring in further crates; 129 crates in total are used to build Q-MAWS for the release platforms (2026-10-02; 123 before `zstd` was added in M8). Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-02): MIT, Apache-2.0, ISC, BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
 
 ## Considered and not used
 

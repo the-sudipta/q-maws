@@ -1,6 +1,6 @@
 //! The analysis run: from sequence files to a tree, as a
-//! resumable sequence of stages. (Support and the later stages are
-//! added in later milestones.)
+//! resumable sequence of stages. (Evaluation and figures are added in
+//! later milestones.)
 //!
 //! | Stage | Unit of work | Output |
 //! |---|---|---|
@@ -11,7 +11,8 @@
 //! | `quartet_count` | one chunk of quartets in Feistel order | `work/chunks/quartet_count_<n>.bin` |
 //! | `quartet_weight` | one chunk of quartets in Feistel order (counts recomputed from `M_full`) | `work/chunks/quartet_weight_<n>.bin` |
 //! | `amalgamate` | whole stage: `wQFM-rs` on the weighted quartets in rank order | `report/tree.nwk`, `work/amalgamation.json` |
-//! | `finalize` | whole stage | `audit/stages.json`, `audit/chunks.json`, `audit/root.txt` |
+//! | `support` | whole stage: S1 per internal edge and halo value per taxon on the same weights | `trees/tree_s1.nwk`, `report/support.tsv`, `report/halo.tsv` |
+//! | `finalize` | whole stage | `audit/results.json`, `audit/quartet_decisions.bin.zst`, `audit/sample_worksheets.txt`, `audit/environment.json`, `audit/stages.json`, `audit/chunks.json`, `audit/root.txt` |
 //!
 //! Every file is written atomically with a hash file; a unit is done exactly
 //! when its file is valid. The root fingerprint covers each stage's content
@@ -35,7 +36,9 @@ use qmaws_core::input::RecordMode;
 use qmaws_core::matrix::{self, Matrix};
 use qmaws_core::maw::{self, MawSet};
 use qmaws_core::quartet::{self, CoCounts, Permutation, PopcountPath};
+use qmaws_core::support;
 use qmaws_core::weight::{self, Conditioning, Model};
+use qmaws_core::worksheet;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -55,6 +58,7 @@ pub const MATRIX_BUILD: &str = "matrix_build";
 pub const QUARTET_COUNT: &str = "quartet_count";
 pub const QUARTET_WEIGHT: &str = "quartet_weight";
 pub const AMALGAMATE: &str = "amalgamate";
+pub const SUPPORT: &str = "support";
 pub const FINALIZE: &str = "finalize";
 /// Quartets per parallel block when counting.
 const COUNT_BLOCK: u64 = 4096;
@@ -77,7 +81,7 @@ struct ChunkedStage {
     note: String,
 }
 
-pub const STAGES: [&str; 8] = [
+pub const STAGES: [&str; 9] = [
     INGEST,
     MAW_EXTRACT,
     LENGTH_SELECT,
@@ -85,6 +89,7 @@ pub const STAGES: [&str; 8] = [
     QUARTET_COUNT,
     QUARTET_WEIGHT,
     AMALGAMATE,
+    SUPPORT,
     FINALIZE,
 ];
 
@@ -436,7 +441,14 @@ impl<'a> Session<'a> {
         }
         // Whole-stage outputs that are damaged reset that stage and the ones
         // after it.
-        for stage in [INGEST, LENGTH_SELECT, MATRIX_BUILD, AMALGAMATE, FINALIZE] {
+        for stage in [
+            INGEST,
+            LENGTH_SELECT,
+            MATRIX_BUILD,
+            AMALGAMATE,
+            SUPPORT,
+            FINALIZE,
+        ] {
             if self.status(stage) == StageStatus::Done && !self.outputs_valid(stage) {
                 self.log(&format!(
                     "Outputs of {stage} are missing or damaged; recomputing from there."
@@ -480,6 +492,9 @@ impl<'a> Session<'a> {
         }
         if self.status(AMALGAMATE) != StageStatus::Done {
             self.amalgamate(m)?;
+        }
+        if self.status(SUPPORT) != StageStatus::Done {
+            self.support(m)?;
         }
         if self.status(FINALIZE) != StageStatus::Done {
             self.finalize(m)?;
@@ -761,21 +776,8 @@ impl<'a> Session<'a> {
         let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
         let path = PopcountPath::detect();
         let perm = Permutation::new(q, self.options.config.seed);
-        let count_range = |s: u64, e: u64| -> Vec<u8> {
-            let mut part = Vec::with_capacity(((e - s) as usize) * store::COUNT_RECORD);
-            for pos in s..e {
-                let r = perm.apply(pos);
-                let quad = quartet::unrank(r);
-                let n4 = path.and4(
-                    &full.rows[quad[0]],
-                    &full.rows[quad[1]],
-                    &full.rows[quad[2]],
-                    &full.rows[quad[3]],
-                );
-                store::push_count_record(&mut part, r, &quartet::pattern_counts(&cc, quad, n4));
-            }
-            part
-        };
+        let count_range =
+            |s: u64, e: u64| -> Vec<u8> { count_positions(&full, &cc, path, &perm, s, e) };
         self.run_chunks(
             ChunkedStage {
                 stage: QUARTET_COUNT,
@@ -789,22 +791,6 @@ impl<'a> Session<'a> {
         )
     }
 
-    /// The substitution model of the run's weighting.
-    fn weight_model(&self, full: &Matrix) -> Result<Model, EngineError> {
-        if self.options.config.weighting != WEIGHTING_EMP {
-            return Ok(Model::symmetric());
-        }
-        let ones: u64 = full.ones.iter().map(|&o| o as u64).sum();
-        let cells = full.taxa as f64 * full.columns_len() as f64;
-        let pi1 = ones as f64 / cells;
-        if !(pi1 > 0.0 && pi1 < 1.0) {
-            return Err(EngineError::Invalid(
-                "W2-emp needs both 0 and 1 in the full matrix".into(),
-            ));
-        }
-        Ok(Model::with_frequency_of_one(pi1))
-    }
-
     fn quartet_weight(&mut self, m: usize) -> Result<Option<Outcome>, EngineError> {
         if !self.weighted() {
             if self.status(QUARTET_WEIGHT) != StageStatus::Done {
@@ -815,50 +801,27 @@ impl<'a> Session<'a> {
         let q = quartet::quartet_count(m);
         let full = self.load_full()?;
         let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
-        let path = PopcountPath::detect();
         let perm = Permutation::new(q, self.options.config.seed);
-        let model = self.weight_model(&full)?;
-        let seed = self.options.config.seed;
-        let replicates = self.options.config.replicates;
-        let cond = Conditioning::NotAllZero;
-        let weigh_range = |s: u64, e: u64| -> Vec<u8> {
-            let mut part = Vec::with_capacity(((e - s) as usize) * store::WEIGHT_RECORD);
-            for pos in s..e {
-                let r = perm.apply(pos);
-                let quad = quartet::unrank(r);
-                let n4 = path.and4(
-                    &full.rows[quad[0]],
-                    &full.rows[quad[1]],
-                    &full.rows[quad[2]],
-                    &full.rows[quad[3]],
-                );
-                let counts = quartet::pattern_counts(&cc, quad, n4);
-                let mut rec = store::WeightRecord {
-                    rank: r,
-                    flags: 0,
-                    log_likelihoods: [0.0; 3],
-                    w2c: [0.0; 3],
-                };
-                if let Some(fits) = weight::fit_all(&model, cond, &counts) {
-                    rec.flags |= store::WEIGHT_FITTED;
-                    rec.log_likelihoods = fits.map(|f| f.log_likelihood);
-                    let qs = weight::quartet_seed(seed, r);
-                    if let Some(w) = weight::w2c(&model, cond, &counts, qs, replicates) {
-                        rec.flags |= store::WEIGHT_RESAMPLED;
-                        rec.w2c = w;
-                    }
-                }
-                store::push_weight_record(&mut part, &rec);
-            }
-            part
+        let weigher = Weigher {
+            full: &full,
+            cc: &cc,
+            path: PopcountPath::detect(),
+            perm: &perm,
+            model: weight_model(&self.options.config, &full)?,
+            seed: self.options.config.seed,
+            replicates: self.options.config.replicates,
         };
+        let weigh_range = |s: u64, e: u64| -> Vec<u8> { weigher.positions(s, e) };
         self.run_chunks(
             ChunkedStage {
                 stage: QUARTET_WEIGHT,
                 label: "Quartet weighting",
                 block: WEIGHT_BLOCK,
                 record: store::WEIGHT_RECORD,
-                note: format!("; model pi1 = {:.6}, {replicates} resamples", model.pi[1]),
+                note: format!(
+                    "; model pi1 = {:.6}, {} resamples",
+                    weigher.model.pi[1], weigher.replicates
+                ),
             },
             q,
             &weigh_range,
@@ -878,14 +841,7 @@ impl<'a> Session<'a> {
     ) -> Result<Option<Outcome>, EngineError> {
         let stage = spec.stage;
         let block = spec.block;
-        let run_range = |s: u64, e: u64| -> Vec<u8> {
-            let blocks: Vec<(u64, u64)> = (s..e)
-                .step_by(block as usize)
-                .map(|b| (b, (b + block).min(e)))
-                .collect();
-            let parts: Vec<Vec<u8>> = blocks.par_iter().map(|&(b0, b1)| range(b0, b1)).collect();
-            parts.concat()
-        };
+        let run_range = |s: u64, e: u64| -> Vec<u8> { run_blocks(block, s, e, range) };
         let plan = match self.state.chunk_plans.get(stage) {
             Some(p) => *p,
             None => {
@@ -962,15 +918,14 @@ impl<'a> Session<'a> {
         Ok(None)
     }
 
-    /// Amalgamation with `wQFM-rs`: the weighted quartets of every quartet
-    /// (W2c weights, or W2b when no resamples were made), in rank order so
-    /// the tree does not depend on the processing order.
-    fn amalgamate(&mut self, m: usize) -> Result<(), EngineError> {
-        self.set_running(AMALGAMATE)?;
-        if !self.weighted() {
-            return self.set_done(AMALGAMATE, BTreeMap::new());
-        }
-        let started = Instant::now();
+    fn names(&self) -> Result<Vec<String>, EngineError> {
+        Ok(self.inputs()?.taxa.into_iter().map(|t| t.name).collect())
+    }
+
+    /// The weights of every quartet in rank order as used for the tree:
+    /// W2c, or W2b when no resamples were made; `None` for quartets without
+    /// a fit. Also returns the name of the weights.
+    fn tree_weights(&self, m: usize) -> Result<(TreeWeights, &'static str), EngineError> {
         let q = quartet::quartet_count(m);
         let plan = self.state.chunk_plans[QUARTET_WEIGHT];
         let mut by_rank: Vec<Option<[f64; 3]>> = vec![None; q as usize];
@@ -983,18 +938,97 @@ impl<'a> Session<'a> {
             for r in
                 store::weight_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?
             {
-                if !r.fitted() {
-                    continue;
+                if let Some(w) = r.tree_weights() {
+                    if !r.resampled() {
+                        source = "w2b";
+                    }
+                    by_rank[r.rank as usize] = Some(w);
                 }
-                let w = if r.resampled() {
-                    r.w2c
-                } else {
-                    source = "w2b";
-                    weight::w2b(&r.log_likelihoods)
-                };
-                by_rank[r.rank as usize] = Some(w);
             }
         }
+        Ok((by_rank, source))
+    }
+
+    /// S1 of every internal edge and the halo value of every taxon, on the
+    /// weights used for the tree.
+    fn support(&mut self, m: usize) -> Result<(), EngineError> {
+        self.set_running(SUPPORT)?;
+        if !self.weighted() {
+            return self.set_done(SUPPORT, BTreeMap::new());
+        }
+        let started = Instant::now();
+        let (weights, _) = self.tree_weights(m)?;
+        let names = self.names()?;
+        let tree = String::from_utf8_lossy(&self.read("report/tree.nwk")?)
+            .trim()
+            .to_string();
+        let mut acc = support::Accumulator::new(&names, &tree).map_err(EngineError::Invalid)?;
+        for (rank, w) in weights.iter().enumerate() {
+            if let Some(w) = w {
+                acc.add(quartet::unrank(rank as u64), *w);
+            }
+        }
+        drop(weights);
+        let s = acc.finish();
+        let na = |v: Option<f64>| v.map_or("NA".to_string(), |x| format!("{x:.6}"));
+        let mut edges =
+            String::from("edge\tsize\ts1\tconsistent_weight\ttotal_weight\tquartets\tclade\n");
+        for (i, e) in s.edges.iter().enumerate() {
+            edges.push_str(&format!(
+                "{}\t{}\t{}\t{:.6}\t{:.6}\t{}\t{}\n",
+                i + 1,
+                e.clade.len(),
+                na(e.s1),
+                e.consistent,
+                e.total,
+                e.quartets,
+                e.clade.join(",")
+            ));
+        }
+        let mut halo = String::from("taxon\thalo\tconsistent_weight\ttotal_weight\n");
+        for h in &s.halo {
+            halo.push_str(&format!(
+                "{}\t{}\t{:.6}\t{:.6}\n",
+                h.taxon,
+                na(h.value),
+                h.consistent,
+                h.total
+            ));
+        }
+        let mut outputs = BTreeMap::new();
+        for (rel, text) in [
+            ("trees/tree_s1.nwk", format!("{}\n", s.newick)),
+            ("report/support.tsv", edges),
+            ("report/halo.tsv", halo),
+        ] {
+            outputs.insert(rel.to_string(), self.write(rel, text.as_bytes())?);
+        }
+        let s1: Vec<f64> = s.edges.iter().filter_map(|e| e.s1).collect();
+        let low = s
+            .halo
+            .iter()
+            .filter(|h| h.value.is_some_and(|v| v < LOW_HALO))
+            .count();
+        self.log(&format!(
+            "Support: {} internal edges, S1 from {} to {}; {low} taxa with a halo value below {LOW_HALO}; in {:.1} s.",
+            s.edges.len(),
+            na(s1.iter().copied().reduce(f64::min)),
+            na(s1.iter().copied().reduce(f64::max)),
+            started.elapsed().as_secs_f64()
+        ))?;
+        self.set_done(SUPPORT, outputs)
+    }
+
+    /// Amalgamation with `wQFM-rs`: the weighted quartets of every quartet
+    /// (W2c weights, or W2b when no resamples were made), in rank order so
+    /// the tree does not depend on the processing order.
+    fn amalgamate(&mut self, m: usize) -> Result<(), EngineError> {
+        self.set_running(AMALGAMATE)?;
+        if !self.weighted() {
+            return self.set_done(AMALGAMATE, BTreeMap::new());
+        }
+        let started = Instant::now();
+        let (by_rank, source) = self.tree_weights(m)?;
         let mut quartets = Vec::new();
         for (rank, w) in by_rank.iter().enumerate() {
             if let Some(w) = w {
@@ -1002,7 +1036,7 @@ impl<'a> Session<'a> {
             }
         }
         drop(by_rank);
-        let names: Vec<String> = self.inputs()?.taxa.iter().map(|t| t.name.clone()).collect();
+        let names = self.names()?;
         let settings = amalgamate::Settings::default();
         let result = amalgamate::wqfm(&names, &quartets, &settings);
         let summary = serde_json::json!({
@@ -1032,6 +1066,106 @@ impl<'a> Session<'a> {
                 ("work/amalgamation.json".to_string(), h_summary),
             ]),
         )
+    }
+
+    /// `audit/results.json`, `audit/quartet_decisions.bin.zst` and
+    /// `audit/sample_worksheets.txt`.
+    fn audit_files(&self, m: usize) -> Result<Vec<(&'static str, Vec<u8>)>, EngineError> {
+        let names = self.names()?;
+        let (weights, source) = self.tree_weights(m)?;
+        // Decisions.
+        let raw = store::decisions_to_bytes(&weights);
+        let decisions = zstd::bulk::compress(&raw, DECISIONS_LEVEL)
+            .map_err(|e| EngineError::Invalid(format!("compressing the decisions: {e}")))?;
+        // Sample worksheets, each checked against the stored weights.
+        let full = self.load_full()?;
+        let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
+        let q = quartet::quartet_count(m);
+        let perm = Permutation::new(q, self.options.config.seed);
+        let weigher = Weigher {
+            full: &full,
+            cc: &cc,
+            path: PopcountPath::detect(),
+            perm: &perm,
+            model: weight_model(&self.options.config, &full)?,
+            seed: self.options.config.seed,
+            replicates: self.options.config.replicates,
+        };
+        let ranks = sample_ranks(self.options.config.seed, q, SAMPLE_WORKSHEETS);
+        let config = &self.options.config;
+        let sheets: Vec<(String, weight::QuartetWeights)> = ranks
+            .par_iter()
+            .map(|&r| worksheet_of(config, &names, &weigher, quartet::unrank(r)))
+            .collect();
+        let mut text = format!(
+            "Sample worksheets: {} quartets drawn with seed quartet_seed({}, 2^64 - 1), in rank order.\n\
+             Each worksheet recomputes the quartet from M_full and is compared with the stored {source} weights.\n",
+            ranks.len(),
+            self.options.config.seed
+        );
+        for (&r, (sheet, w)) in ranks.iter().zip(&sheets) {
+            let recomputed = if source == "w2c" { w.w2c } else { w.w2b };
+            let stored = weights[r as usize];
+            if recomputed != stored {
+                return Err(EngineError::Invalid(format!(
+                    "the worksheet of quartet {r} differs from the stored weights"
+                )));
+            }
+            text.push_str("\n----------------------------------------------------------------\n");
+            text.push_str(sheet);
+            text.push_str(&format!(
+                "   Stored {source} weights: identical; decision stored as {:?}\n",
+                store::decision(stored)
+            ));
+        }
+        // Results.
+        let read_text = |rel: &str| -> Result<String, EngineError> {
+            Ok(String::from_utf8_lossy(&self.read(rel)?).trim().to_string())
+        };
+        let amalgamation: serde_json::Value =
+            serde_json::from_slice(&self.read("work/amalgamation.json")?)
+                .map_err(|e| EngineError::Invalid(format!("amalgamation.json: {e}")))?;
+        let tsv_rows = |rel: &str| -> Result<Vec<Vec<String>>, EngineError> {
+            Ok(read_text(rel)?
+                .lines()
+                .skip(1)
+                .map(|l| l.split('\t').map(str::to_string).collect())
+                .collect())
+        };
+        let num = |s: &str| -> serde_json::Value {
+            s.parse::<f64>().map_or(serde_json::Value::Null, sig9)
+        };
+        let support: Vec<serde_json::Value> = tsv_rows("report/support.tsv")?
+            .iter()
+            .map(|r| {
+                serde_json::json!({
+                    "clade": r[6].split(',').collect::<Vec<_>>(),
+                    "s1": num(&r[2]),
+                    "quartets": r[5].parse::<u64>().unwrap_or(0),
+                })
+            })
+            .collect();
+        let halo: Vec<serde_json::Value> = tsv_rows("report/halo.tsv")?
+            .iter()
+            .map(|r| serde_json::json!({ "taxon": r[0], "halo": num(&r[1]) }))
+            .collect();
+        let results = serde_json::json!({
+            "tree": read_text("report/tree.nwk")?,
+            "tree_with_s1": read_text("trees/tree_s1.nwk")?,
+            "weights": source,
+            "amalgamation": amalgamation,
+            "support_s1": support,
+            "halo": halo,
+            "metrics": {},
+        });
+        Ok(vec![
+            (
+                "audit/results.json",
+                (serde_json::to_string_pretty(&results).unwrap() + "\n").into_bytes(),
+            ),
+            ("audit/quartet_decisions.bin.zst", decisions),
+            ("audit/sample_worksheets.txt", text.into_bytes()),
+        ])
     }
 
     fn finalize(&mut self, m: usize) -> Result<(), EngineError> {
@@ -1105,7 +1239,23 @@ impl<'a> Session<'a> {
             tree.update(&self.read("report/tree.nwk")?);
             tree.update(&self.read("work/amalgamation.json")?);
             stage_hashes.push((AMALGAMATE, tree.finish_hex()));
+            let mut support = StreamHasher::new();
+            for rel in ["trees/tree_s1.nwk", "report/support.tsv", "report/halo.tsv"] {
+                support.update(&self.read(rel)?);
+            }
+            stage_hashes.push((SUPPORT, support.finish_hex()));
         }
+        let mut outputs = BTreeMap::new();
+        if self.weighted() {
+            for (rel, bytes) in self.audit_files(m)? {
+                outputs.insert(rel.to_string(), self.write(rel, &bytes)?);
+            }
+        }
+        let env = serde_json::to_string_pretty(&environment(&self.options.config)).unwrap() + "\n";
+        outputs.insert(
+            "audit/environment.json".to_string(),
+            self.write("audit/environment.json", env.as_bytes())?,
+        );
         let mut root_text = format!(
             "qmaws-root-v1\nkind {KIND}\nconfig {}\n",
             self.state.config_sha256
@@ -1120,7 +1270,6 @@ impl<'a> Session<'a> {
             "seed": self.options.config.seed,
         });
         let chunks_json = serde_json::json!({ "stages": chunk_stages });
-        let mut outputs = BTreeMap::new();
         for (rel, text) in [
             (
                 "audit/stages.json",
@@ -1136,6 +1285,224 @@ impl<'a> Session<'a> {
         }
         self.set_done(FINALIZE, outputs)
     }
+}
+
+/// Weights of every quartet in rank order (`None`: no weight).
+type TreeWeights = Vec<Option<[f64; 3]>>;
+
+/// Halo values below this are counted in the log (the threshold of the
+/// Halo Tree figure).
+const LOW_HALO: f64 = 0.6;
+
+/// zstd level of `audit/quartet_decisions.bin.zst`.
+const DECISIONS_LEVEL: i32 = 19;
+
+/// Number of quartets in `audit/sample_worksheets.txt`.
+pub const SAMPLE_WORKSHEETS: usize = 50;
+
+/// Count records of processing positions `s..e`.
+pub(crate) fn count_positions(
+    full: &Matrix,
+    cc: &CoCounts,
+    path: PopcountPath,
+    perm: &Permutation,
+    s: u64,
+    e: u64,
+) -> Vec<u8> {
+    let mut part = Vec::with_capacity(((e - s) as usize) * store::COUNT_RECORD);
+    for pos in s..e {
+        let r = perm.apply(pos);
+        let quad = quartet::unrank(r);
+        let n4 = path.and4(
+            &full.rows[quad[0]],
+            &full.rows[quad[1]],
+            &full.rows[quad[2]],
+            &full.rows[quad[3]],
+        );
+        store::push_count_record(&mut part, r, &quartet::pattern_counts(cc, quad, n4));
+    }
+    part
+}
+
+/// Everything needed to weigh quartets of a run.
+pub(crate) struct Weigher<'a> {
+    pub full: &'a Matrix,
+    pub cc: &'a CoCounts,
+    pub path: PopcountPath,
+    pub perm: &'a Permutation,
+    pub model: Model,
+    pub seed: u64,
+    pub replicates: u32,
+}
+
+impl Weigher<'_> {
+    pub fn counts(&self, quad: [usize; 4]) -> quartet::PatternCounts {
+        let r = &self.full.rows;
+        let n4 = self
+            .path
+            .and4(&r[quad[0]], &r[quad[1]], &r[quad[2]], &r[quad[3]]);
+        quartet::pattern_counts(self.cc, quad, n4)
+    }
+
+    /// The weight record of the quartet with rank `r`.
+    pub fn record(&self, r: u64) -> store::WeightRecord {
+        let counts = self.counts(quartet::unrank(r));
+        let cond = Conditioning::NotAllZero;
+        let mut rec = store::WeightRecord {
+            rank: r,
+            flags: 0,
+            log_likelihoods: [0.0; 3],
+            w2c: [0.0; 3],
+        };
+        if let Some(fits) = weight::fit_all(&self.model, cond, &counts) {
+            rec.flags |= store::WEIGHT_FITTED;
+            rec.log_likelihoods = fits.map(|f| f.log_likelihood);
+            let qs = weight::quartet_seed(self.seed, r);
+            if let Some(w) = weight::w2c(&self.model, cond, &counts, qs, self.replicates) {
+                rec.flags |= store::WEIGHT_RESAMPLED;
+                rec.w2c = w;
+            }
+        }
+        rec
+    }
+
+    /// Weight records of processing positions `s..e`.
+    pub fn positions(&self, s: u64, e: u64) -> Vec<u8> {
+        let mut part = Vec::with_capacity(((e - s) as usize) * store::WEIGHT_RECORD);
+        for pos in s..e {
+            store::push_weight_record(&mut part, &self.record(self.perm.apply(pos)));
+        }
+        part
+    }
+}
+
+/// Records of positions `s..e`, computed in parallel blocks of `block`
+/// positions and joined in order, so the bytes do not depend on threads.
+pub(crate) fn run_blocks(
+    block: u64,
+    s: u64,
+    e: u64,
+    range: &(dyn Fn(u64, u64) -> Vec<u8> + Sync),
+) -> Vec<u8> {
+    let blocks: Vec<(u64, u64)> = (s..e)
+        .step_by(block as usize)
+        .map(|b| (b, (b + block).min(e)))
+        .collect();
+    let parts: Vec<Vec<u8>> = blocks.par_iter().map(|&(b0, b1)| range(b0, b1)).collect();
+    parts.concat()
+}
+
+/// The substitution model of a run's weighting.
+pub(crate) fn weight_model(config: &AnalysisConfig, full: &Matrix) -> Result<Model, EngineError> {
+    if config.weighting != WEIGHTING_EMP {
+        return Ok(Model::symmetric());
+    }
+    let ones: u64 = full.ones.iter().map(|&o| o as u64).sum();
+    let cells = full.taxa as f64 * full.columns_len() as f64;
+    let pi1 = ones as f64 / cells;
+    if !(pi1 > 0.0 && pi1 < 1.0) {
+        return Err(EngineError::Invalid(
+            "W2-emp needs both 0 and 1 in the full matrix".into(),
+        ));
+    }
+    Ok(Model::with_frequency_of_one(pi1))
+}
+
+/// Name of a run's weighting model for worksheets.
+pub(crate) fn model_name(config: &AnalysisConfig, model: &Model) -> String {
+    if config.weighting == WEIGHTING_EMP {
+        format!("W2-emp, frequency of 1 = {:.6}", model.pi[1])
+    } else {
+        "W2-sym".into()
+    }
+}
+
+/// Ranks of the sample worksheets: a seeded draw of distinct ranks, sorted.
+pub fn sample_ranks(seed: u64, q: u64, count: usize) -> Vec<u64> {
+    if q <= count as u64 {
+        return (0..q).collect();
+    }
+    // A stream of its own: rank u64::MAX never occurs as a quartet.
+    let mut rng = weight::SplitMix64::new(weight::quartet_seed(seed, u64::MAX));
+    let mut set = std::collections::BTreeSet::new();
+    while set.len() < count {
+        set.insert(rng.next_u64() % q);
+    }
+    set.into_iter().collect()
+}
+
+/// The worksheet text of quartet `quad` of a run, with its weights.
+pub(crate) fn worksheet_of(
+    config: &AnalysisConfig,
+    names: &[String],
+    weigher: &Weigher,
+    quad: [usize; 4],
+) -> (String, weight::QuartetWeights) {
+    let r = &weigher.full.rows;
+    let n4 = weigher
+        .path
+        .and4(&r[quad[0]], &r[quad[1]], &r[quad[2]], &r[quad[3]]);
+    let n = worksheet::subset_counts(weigher.cc, quad, n4);
+    let name = model_name(config, &weigher.model);
+    let settings = worksheet::WeightSettings {
+        model: &weigher.model,
+        model_name: &name,
+        conditioning: Conditioning::NotAllZero,
+        seed: weigher.seed,
+        replicates: weigher.replicates,
+    };
+    let (text, _, weights) = worksheet::quartet_worksheet(
+        [
+            &names[quad[0]],
+            &names[quad[1]],
+            &names[quad[2]],
+            &names[quad[3]],
+        ],
+        quad,
+        &n,
+        &settings,
+    );
+    (text, weights)
+}
+
+/// Commit of the source the program was built from.
+pub const GIT_COMMIT: &str = env!("QMAWS_GIT_COMMIT");
+
+/// Program, device and settings of a run (`audit/environment.json`).
+fn environment(config: &AnalysisConfig) -> serde_json::Value {
+    let mut sys = sysinfo::System::new();
+    sys.refresh_memory();
+    sys.refresh_cpu_all();
+    let cpu = sys
+        .cpus()
+        .first()
+        .map(|c| c.brand().trim().to_string())
+        .unwrap_or_default();
+    serde_json::json!({
+        "program": "qmaws",
+        "version": env!("CARGO_PKG_VERSION"),
+        "git_commit": GIT_COMMIT,
+        "os": std::env::consts::OS,
+        "os_version": sysinfo::System::long_os_version().unwrap_or_default(),
+        "architecture": std::env::consts::ARCH,
+        "cpu": cpu,
+        "logical_cores": std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
+        "ram_bytes": sys.total_memory(),
+        "popcount": format!("{:?}", PopcountPath::detect()),
+        "settings": config,
+        "seeds": {
+            "global": config.seed,
+            "processing_order": config.seed,
+            "w2c": "per quartet: quartet_seed(global, rank)",
+            "sample_worksheets": "quartet_seed(global, 2^64 - 1)",
+        },
+    })
+}
+
+/// A number rounded to 9 significant digits (determinism contract).
+fn sig9(v: f64) -> serde_json::Value {
+    let rounded: f64 = format!("{v:.8e}").parse().unwrap_or(v);
+    serde_json::json!(rounded)
 }
 
 /// Reads every quartet record of a finished (or partly finished) run, in
@@ -1435,6 +1802,74 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("unknown weighting"), "{err}");
+    }
+
+    #[test]
+    fn support_and_audit_files_follow_the_stored_weights() {
+        let tmp = TempDir::new("analysis_audit");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 700, 21);
+        let run = tmp.path().join("run");
+        let root = finish(&run, &options(&input, 9));
+        let dir = RunDir::new(&run);
+        let read = |rel: &str| atomic::read_verified(&dir.root().join(rel)).unwrap();
+        let (names, _) = load_matrix(&run).unwrap();
+        let mut weights = read_weights(&run).unwrap();
+        weights.sort_by_key(|w| w.rank);
+        // S1 and halo values equal a direct computation.
+        let tree = String::from_utf8(read("report/tree.nwk")).unwrap();
+        let mut acc = support::Accumulator::new(&names, tree.trim()).unwrap();
+        for w in &weights {
+            if let Some(t) = w.tree_weights() {
+                acc.add(quartet::unrank(w.rank), t);
+            }
+        }
+        let direct = acc.finish();
+        assert_eq!(
+            String::from_utf8(read("trees/tree_s1.nwk")).unwrap().trim(),
+            direct.newick
+        );
+        let halo = String::from_utf8(read("report/halo.tsv")).unwrap();
+        assert_eq!(halo.lines().count(), 9);
+        // Decisions: one per quartet in rank order.
+        let decisions = store::decisions_from_bytes(
+            &zstd::decode_all(&read("audit/quartet_decisions.bin.zst")[..]).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(decisions.len(), weights.len());
+        for (w, d) in weights.iter().zip(&decisions) {
+            assert_eq!(*d, store::decision(w.tree_weights()));
+        }
+        // Worksheets and results.
+        let sheets = String::from_utf8(read("audit/sample_worksheets.txt")).unwrap();
+        assert_eq!(
+            sheets.matches("Stored w2c weights: identical").count(),
+            SAMPLE_WORKSHEETS
+        );
+        let results: serde_json::Value =
+            serde_json::from_slice(&read("audit/results.json")).unwrap();
+        assert_eq!(results["tree_with_s1"], direct.newick);
+        assert_eq!(results["halo"].as_array().unwrap().len(), 8);
+        let env: serde_json::Value =
+            serde_json::from_slice(&read("audit/environment.json")).unwrap();
+        assert_eq!(env["settings"]["seed"], 7);
+        // Damaged support outputs are recomputed with the same root.
+        std::fs::write(dir.report().join("halo.tsv"), b"x").unwrap();
+        std::fs::remove_file(dir.audit().join("sample_worksheets.txt")).unwrap();
+        let cancel = AtomicBool::new(false);
+        let again = crate::runner::resume_run(&run, "terminal", &NullSink, &cancel).unwrap();
+        assert_eq!(again, Outcome::Finished { root });
+        assert_eq!(String::from_utf8(read("report/halo.tsv")).unwrap(), halo);
+    }
+
+    #[test]
+    fn sample_ranks_are_distinct_sorted_and_seeded() {
+        let a = sample_ranks(7, 10_000, 50);
+        assert_eq!(a.len(), 50);
+        assert!(a.windows(2).all(|w| w[0] < w[1]));
+        assert_eq!(a, sample_ranks(7, 10_000, 50));
+        assert_ne!(a, sample_ranks(8, 10_000, 50));
+        assert_eq!(sample_ranks(7, 30, 50), (0..30).collect::<Vec<_>>());
     }
 
     #[test]
