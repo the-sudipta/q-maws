@@ -1,5 +1,5 @@
-//! The analysis run: from sequence files to quartet weights, as a
-//! resumable sequence of stages. (Amalgamation and the later stages are
+//! The analysis run: from sequence files to a tree, as a
+//! resumable sequence of stages. (Support and the later stages are
 //! added in later milestones.)
 //!
 //! | Stage | Unit of work | Output |
@@ -10,6 +10,7 @@
 //! | `matrix_build` | whole stage | `work/matrix/m_full.bin`, `report/m_ml.phy` |
 //! | `quartet_count` | one chunk of quartets in Feistel order | `work/chunks/quartet_count_<n>.bin` |
 //! | `quartet_weight` | one chunk of quartets in Feistel order (counts recomputed from `M_full`) | `work/chunks/quartet_weight_<n>.bin` |
+//! | `amalgamate` | whole stage: `wQFM-rs` on the weighted quartets in rank order | `report/tree.nwk`, `work/amalgamation.json` |
 //! | `finalize` | whole stage | `audit/stages.json`, `audit/chunks.json`, `audit/root.txt` |
 //!
 //! Every file is written atomically with a hash file; a unit is done exactly
@@ -29,6 +30,7 @@ use crate::state::{
     ChunkPlan, InputFingerprint, RunState, StageState, StageStatus, FORMAT_VERSION,
 };
 use crate::store;
+use qmaws_core::amalgamate;
 use qmaws_core::input::RecordMode;
 use qmaws_core::matrix::{self, Matrix};
 use qmaws_core::maw::{self, MawSet};
@@ -52,6 +54,7 @@ pub const LENGTH_SELECT: &str = "length_select";
 pub const MATRIX_BUILD: &str = "matrix_build";
 pub const QUARTET_COUNT: &str = "quartet_count";
 pub const QUARTET_WEIGHT: &str = "quartet_weight";
+pub const AMALGAMATE: &str = "amalgamate";
 pub const FINALIZE: &str = "finalize";
 /// Quartets per parallel block when counting.
 const COUNT_BLOCK: u64 = 4096;
@@ -74,13 +77,14 @@ struct ChunkedStage {
     note: String,
 }
 
-pub const STAGES: [&str; 7] = [
+pub const STAGES: [&str; 8] = [
     INGEST,
     MAW_EXTRACT,
     LENGTH_SELECT,
     MATRIX_BUILD,
     QUARTET_COUNT,
     QUARTET_WEIGHT,
+    AMALGAMATE,
     FINALIZE,
 ];
 
@@ -432,7 +436,7 @@ impl<'a> Session<'a> {
         }
         // Whole-stage outputs that are damaged reset that stage and the ones
         // after it.
-        for stage in [INGEST, LENGTH_SELECT, MATRIX_BUILD, FINALIZE] {
+        for stage in [INGEST, LENGTH_SELECT, MATRIX_BUILD, AMALGAMATE, FINALIZE] {
             if self.status(stage) == StageStatus::Done && !self.outputs_valid(stage) {
                 self.log(&format!(
                     "Outputs of {stage} are missing or damaged; recomputing from there."
@@ -473,6 +477,9 @@ impl<'a> Session<'a> {
         }
         if let Some(outcome) = self.quartet_weight(m)? {
             return Ok(outcome);
+        }
+        if self.status(AMALGAMATE) != StageStatus::Done {
+            self.amalgamate(m)?;
         }
         if self.status(FINALIZE) != StageStatus::Done {
             self.finalize(m)?;
@@ -955,6 +962,78 @@ impl<'a> Session<'a> {
         Ok(None)
     }
 
+    /// Amalgamation with `wQFM-rs`: the weighted quartets of every quartet
+    /// (W2c weights, or W2b when no resamples were made), in rank order so
+    /// the tree does not depend on the processing order.
+    fn amalgamate(&mut self, m: usize) -> Result<(), EngineError> {
+        self.set_running(AMALGAMATE)?;
+        if !self.weighted() {
+            return self.set_done(AMALGAMATE, BTreeMap::new());
+        }
+        let started = Instant::now();
+        let q = quartet::quartet_count(m);
+        let plan = self.state.chunk_plans[QUARTET_WEIGHT];
+        let mut by_rank: Vec<Option<[f64; 3]>> = vec![None; q as usize];
+        let mut source = "w2c";
+        for i in 0..plan.chunk_count() {
+            let p = self.dir.chunk_file(QUARTET_WEIGHT, i);
+            let bytes = atomic::read_verified(&p).ok_or_else(|| {
+                EngineError::Invalid(format!("{} is missing or damaged", p.display()))
+            })?;
+            for r in
+                store::weight_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?
+            {
+                if !r.fitted() {
+                    continue;
+                }
+                let w = if r.resampled() {
+                    r.w2c
+                } else {
+                    source = "w2b";
+                    weight::w2b(&r.log_likelihoods)
+                };
+                by_rank[r.rank as usize] = Some(w);
+            }
+        }
+        let mut quartets = Vec::new();
+        for (rank, w) in by_rank.iter().enumerate() {
+            if let Some(w) = w {
+                quartets.extend(amalgamate::quartets_of(quartet::unrank(rank as u64), *w));
+            }
+        }
+        drop(by_rank);
+        let names: Vec<String> = self.inputs()?.taxa.iter().map(|t| t.name.clone()).collect();
+        let settings = amalgamate::Settings::default();
+        let result = amalgamate::wqfm(&names, &quartets, &settings);
+        let summary = serde_json::json!({
+            "method": "wQFM-rs",
+            "weights": source,
+            "beta": settings.beta,
+            "weighted_quartets": quartets.len(),
+            "consistency_score": format!("{:.8e}", result.score),
+            "total_weight": format!("{:.8e}", result.total_weight),
+        });
+        let h_tree = self.write("report/tree.nwk", format!("{}\n", result.newick).as_bytes())?;
+        let h_summary = self.write(
+            "work/amalgamation.json",
+            (serde_json::to_string_pretty(&summary).expect("json") + "\n").as_bytes(),
+        )?;
+        self.log(&format!(
+            "Amalgamation (wQFM-rs, {source} weights): {} weighted quartets, consistency score {:.4} of {:.4}, in {:.1} s.",
+            quartets.len(),
+            result.score,
+            result.total_weight,
+            started.elapsed().as_secs_f64()
+        ))?;
+        self.set_done(
+            AMALGAMATE,
+            BTreeMap::from([
+                ("report/tree.nwk".to_string(), h_tree),
+                ("work/amalgamation.json".to_string(), h_summary),
+            ]),
+        )
+    }
+
     fn finalize(&mut self, m: usize) -> Result<(), EngineError> {
         self.set_running(FINALIZE)?;
         // Content hash of each stage.
@@ -1022,6 +1101,10 @@ impl<'a> Session<'a> {
                 "units_per_chunk": plan.units_per_chunk,
                 "chunks": chunk_list,
             }));
+            let mut tree = StreamHasher::new();
+            tree.update(&self.read("report/tree.nwk")?);
+            tree.update(&self.read("work/amalgamation.json")?);
+            stage_hashes.push((AMALGAMATE, tree.finish_hex()));
         }
         let mut root_text = format!(
             "qmaws-root-v1\nkind {KIND}\nconfig {}\n",
@@ -1352,5 +1435,35 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("unknown weighting"), "{err}");
+    }
+
+    #[test]
+    fn the_tree_is_wqfm_on_the_stored_weights_and_part_of_the_root() {
+        let tmp = TempDir::new("analysis_tree");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 7, 800, 3);
+        let run = tmp.path().join("run");
+        let root = finish(&run, &options(&input, 6));
+        let dir = RunDir::new(&run);
+        let tree =
+            String::from_utf8(atomic::read_verified(&dir.report().join("tree.nwk")).unwrap())
+                .unwrap();
+        let (names, _) = load_matrix(&run).unwrap();
+        let mut weights = read_weights(&run).unwrap();
+        weights.sort_by_key(|w| w.rank);
+        let quartets: Vec<_> = weights
+            .iter()
+            .filter(|w| w.fitted())
+            .flat_map(|w| amalgamate::quartets_of(quartet::unrank(w.rank), w.w2c))
+            .collect();
+        let direct = amalgamate::wqfm(&names, &quartets, &Default::default());
+        assert_eq!(tree.trim(), direct.newick);
+        let parsed = qmaws_core::newick::Tree::parse(tree.trim()).unwrap();
+        assert_eq!(parsed.leaf_names().len(), 7);
+        // A damaged tree is recomputed on resume and gives the same root.
+        std::fs::write(dir.report().join("tree.nwk"), b"(x);").unwrap();
+        let cancel = AtomicBool::new(false);
+        let again = crate::runner::resume_run(&run, "terminal", &NullSink, &cancel).unwrap();
+        assert_eq!(again, Outcome::Finished { root });
     }
 }

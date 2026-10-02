@@ -1,7 +1,7 @@
 # qmaws-engine
 
 ## Purpose
-Run orchestration: the run folder, the stage state machine in `run.json`, atomic hash-verified writes, chunk plans, checkpoints and resume, progress events and time estimates, and (from M8) the audit log. It runs the analysis (from M4: input, MAW extraction, length selection, matrices and quartet counts; from M5: quartet weights), the matrix pipeline of `qmaws matrix`, and a toy computation used to test the engine.
+Run orchestration: the run folder, the stage state machine in `run.json`, atomic hash-verified writes, chunk plans, checkpoints and resume, progress events and time estimates, and (from M8) the audit log. It runs the analysis (from M4: input, MAW extraction, length selection, matrices and quartet counts; from M5: quartet weights; from M7: the tree by wQFM-rs), the matrix pipeline of `qmaws matrix`, and a toy computation used to test the engine.
 
 ## Contents
 | Item | Description |

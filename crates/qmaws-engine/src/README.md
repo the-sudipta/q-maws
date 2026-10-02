@@ -6,7 +6,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 ## Contents
 | Item | Description |
 |---|---|
-| `analysis.rs` | The analysis run: stages from input to quartet pattern counts and weights, checkpoints, chunked counting and weighting in Feistel order, resume, root fingerprint |
+| `analysis.rs` | The analysis run: stages from input to quartet pattern counts, weights and the tree, checkpoints, chunked counting and weighting in Feistel order, resume, root fingerprint |
 | `atomic.rs` | Atomic writes (temporary file, sync, rename) with SHA-256 hash files; validity checks; removal of stale temporary files |
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
