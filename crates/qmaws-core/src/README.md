@@ -6,6 +6,7 @@ Source code of the science crate. Each module receives data and returns data; no
 ## Contents
 | Item | Description |
 |---|---|
+| `matrix.rs` | MAW length range and entropy selection, `M_full` and `M_ml` construction, the 50,000-column cap, PHYLIP export |
 | `maw.rs` | Suffix automaton, MAW enumeration with lengths and strand filter, compact word codes, the brute-force oracle |
 | `input.rs` | Input reading and cleaning: FASTA or raw text, cleaning rules, record modes, Newick-safe names, validation findings with their choices, renaming of duplicates |
 | `lib.rs` | Crate root: module list |

@@ -5,7 +5,7 @@
 //! data and returns data.
 
 pub mod input;
-
+pub mod matrix;
 pub mod maw;
 pub mod newick;
 
