@@ -5,6 +5,8 @@
 //! data and returns data.
 
 pub mod input;
+
+pub mod maw;
 pub mod newick;
 
 /// Name of this crate, used in diagnostics.
