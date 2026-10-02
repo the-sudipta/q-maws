@@ -58,6 +58,25 @@ External tools, services and repositories used during development or by the prog
 
 - License: MIT (GitHub repository metadata and `LICENSE`, checked on 2026-10-02, HEAD `8bfe7d5`). Its code was not read: Q-MAWS reproduces ML-MAWS, whose extractor states it is based on this work, and the published description.
 
+### IQ-TREE (https://github.com/iqtree/iqtree3)
+
+- **Used for:** the development-only cross-check of the conditioned quartet log-likelihood (plan 2.7.7, item 4), run by `.github/workflows/iqtree.yml` and `scripts/iqtree_check.sh` on a GitHub Linux runner. The owner chose GitHub Actions on 2026-10-02; nothing is installed on the development laptop, and IQ-TREE is not part of Q-MAWS or its releases.
+- **Version:** 3.1.4 (latest release, published 2026-09-10), asset `iqtree-3.1.4-Linux-intel.tar.gz`, 7,479,748 bytes. The script checks the SHA-256 `d422cb2b8f04825faea753afda25c60de6611537d07ec8fcd0033e70cb042839`, which is the digest the GitHub releases API lists for that asset (read on 2026-10-02).
+- **License:** GNU General Public License v2.0 (repository license, read through the GitHub API on 2026-10-02). The program is only run; no code is used or distributed.
+- **Documentation read** (2026-10-02; www.iqtree.org had an expired certificate, so the same pages were read at iqtree.github.io/doc):
+  - Substitution Models: binary models JC2 (Jukes–Cantor type) and GTR2 (unequal state frequencies); frequency options +F, +FQ, +FO and user-defined +F{…}; +ASC "will correct the likelihood conditioned on variable sites" and is for alignments without constant sites.
+  - Command Reference: `-te` (fixed user tree; no tree search); `-st BIN`; `-blmin` (default: the smaller of 0.000001 and 0.1 ÷ alignment length); `-blmax` (default 10); `-blfix` (fix the branch lengths of the tree given with `-te`); `-me` (log-likelihood epsilon of the final estimation, default 0.01); `-seed`; `-nt`; `-redo`; `-pre`.
+- **Matching settings:**
+  - Models: W2-sym ↔ `JC2+ASC`; W2-emp ↔ `GTR2+F{π0,π1}+ASC`. With two states, GTR2 has a single exchangeability; normalised to one expected change per unit length, it is the Q-MAWS model.
+  - Conditioning: +ASC conditions on "not 0000 and not 1111", so Q-MAWS uses its cross-check mode, and the exported alignments contain only the non-constant columns.
+  - Bounds: `-blmin 0.000001 -blmax 10`, as in Q-MAWS. `-me 0.000001` for the optimised fits.
+  - Topology: each topology is given as an unrooted Newick tree with `-te`.
+- **Comparisons:** for 5 quartets of Fish mtDNA drawn with seed 1, both models and all three topologies (30 rows):
+  - (A) IQ-TREE's log-likelihood at Q-MAWS's fitted lengths (`-blfix`) against Q-MAWS's maximum;
+  - (B) IQ-TREE's maximised log-likelihood against Q-MAWS's maximum, and Q-MAWS evaluated at IQ-TREE's fitted lengths against IQ-TREE's maximum.
+  - Tolerance 0.0001. IQ-TREE prints log-likelihoods with 4 decimals, so rounding alone accounts for up to 0.00005.
+- **Result:** recorded in `docs/milestones/M05.md` from the first workflow run.
+
 ### Not used yet
 
-wQFM, IQ-TREE and Open Tree of Life are added when each is first consulted, including its license.
+wQFM and Open Tree of Life are added when each is first consulted, including its license.
