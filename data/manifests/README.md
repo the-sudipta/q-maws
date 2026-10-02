@@ -7,6 +7,7 @@ Committed records that make every dataset reproducible: the benchmark registry, 
 | Item | Description |
 |---|---|
 | `benchmarks.toml` | Benchmark registry: one `[[download]]` per file fetched from the internet, one `[[dataset]]` per benchmark dataset |
+| `download_log.json` | One entry per download made with `qmaws download`: URL, date, size, published and computed checksums, result |
 
 ## Relationships
 Read by `crates/qmaws-data` (registry compiled in with `include_str!`; log appended by `qmaws download`). Describes the files downloaded into `data/raw/`. Reference trees named by datasets are in `data/references/`.
