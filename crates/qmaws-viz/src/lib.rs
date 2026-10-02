@@ -1,7 +1,10 @@
 //! Figures for Q-MAWS: Quartet Halo Tree, tanglegram, rectangular tree,
 //! interactive HTML export and growth animation.
 //!
-//! Status: empty skeleton. Functionality is added milestone by milestone.
+//! Status: from M6, small-multiple line charts as SVG (`chart`). The tree
+//! figures are added from M10.
+
+pub mod chart;
 
 /// Name of this crate, used in diagnostics.
 pub const CRATE_NAME: &str = env!("CARGO_PKG_NAME");
