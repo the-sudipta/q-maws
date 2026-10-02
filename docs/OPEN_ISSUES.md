@@ -79,3 +79,32 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 - **Differences in wording only:** steps are numbered "Step 1" to "Step 9" instead of A.1 to A.9; arithmetic uses `x` and `/` (plain text) instead of × and ÷; every new score is written out in full, for example `{K,L}-N = (0 + 0) / 2 = 0` where the teaching material writes `{K,L}–N = 0`; the model terms are listed in a fixed order of the internal states (u, v) = (0,0), (0,1), (1,0), (1,1), so `P(1100 | ab|cd) = 0.5 x (0.00729 + 0.00001 + 0.06561 + 0.00729)` lists the same four terms as the teaching material in another order.
 - **Options:** (a) approve the golden file as it is; (b) ask for specific wording changes, after which the golden file is regenerated and approved again.
 - **Resolution:** the owner approved the golden file as it is (option a) on 2026-10-02.
+
+## OI-13: Quartet decisions cannot re-run the amalgamation exactly (open, 2026-10-02)
+
+- **Specification:** `audit/quartet_decisions.bin.zst` holds, per quartet in rank order, the winning topology (2 bits) and its weight quantised to 16 bits, and is described as "enough to re-run amalgamation exactly".
+- **Found:** the amalgamation uses all three weights of every quartet (W2c gives weight to more than one topology for most quartets), and the weights are quantised. From the winning topology and its quantised weight alone, the amalgamation input cannot be rebuilt, so its tree cannot be guaranteed.
+- **Implemented now:** the format as specified (`docs/DESIGN.md`). It supports the single-quartet verification; the full verification recomputes the tree from the data.
+- **Options:** (a) keep the format and correct the description; (b) store all three weights quantised to 16 bits (about 6 bytes per quartet, about 43 MB before compression for m = 116), so the amalgamation can be re-run on the quantised weights (the tree may still differ from the run's in rare cases near ties); (c) store all three weights as 64-bit values (24 bytes per quartet), which reproduces the tree exactly, at about 172 MB before compression for m = 116. Recommendation: (a), because the full verification already re-runs the amalgamation exactly from the data. **Owner decision needed.**
+
+## OI-14: W2c on quartets whose best fit is a star (open, 2026-10-02)
+
+- **Specification:** W2 fits each topology with branch lengths bounded in [0.000001, 10]; W2c is the fraction of 100 resamples in which each topology has the highest refitted log-likelihood, with ties (log-likelihoods within 10⁻⁸, `weight::TIE_TOLERANCE`) split equally.
+- **Found:** when the data favour no resolution, the internal branch of all three topologies ends at the lower bound 0.000001. The three log-likelihoods then differ only through that tiny branch, by about 10⁻⁵ (more than the tie tolerance), and the same topology wins in most resamples. On Fish mtDNA (run with seed 1, strand filter on, 12,650 quartets): in 9,024 quartets all three fitted internal branches are at the lower bound, and 3,326 of these still give one topology a W2c weight of at least 0.9; the mean of the largest W2c weight over these 9,024 quartets is 0.789 instead of the 1/3 of a tie. An example is in a worksheet (quartet NC_009057, NC_009066, NC_011177, NC_013564: log-likelihoods −30890.494709, −30890.494670, −30890.494689, every internal branch 0.000001, W2c 0.00 / 0.97 / 0.03).
+- **Measured effect on the tree (exploratory, Fish mtDNA, same counts and seeds):** nRF to the reference 0.500 as implemented; 0.455 when a resample whose three internal branches are all at the lower bound counts as a three-way tie; 0.773 when log-likelihoods within 0.001 count as ties. So the small differences are not pure noise; they carry the sign of the excess of split patterns, but W2c turns them into near-certain weights.
+- **Options:** (a) keep W2c as specified and report this behaviour; (b) count a resample as a three-way tie when all three internal branches are at the lower bound (a star fit); (c) lower the bound of the internal branch to 0, so that a star fit gives exactly equal likelihoods (a change of the specified bounds); (d) another rule chosen by the owner. Options (b) to (d) change the weighting fixed in M5 and the pre-registered primary method's details, so H3 (M6) and the W2c cross-checks would be run again. **Owner decision needed.**
+- **Controls (2026-10-02, seed 1, exploratory measurements of the three rules on the same counts and seeds):**
+
+  | Data | Rule | nRF | Mean S1 | Quartets with weights 1/3 each |
+  |---|---|---|---|---|
+  | Fish mtDNA, each sequence shuffled (negative control) | as implemented | 1.000 | 0.649 | 0 of 12,650 |
+  | | star resamples tied | 0.909 | 0.333 | 12,650 |
+  | | ties within 0.001 | 0.909 | 0.333 | 12,650 |
+  | Fish mtDNA | as implemented | 0.500 | 0.776 | 0 |
+  | | star resamples tied | 0.455 | 0.577 | 7,765 |
+  | | ties within 0.001 | 0.773 | 0.470 | 9,060 |
+  | Simulated, 16 taxa, 20,000 bases, Jukes–Cantor on a random tree (positive control) | as implemented | 0.154 | 0.936 | 0 of 1,820 |
+  | | star resamples tied | 0.308 | 0.655 | 1,159 |
+  | | ties within 0.001 | 0.308 | 0.586 | 1,184 |
+
+  On shuffled sequences, which share no history, W2c as implemented gives a mean S1 of 0.649; with either tie rule every quartet becomes a tie and S1 is 1/3, the value for no signal. On the simulated tree-like data, most quartets also have star fits (1,159 of 1,820), yet the tiny differences recover the tree better (nRF 0.154 against 0.308). So the two-state model fitted to MAW columns puts the internal branch at zero for most quartets, and the remaining signal sits in differences of about 10⁻⁵; W2c as implemented uses that signal but overstates its certainty.

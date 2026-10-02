@@ -51,6 +51,8 @@ One exception keeps a run resumable after a kill at the worst moment: if `run.js
 
 The root fingerprint is the SHA-256 of a short, line-based text listing the fingerprint format, the run kind, the SHA-256 of the configuration, and the content hash of each stage. The content hash of a chunked stage is the SHA-256 of all chunk outputs concatenated in order. It therefore does **not** depend on where the chunk boundaries are, which are chosen per device by calibration. Per-chunk hashes are recorded separately in `audit/chunks.json` for verification. See `docs/OPEN_ISSUES.md`, OI-4.
 
+From M8 (format `qmaws-root-v2`), the root uses the configuration without the input path, and the ingest stage enters with `audit/inputs.json` in which every file path is reduced to its file name. The same data in another folder or on another computer therefore give the same root; the data still enter through their raw and cleaned hashes. `run.json` and `audit/inputs.json` keep the full paths for the input check of `qmaws verify`.
+
 ## Progress and time estimates (M1)
 
 - The engine sends events to a progress sink (`Started`, `Progress`, `Log`, `Finished`, `Stopped`); it never prints. Terminal and GUI displays implement the sink.
@@ -189,3 +191,75 @@ Code: `crates/qmaws-core/src/amalgamate.rs` (algorithm, exhaustive oracle, consi
   - `qmaws wqfm-export` writes 23 inputs in the jar's format (`((a,b),(c,d)); w` per line, from its README): the worksheet example, 10 noise-free and 10 noisy inputs from random trees, and the W2c quartets of Fish mtDNA with and without the strand filter.
   - `scripts/wqfm_check.sh` runs the jar with default settings on each input (GitHub Actions workflow `wqfm.yml`).
   - `qmaws wqfm-compare` then requires an identical topology on noise-free inputs, and a wQFM-rs score of at least 99.9% of the jar's on the others.
+
+## Support and halo values (M8)
+
+Code: `crates/qmaws-core/src/support.rs`; stage `support` in `crates/qmaws-engine/src/analysis.rs`.
+
+- **Weights:** the same weights as the tree: W2c, or W2b when no resamples were made. A quartet whose three weights sum to 0, or that has no fit, is left out.
+- **S1** of an internal edge with split A | B: over all quartets with two taxa in A and two in B, the weight of the topology that pairs the two taxa of each side, divided by the total weight of those quartets. Reported from 0 to 1, and as "NA" when no weighted quartet spans the edge.
+- **Halo value** of taxon i: over all quartets containing i, the weight of the topology the tree induces, divided by the total weight. A quartet on which the tree is a star (possible only for a multifurcating tree) adds to the total and to no topology.
+- **Computation:** quartets are streamed in rank order. For each quartet, the induced topology comes from leaf-to-leaf path lengths (four-point condition), and a membership table per internal edge tells whether the quartet spans the edge (two taxa on each side). Every sum runs in rank order on one thread, so the values do not depend on threads. Cost: one pass over all quartets times the number of internal edges.
+- **Outputs:** `trees/tree_s1.nwk` (S1 with 3 decimals as internal labels), `report/support.tsv` (edge, clade size, S1, consistent and total weight, number of quartets, clade), `report/halo.tsv` (taxon, halo value, consistent and total weight). The three files form the content hash of the stage in the root.
+
+## Audit files (M8)
+
+Written by `finalize` into `audit/` (plan 4.6.2):
+
+| File | Content | In the root |
+|---|---|---|
+| `inputs.json` | Per taxon: name, source file, lengths, removed symbols, cleaned SHA-256; per file: path, SHA-256, size; MAW length range | Yes, as the ingest stage (paths reduced to file names) |
+| `stages.json` | Content hash of each stage, number of quartets, seed | Its hashes form the root |
+| `chunks.json` | Per chunk of each chunked stage: range and SHA-256; for weights also the SHA-256 of the records rounded to 9 significant digits | No (chunk boundaries depend on the device) |
+| `root.txt` | Root fingerprint | – |
+| `results.json` | The tree, the tree with S1, the weights used, the amalgamation summary, S1 per edge, halo value per taxon (numbers rounded to 9 significant digits); `metrics` is filled from M9 | No (it repeats values that are) |
+| `quartet_decisions.bin.zst` | Magic `QMAWDEC1` and the number of quartets, then per quartet in rank order the winning topology (0 ab\|cd, 1 ac\|bd, 2 ad\|bc, 3 no weight; the first on equal weights) and its weight × 65,535 rounded to 16 bits; zstd level 19 | No |
+| `sample_worksheets.txt` | Worksheets of 50 quartets drawn with seed `quartet_seed(global, 2^64 − 1)`, in rank order; each is recomputed from `M_full` and must be identical to the stored weights before it is written | No |
+| `environment.json` | Program version, git commit of the build (`build.rs`), operating system, architecture, CPU, logical cores, RAM, popcount path, all settings, seeds | No (it describes the device) |
+
+The decisions file supports the single-quartet verification. It does not hold enough to re-run the amalgamation exactly, because the amalgamation uses all three weights of each quartet; see `docs/OPEN_ISSUES.md`, OI-13.
+
+**Worksheet** (`crates/qmaws-core/src/worksheet.rs`): the co-occurrence counts n(S) of all 16 subsets; each pattern count by inclusion–exclusion with its terms (n(P) first, then its supersets by size); the sum of the 16 counts; W1 votes; for each topology the maximised log-likelihood and the five branch lengths (6 decimals); W2a and W2b; W2c with its quartet seed.
+
+## Verification (M8)
+
+`qmaws verify --output <run> [--inputs | --full | --quartet A,B,C,D] [--seed N] [--input <path>]` (`crates/qmaws-engine/src/verify.rs`). The default is the quick check. Every comparison is listed as PASS or FAIL in `report/verify_<time>.txt`; the exit status is 1 if any comparison fails.
+
+- **Input check** (always first): SHA-256 and size of every input file against `run.json`; taxon names and cleaned-sequence hashes against `audit/inputs.json`. `--input` gives the new location if the data were moved (paths below the old input folder are mapped below the new one). If the input check fails, nothing else is run.
+- **Full matrix:** taken from `work/matrix/m_full.bin` when its SHA-256 equals the matrix stage hash in `audit/stages.json`; otherwise rebuilt from the inputs by the run's own stages up to `matrix_build` in `work/verify/`, and compared with that hash. A reviewer therefore needs only `run.json`, `audit/` and the raw data.
+- **Quick:** 20 chunks of each chunked stage (all if there are fewer), drawn with SplitMix64 from the given or a fresh seed (printed), recomputed with the run's own counting and weighting functions over the stored ranges. Count chunks must have the same SHA-256; weight chunks the same SHA-256 of the rounded records, and whether the raw bytes also agree is reported.
+- **Full:** the whole run is recomputed in `work/verify/full_<time>/` and its root compared; the folder is deleted after a completed comparison.
+- **Single quartet:** the worksheet of the four taxa (given in any order) is printed; its winning topology and 16-bit weight must equal the stored decision, and, when the work folder is present, its weights must agree with the stored record within 0.000001.
+
+## Determinism contract (M8)
+
+As in the plan (4.6.4), and checked by tests and by verification:
+
+- **Integers** (MAW lists, matrices, pattern counts, weighted bootstrap counts) are byte-identical on every platform; their hashes enter the root unrounded.
+- **Floating point:** transcendental functions come from `libm`; no `mul_add`; every per-quartet computation is sequential; every sum over quartets, columns or edges runs in a fixed order (rank or processing order), never in thread order. Parallel work is split into blocks whose outputs are joined in order.
+- **Hashing:** floating-point values enter hashes as text rounded to 9 significant digits (`{:.8e}`, the `canonical()` form of the weight records); `results.json` stores numbers rounded the same way, and the S1 and halo files use 6 decimals. Verification compares stored and recomputed values within 0.000001 and requires identical winning topologies.
+- **Location and device:** the root depends neither on the input location (see "Root fingerprint"), nor on chunk boundaries (OI-4), the number of threads or the device; files that describe the device (`environment.json`, `run.log`) are not part of it.
+- **Seeds:** the processing order and W2c use the run seed; W2c uses `quartet_seed(seed, rank)`; the sample worksheets `quartet_seed(seed, 2^64 − 1)`; bootstrap replicate b `quartet_seed(seed, 2^63 + b)`.
+- A test that finds a cross-platform difference blocks a release. The comparison of the Fish mtDNA root on Windows, macOS and Linux is golden test G12 (CI).
+
+## S2 column bootstrap (M8: cost measurement only)
+
+Code: `crates/qmaws-core/src/bootstrap.rs`, `crates/qmaws-engine/src/bootstrap.rs`, hidden command `qmaws s2-cost --run <run> [--replicates N] [--w2b]`.
+
+- **Column weights:** Poisson(1) per column by inversion (P(0) = e⁻¹, then P(k) = P(k − 1) ÷ k, at most 20), from SplitMix64 seeded with the replicate seed.
+- **Weighted counts:** the columns of weight k form a class; the rows are masked to the class and counted with the inclusion–exclusion kernel, and the class counts are added k times. A test compares them with a weighted column scan.
+- **A replicate:** weighted counts of every quartet, W2c with per-quartet seeds `quartet_seed(replicate seed, rank)` and the run's number of resamples (or W2b with `--w2b`), then wQFM-rs. `s2-cost` reports the time of each step, the mean per replicate, and how often each split of the run's tree recurs.
+- S2 is not yet a stage of the run: whether to run it, and with how many replicates, is decision D7.
+
+## Controls (M8)
+
+Hidden command `qmaws controls [--output results/controls] [--seed 1]` (`crates/qmaws-cli/src/controls_cmd.rs`, data from `crates/qmaws-core/src/control.rs`).
+
+| Control | Data | Expected |
+|---|---|---|
+| Worksheet example (positive) | The teaching example | Golden tests G1 and G2 (its sequences have 6 letters, below the 100 an analysis run accepts) |
+| `simulated` (positive) | 16 taxa of 20,000 bases evolved along a random binary tree (random stepwise addition) under Jukes–Cantor; branch lengths uniform in [0.01, 0.1]; uniform random root sequence | Tree close to the true tree; high support |
+| `fish_shuffled` (negative) | Each Fish mtDNA sequence shuffled by Fisher–Yates with seed `quartet_seed(seed, taxon index)`; letter composition kept | Low support; nRF near the level of random trees |
+| `fish` | Fish mtDNA unchanged | Reference point |
+
+Chance level: nRF of 1,000 random binary trees (random stepwise addition) to the same reference, as mean and 5th percentile. Each control is a normal analysis run with default settings in `runs/<control>/`; `summary.md` and `controls.tsv` hold the results.
