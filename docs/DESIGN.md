@@ -86,6 +86,20 @@ The root fingerprint is the SHA-256 of a short, line-based text listing the fing
 - The records are written in list order as `<id>.fasta`, each under the list's name as header, with the sequence lines as NCBI sends them, and a provenance table `<id>.accessions.tsv` (name, accession, version, NCBI title). The file is checked against the pinned SHA-256 before it replaces anything.
 - `qmaws inspect --dataset <a> --compare-with <b>` compares cleaned sequences of two datasets by SHA-256 and lists identical sequences under other names; it was used to show that the NCBI datasets equal the files ML-MAWS used.
 
+## MAW extraction (M3)
+
+- `qmaws-core::maw` builds a suffix automaton (at most 2n states of 24 bytes: four `u32` transitions, suffix link, length) and enumerates MAWs as ML-MAWS does: a depth-first walk over every path from the initial state, that is, every distinct factor x with |x| < l_max. At the state p of x, for each letter b without a transition from p, x·b is a MAW when the suffix-link state q of p has a transition on b and len(q) + 1 ≥ |x|. Because |x| − 1 ≥ len(q) always holds for a state reached by x, the condition means that x without its first letter lies in q, which extends by b; so the test matches the definition exactly. Only lengths in [l_min, l_max] and at least 2 are produced. The walk uses an explicit stack, so deep recursion cannot occur.
+- Words are stored 2 bits per letter (A=0, C=1, G=2, T=3) in one sorted list per length: `u64` up to 32 letters, `u128` from 33 to 64 letters. Within one length, numeric order is lexicographic order; across lengths, words are compared after left-aligning the codes, then by length, which gives the same order as comparing the letter strings. Lists release spare capacity after sorting.
+- Strand filter: the MAWs of the sequence intersected with the MAWs of its reverse complement (two automata, built one after the other).
+- Tests: the brute-force oracle enumerates every word over A, C, G, T up to length 8 and tests the definition with a table of factors; the automaton output equals the oracle on 2,000 random strings (length 1 to 60, 2 to 4 letters), golden test G4.
+
+## Length selection and matrices (M3)
+
+- Range: ML-MAWS's table on the integer average length (`docs/OPEN_ISSUES.md`, OI-9). Entropy per length: sum over variable columns of −(p0 log2 p0 + p1 log2 p1), with `libm::log2`, columns in lexicographic order. Selection: ML-MAWS's rule with ties to the shorter length (OI-10).
+- The columns of a length come from a k-way merge (binary heap) of the taxa's sorted lists, giving each word with the taxa that have it; the selected lengths are merged in lexicographic word order. A first pass counts the columns, so the memory needed by `M_full` is estimated (rows: taxa × columns ÷ 8 bytes, padded to 4 × 64 bits; per column 13 bytes for word length, code and count) and checked against the memory limit before anything is allocated (decision D3 if it does not fit).
+- `M_full`: one bitset row per taxon over all columns; `M_ml`: column indices of `M_full` (constant columns removed, at most 50,000 kept by min(n_j, m − n_j), ties by index), exported in ML-MAWS's PHYLIP layout.
+- Memory: the limit is 70% of the available memory when the build starts. The number of parallel extractions is chosen so that the input sequences, the MAW lists of all taxa (estimated at 3 bytes per letter) and one extraction per worker (64 bytes per letter) fit; sequences are released once extracted and lists of lengths that were not selected are released after the selection. Measured on E. coli (29 genomes): peak working set 662 MB with a limit of 1,082 MB.
+
 ## To be written
 
 - Optimiser for the conditioned quartet likelihood (M5)

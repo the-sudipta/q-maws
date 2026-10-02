@@ -33,7 +33,7 @@ External tools, services and repositories used during development or by the prog
 - **License:** Apache License 2.0 (`LICENSE.txt`, read before any file was used).
 - **Cloned** on 2026-10-02 to `../_external/ML-MAWS` (outside this repository) at commit `0c38db12d9ad271aafcb4940d7558dfcd00925c1` (2026-05-09).
 - **Used for:** the five NCBI dataset files in `Data/` (downloaded by `qmaws download` from `raw.githubusercontent.com` at that commit; each download matched the SHA-256 of the file at that commit), and the name tables in `Data/*/reference/dataset.json` (see `data/references/SOURCE.md`). No code is used.
-- **Read:** `README.md`; `FastaReader.cpp` (input reading: keeps A, C, G, T after upper-casing, with no conversion of U to T; reads `.fasta`, `.fa`, `.fna`, `.fas` from a folder in sorted order; a single-record file takes the header's first word as name, a multi-record file is joined and named after the file; a single multi-FASTA file is read as one taxon per record); `main.cpp` (input may be a folder or a file); `run_all_benchmarks.sh` (the five NCBI datasets are single multi-FASTA files). Further files (suffix automaton, MAW extraction, entropy selection, matrix building) are read in M3.
+- **Read:** `README.md`; `FastaReader.cpp` (input reading: keeps A, C, G, T after upper-casing, with no conversion of U to T; reads `.fasta`, `.fa`, `.fna`, `.fas` from a folder in sorted order; a single-record file takes the header's first word as name, a multi-record file is joined and named after the file; a single multi-FASTA file is read as one taxon per record); `main.cpp` (input may be a folder or a file); `run_all_benchmarks.sh` (the five NCBI datasets are single multi-FASTA files). In M3 also read: `SuffixAutomaton.h` and `.cpp` (online construction; skips letters other than A, C, G, T), `MAWExtractor.cpp` (depth-first enumeration over factors, the suffix-link test, lexicographic sort, strand filter by intersecting with the MAWs of the reverse complement), `EntropySelector.cpp` (entropy per length, top-3 selection, adaptive range table; see OI-9, OI-10), `MatrixBuilder.cpp` (union, constant-column removal, 50,000-column cap by min(n, m − n), PHYLIP layout) and `main.cpp` (order of steps; strand filter only with `--strand`; matrix capped before PHYLIP export). The repository has no Makefile, although the README says `make`.
 
 ### NCBI E-utilities (https://eutils.ncbi.nlm.nih.gov/entrez/eutils/)
 
@@ -54,6 +54,10 @@ External tools, services and repositories used during development or by the prog
 
 - Version 0.20.2, installed locally with `cargo install cargo-deny --locked` on 2026-10-02 (development tool only). Used to reproduce the CI dependency check.
 
+### CD-MAWS suffix automaton implementation (https://github.com/TamimEhsan/cd-maws-sa)
+
+- License: MIT (GitHub repository metadata and `LICENSE`, checked on 2026-10-02, HEAD `8bfe7d5`). Its code was not read: Q-MAWS reproduces ML-MAWS, whose extractor states it is based on this work, and the published description.
+
 ### Not used yet
 
-The CD-MAWS suffix automaton implementation, wQFM, IQ-TREE and Open Tree of Life are added when each is first consulted, including its license.
+wQFM, IQ-TREE and Open Tree of Life are added when each is first consulted, including its license.

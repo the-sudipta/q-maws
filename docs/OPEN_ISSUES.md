@@ -55,3 +55,19 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 - **Found:** ML-MAWS (`FastaReader.cpp`) treats a folder as one taxon per file, joining the records of a multi-record file and naming the taxon after the file; a single multi-FASTA file given directly is read as one taxon per record. No AFproject file has more than one record; the five ML-MAWS data files are multi-FASTA files with one taxon per record.
 - **Implemented now:** folders default to one taxon per file (records joined; a single-record file keeps its header name), with `--records per-record` to choose one taxon per record; a single file is always read as one taxon per record. This matches ML-MAWS. **Owner decision D13 needed** to confirm or change the folder default.
 - **Resolution:** the owner confirmed the implemented behaviour (D13, 2026-10-02): folders give one taxon per file (records joined in file order); a single multi-FASTA file gives one taxon per record.
+
+## OI-9: MAW length range in ML-MAWS code differs from the paper's formula (resolved, 2026-10-02)
+
+- **Specification:** l_max = min(floor(log2(average cleaned length)), L_cap), with L_cap = 10 for mitochondrial and 14 for bacterial genomes, the range widened when m > 50; to be determined from `EntropySelector.cpp` and `main.cpp` and reproduced exactly.
+- **Found:** ML-MAWS (commit `0c38db1`, `EntropySelector::computeAdaptiveRange`) uses a table on the integer average length (total letters ÷ taxa): below 500 → [2, 6]; below 2,000 → [2, 8]; below 50,000 → [3, 10]; below 500,000 → [4, 12]; otherwise [5, 14]; l_max + 2 (at most 16) if m > 50, and + 2 more (at most 18) if m > 100. No logarithm and no L_cap appear in the code. The table gives the ranges reported in the paper ([3, 10] for Fish mtDNA, [5, 14] for E. coli).
+- **Resolution:** the code's table is reproduced (`qmaws_core::matrix::adaptive_range`), as the specification asks ("reproduce exactly" from the code).
+
+## OI-10: Tie rule of the length selection (resolved, 2026-10-02)
+
+- **Specification:** ties in entropy are broken by the shorter length; verify ML-MAWS's tie rule and follow it.
+- **Found:** ML-MAWS sorts the candidate lengths by entropy with `std::sort`, which is not stable, so equal entropies have no defined order. Exact ties of floating-point entropy sums are not expected in practice.
+- **Resolution:** Q-MAWS uses a stable sort on lengths in ascending order, so ties go to the shorter length (the specification's rule). The selection itself follows ML-MAWS: lengths with at least 5 variable columns and positive entropy; if fewer than 3, lengths with at least one variable column; the 3 with the highest entropy; if none, the single best length.
+
+## OI-11: License statements inside ML-MAWS source files (open, 2026-10-02)
+
+- **Found:** `LICENSE.txt` of the ML-MAWS repository is the Apache License 2.0, while the header of `SuffixAutomaton.h` states "License: MIT" and "Authors: [Your Name]". No ML-MAWS code is copied into Q-MAWS; the behaviour is reimplemented, so the difference does not affect Q-MAWS. It is recorded for the baselines notes (M11).

@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- MAW extraction with a suffix automaton (lengths up to 64 letters), strand filter, and a brute-force oracle; golden test G4 (2,000 random strings).
+- Length selection by entropy and the adaptive length range as in ML-MAWS; `M_full` and `M_ml` (constant columns removed, 50,000-column cap) with PHYLIP export.
+- Parallel extraction within a memory limit (70% of the available memory), memory estimate before the matrix is built.
+- Command `qmaws matrix`.
+
 ## [v0.2-m02-data] - 2026-10-02
 
 ### Added
