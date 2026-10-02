@@ -2,11 +2,12 @@
 
 Problems, ambiguities and discrepancies found during development. Each entry states what the project specification says, what was found, the evidence, and options with trade-offs. Resolved entries stay in the file with their resolution and date.
 
-## OI-1: Contact address placeholder in LICENSE (open, 2026-10-02)
+## OI-1: Contact address placeholder in LICENSE (resolved, 2026-10-02)
 
 - **Specification:** commit the owner-supplied `LICENSE` verbatim and never edit its text.
 - **Found:** Section 12 of `LICENSE` contains the placeholder `<CONTACT EMAIL>` instead of an address. Section 3.2(a) requires registration at that address before individual academic research use.
 - **Options:** (a) the owner supplies a corrected `LICENSE`, committed as a separate change; (b) keep the placeholder until the first public release, accepting that registration is not possible before then.
+- **Resolution:** on the owner's instruction (2026-10-02), the placeholder in Section 12 was replaced with the owner's contact address, sudiptakumar400@gmail.com. No other text of `LICENSE` was changed.
 
 ## OI-2: The guard must detect strings that may not appear in the repository (resolved, 2026-10-02)
 
