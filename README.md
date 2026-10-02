@@ -66,7 +66,7 @@ To be written (milestones M11 to M13).
 
 | Item | Description |
 |---|---|
-| `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files |
+| `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files, no conversion in run folders and control inputs (they are checked byte for byte) |
 | `.github/` | GitHub configuration: continuous integration workflows ([README](.github/README.md)) |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
 | `baselines/` | Published results of other methods, with exact sources ([README](baselines/README.md)) |
