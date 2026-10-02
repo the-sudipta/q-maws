@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- Quartet ranks and unranking (G6), a keyed Feistel processing order (G7), and the inclusion–exclusion pattern-count kernel with run-time popcount dispatch (G5).
+- Analysis runs (`qmaws run`): resumable stages from input to the pattern counts of every quartet, chunked in a seeded random order; root fingerprint independent of chunk size.
+- Teaching worksheet (`qmaws teach --example`, `qmaws teach --input`), golden test G1; G2 up to the pattern table.
+- Newick splits and normalised Robinson–Foulds distance.
+
 ## [v0.3-m03-matrices] - 2026-10-02
 
 ### Added
