@@ -14,6 +14,7 @@ pub mod metrics;
 pub mod newick;
 pub mod quartet;
 pub mod sim;
+pub mod stats;
 pub mod support;
 pub mod teach;
 pub mod weight;
