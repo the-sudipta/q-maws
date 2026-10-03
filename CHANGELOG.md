@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.8-m08-support] - 2026-10-03
+
 ### Added
 
 - S1 support of every internal edge and halo values of every taxon (stage `support`), and S2 column-bootstrap support (stage `bootstrap`: 100 replicates by default with W2b inside, `--bootstrap`; decision D7).
