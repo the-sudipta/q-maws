@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.10-m10-figures] - 2026-10-03
+
 ### Added
 
 - Figures after every analysis run, and `qmaws figures` to draw them again: the Quartet Halo Tree with support-coloured branches, group bands and a title block; a rectangular tree; a tanglegram against the reference tree with nRF, nQD and MSD; a self-contained interactive HTML tree; the growth animation of the live trees; a convergence chart. SVG, PDF and PNG at 300 dots per inch.
