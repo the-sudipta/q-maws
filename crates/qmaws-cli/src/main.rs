@@ -529,6 +529,13 @@ fn main() -> ExitCode {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
         Command::Gui { data_dir } => return menu_cmd::gui(Vec::new(), false, &data_dir),
+        // The menu makes its own progress display for each run, so that no
+        // empty bars are drawn above the menu.
+        Command::Menu { data_dir } => {
+            let cancel = Arc::new(AtomicBool::new(false));
+            install_interrupt_handler(Arc::clone(&cancel));
+            return menu_cmd::menu(&data_dir, &cancel, mode, color);
+        }
         Command::Inspect {
             input,
             dataset,
@@ -559,7 +566,6 @@ fn main() -> ExitCode {
             data_dir,
             seed,
         } => return controls_cmd::run(&output, &data_dir, seed, &cancel),
-        Command::Menu { data_dir } => return menu_cmd::menu(&data_dir, &display, &cancel, mode),
         Command::Verify {
             output,
             inputs,

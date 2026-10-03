@@ -94,6 +94,15 @@ pub(crate) fn load(dir: &RunDir) -> Option<State> {
     serde_json::from_slice(&bytes).ok()
 }
 
+/// The Newick text of the last provisional tree saved in a run folder; the
+/// GUI compares the next tree with it after a resume.
+pub fn last_tree(run_dir: &std::path::Path) -> Option<String> {
+    load(&RunDir::new(run_dir))?
+        .frames
+        .last()
+        .map(|f| f.newick.clone())
+}
+
 /// Scheduling of the updates within one session.
 pub(crate) struct Live {
     pub state: State,
@@ -234,6 +243,18 @@ mod tests {
         let again = Live::open(&run, false);
         assert_eq!(again.state, live.state);
         assert!(again.state.enabled, "the saved setting wins on resume");
+    }
+
+    #[test]
+    fn the_last_saved_tree_is_found() {
+        let dir = TempDir::new("prov_last");
+        let run = RunDir::new(dir.path());
+        assert_eq!(last_tree(dir.path()), None);
+        let mut live = Live::open(&run, true);
+        live.record(frame(1, 5.0, "(A,B,(C,D));", 0.0));
+        live.record(frame(2, 10.0, "(A,C,(B,D));", 0.0));
+        live.save(&run).unwrap();
+        assert_eq!(last_tree(dir.path()).as_deref(), Some("(A,C,(B,D));"));
     }
 
     #[test]

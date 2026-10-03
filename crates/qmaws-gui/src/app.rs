@@ -310,7 +310,10 @@ fn on_event(run: &mut RunView, event: Event) {
             run.run_dir = Some(PathBuf::from(&run_dir));
             run.snapshot = None;
             run.quartet = None;
-            run.previous = None;
+            // After a resume, changes are shown against the last saved
+            // provisional tree.
+            run.previous = qmaws_engine::provisional::last_tree(Path::new(&run_dir))
+                .and_then(|t| TreeLayout::from_newick(&t).ok());
             run.tree = None;
             let verb = if resumed { "Resumed" } else { "Started" };
             push_log(run, format!("{verb} run: {run_dir}"));
@@ -502,7 +505,17 @@ impl App {
                 self.page = Page::Run;
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                egui::widgets::global_theme_preference_buttons(ui);
+                // Plain-text theme buttons: the installed font has no icon glyphs.
+                let current = ui.options(|o| o.theme_preference);
+                for (pref, label) in [
+                    (egui::ThemePreference::System, "System"),
+                    (egui::ThemePreference::Dark, "Dark"),
+                    (egui::ThemePreference::Light, "Light"),
+                ] {
+                    if ui.selectable_label(current == pref, label).clicked() {
+                        ui.ctx().set_theme(pref);
+                    }
+                }
                 ui.separator();
                 let zoom = ui.ctx().zoom_factor();
                 if ui.button("A+").on_hover_text("Larger text").clicked() {

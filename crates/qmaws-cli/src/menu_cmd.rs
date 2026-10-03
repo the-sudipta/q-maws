@@ -141,12 +141,7 @@ fn start_terminal(
 
 /// `qmaws menu`: the main menu until the user exits (or a run is stopped
 /// with Ctrl+C).
-pub fn menu(
-    data_dir: &Path,
-    display: &TerminalDisplay,
-    cancel: &AtomicBool,
-    mode: DisplayMode,
-) -> ExitCode {
+pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool) -> ExitCode {
     let mut prompter = TerminalPrompter::new();
     loop {
         let dir = data_dir.to_path_buf();
@@ -181,7 +176,10 @@ pub fn menu(
                         let _ = gui(jobs, false, data_dir);
                         Ended::AllFinished
                     }
-                    Interface::Terminal => start_terminal(&runs, display, cancel, mode),
+                    Interface::Terminal => {
+                        let display = TerminalDisplay::new(mode, color);
+                        start_terminal(&runs, &display, cancel, mode)
+                    }
                 }
             }
             MenuAction::Resume {
@@ -204,14 +202,15 @@ pub fn menu(
                         Ended::AllFinished
                     }
                     Interface::Terminal => {
-                        let mut ended = resume_list(&dirs, queue, display, cancel, mode);
+                        let display = TerminalDisplay::new(mode, color);
+                        let mut ended = resume_list(&dirs, queue, &display, cancel, mode);
                         // After a single resumed run: offer the next one.
                         while !queue && matches!(ended, Ended::AllFinished) {
                             let roots = UserConfig::load().roots();
                             let Some(next) = menu::ask_next_run(&mut prompter, &roots) else {
                                 break;
                             };
-                            ended = resume_list(&[next], false, display, cancel, mode);
+                            ended = resume_list(&[next], false, &display, cancel, mode);
                         }
                         ended
                     }

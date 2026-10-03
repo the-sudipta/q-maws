@@ -43,8 +43,15 @@ pub struct TerminalPrompter {
 
 impl TerminalPrompter {
     pub fn new() -> Self {
+        // ASCII markers: the Windows console fonts lack the default symbols.
+        let style = dialoguer::console::Style::new().for_stderr();
         Self {
-            theme: dialoguer::theme::ColorfulTheme::default(),
+            theme: dialoguer::theme::ColorfulTheme {
+                active_item_prefix: style.clone().green().apply_to(">".to_string()),
+                success_prefix: style.clone().green().apply_to("+".to_string()),
+                error_prefix: style.red().apply_to("!".to_string()),
+                ..Default::default()
+            },
         }
     }
 }
