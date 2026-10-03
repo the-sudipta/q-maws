@@ -41,7 +41,7 @@ Gitmoji used: 🎉 initial setup, ✨ feature, 🐛 bug fix, ✅ tests, ⚡️ p
 
 ## Documentation
 
-- Every folder has a `README.md` with the sections Purpose, Contents, Relationships and Notes.
+- Every folder has a `README.md` with the sections Purpose, Contents, Relationships and Notes. The exception is `.github/`, described by `.github/ABOUT.md`, because GitHub shows `.github/README.md` in place of the root `README.md`.
 - A commit that adds, removes or renames a file also updates the README of that folder.
 - All program-facing text is English.
 

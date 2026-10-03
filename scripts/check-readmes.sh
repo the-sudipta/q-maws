@@ -6,6 +6,9 @@
 # README as `name` (file) or `name/` (folder). The repository root README and
 # each README itself are not required to list themselves.
 #
+# Exception: .github/ is described by .github/ABOUT.md, because GitHub would
+# show a .github/README.md on the repository page instead of the root README.
+#
 # Exception: folders under a crate's src/ that contain a single file need no
 # README.
 #
@@ -43,7 +46,9 @@ check_dir() {
             ;;
     esac
 
-    readme="${prefix}README.md"
+    readme_name=README.md
+    [ "$dir" = ".github" ] && readme_name=ABOUT.md
+    readme="${prefix}${readme_name}"
     if [ ! -f "$readme" ]; then
         echo "Missing README: ${prefix:-./}"
         failed=1
@@ -54,7 +59,7 @@ check_dir() {
     IFS='
 '
     for child in $children; do
-        [ "$child" = "README.md" ] && continue
+        [ "$child" = "$readme_name" ] && continue
         if ! grep -Fq -- "\`$child\`" "$readme"; then
             echo "Not listed in $readme: $child"
             failed=1

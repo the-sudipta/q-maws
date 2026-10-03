@@ -24,5 +24,5 @@ The installers copy `pre-commit` into the repository's hooks folder (`git rev-pa
 - **Commit messages:** the same script runs as the `commit-msg` hook; with the message file as its argument it checks only the message.
 - **Fragments:** the forbidden strings and secret markers are assembled from fragments at run time, so the scripts never contain them literally and do not block themselves.
 - **Run the self-test:** `sh scripts/test-guard.sh` (on Windows, in Git Bash). It never touches the real repository. It writes a 50 MB file in a temporary folder and takes about 20 seconds.
-- **Run the README check:** `sh scripts/check-readmes.sh`. Folders under a crate's `src/` that contain a single file need no README.
+- **Run the README check:** `sh scripts/check-readmes.sh`. Folders under a crate's `src/` that contain a single file need no README. `.github/` is described by `.github/ABOUT.md` instead, because GitHub shows `.github/README.md` in place of the root README.
 - Shell scripts use LF line endings and `.bat` files CRLF (`.gitattributes`). Paths containing a newline character are not supported by the guard.
