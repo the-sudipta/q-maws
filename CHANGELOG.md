@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [v0.9-m09-gui] - 2026-10-03
+
 ### Added
 
 - Graphical interface (`qmaws gui`, `--gui` on `run` and `resume`): the main menu as tabs, the steps of a new run, the live provisional Halo Tree with changed branches highlighted, the live worksheet, the stage log, progress, Pause and Stop; unfinished runs offered on launch. Built with `eframe`/`egui` without built-in fonts (a system font is loaded).
