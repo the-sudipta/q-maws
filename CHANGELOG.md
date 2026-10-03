@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- S1 support of every internal edge and halo values of every taxon (stage `support`), and S2 column-bootstrap support (stage `bootstrap`: 100 replicates by default with W2b inside, `--bootstrap`; decision D7).
+- Audit record in every run folder: `results.json`, `quartet_decisions.bin.zst`, 50 sample worksheets, `environment.json`, and per-stage times and summary numbers in `stages.json`.
+- `qmaws verify`: input check, quick check, full recomputation of the root, and single quartet with its worksheet.
+- Positive and negative controls in `results/controls/` (hidden command `controls`); S2 cost measurement (hidden command `s2-cost`); golden test G11 (Fish mtDNA killed 10 times and resumed).
+
+### Changed
+
+- W2c counts a resample whose three fits are stars (internal branch at the lower bound) as a three-way tie (OI-14; pre-registration Amendment 1). H3 was run again: verdict unchanged.
+- Root fingerprint format v2: independent of where the data are kept.
+
 ## [v0.7-m07-amalgamation] - 2026-10-02
 
 ### Added
