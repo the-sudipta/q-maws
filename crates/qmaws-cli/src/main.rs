@@ -609,6 +609,7 @@ fn main() -> ExitCode {
                 chunk_quartets,
                 memory_limit: None,
                 live_tree: !no_live_tree,
+                cores: None,
             };
             let result =
                 qmaws_engine::analysis::start(&run_dir, &options, "terminal", &display, &cancel);

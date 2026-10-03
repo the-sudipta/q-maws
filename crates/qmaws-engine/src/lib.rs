@@ -11,6 +11,7 @@ pub mod atomic;
 pub mod bootstrap;
 pub mod clock;
 pub mod hash;
+pub mod launch;
 pub mod matrix_pipeline;
 pub mod progress;
 pub mod provisional;

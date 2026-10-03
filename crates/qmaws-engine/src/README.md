@@ -11,6 +11,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `bootstrap.rs` | S2 bootstrap replicates (weighted counts, W2b or W2c, wQFM-rs): used by the run stage `bootstrap` and, timed, by the cost measurement of `s2-cost` |
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
+| `launch.rs` | What the terminal menu and the GUI share (plan 5.2, 5.5): run settings, a new run request, the runs on this computer with their percentage done and last interface, the unfinished run with the same data and settings, and the user configuration file (extra results folders, the resume queue) |
 | `lib.rs` | Crate root: module list and main re-exports |
 | `matrix_pipeline.rs` | From cleaned sequences to `M_full` and `M_ml`: parallel MAW extraction within a memory limit, entropy selection, matrix building, entropy table |
 | `readme.rs` | README files of a run folder and its committed subfolders, listing their items (written at the end of a run and after verification) |

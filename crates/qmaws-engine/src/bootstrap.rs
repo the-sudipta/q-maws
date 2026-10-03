@@ -180,6 +180,7 @@ mod tests {
             chunk_quartets: Some(4),
             memory_limit: Some(1 << 30),
             live_tree: false,
+            cores: None,
         };
         start(
             &run,

@@ -158,6 +158,9 @@ pub struct AnalysisOptions {
     /// Draw the live provisional tree while quartets are weighed (plan 4.7).
     /// A resumed run keeps the setting it started with.
     pub live_tree: bool,
+    /// Number of CPU cores to use; `None` uses all of them. Applies to this
+    /// session only; it does not change results.
+    pub cores: Option<usize>,
 }
 
 impl AnalysisConfig {
@@ -194,6 +197,89 @@ pub(crate) struct InputsRecord {
 struct Selection {
     entropies: Vec<EntropyRow>,
     selected: Vec<usize>,
+}
+
+/// SHA-256 of a configuration as stored in `run.json` (`config_sha256`):
+/// two runs with the same data and settings have the same value.
+pub fn config_sha256(config: &AnalysisConfig) -> String {
+    let value = serde_json::to_value(config).expect("configuration serialises");
+    sha256_hex(value.to_string().as_bytes())
+}
+
+/// Percentage of an unfinished analysis run that is done, from the files
+/// present and the throughput stored in `run.json` (for the list of
+/// unfinished runs). Only checks that files exist, so it is quick.
+pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
+    if state.is_finished() {
+        return 100.0;
+    }
+    let dir = RunDir::new(run_dir);
+    let Ok(config) = serde_json::from_value::<AnalysisConfig>(state.config.clone()) else {
+        return 0.0;
+    };
+    let m = std::fs::read(dir.audit().join("inputs.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<InputsRecord>(&b).ok())
+        .map_or(0, |i| i.taxa.len());
+    if m == 0 {
+        return 0.0;
+    }
+    let q = quartet::quartet_count(m);
+    let done = |stage: &str| {
+        state
+            .stage(stage)
+            .is_some_and(|s| s.status == StageStatus::Done)
+    };
+    let chunked = |stage: &str| -> u64 {
+        if done(stage) {
+            return q;
+        }
+        state.chunk_plans.get(stage).map_or(0, |plan| {
+            (0..plan.chunk_count())
+                .filter(|&i| dir.chunk_file(stage, i).exists())
+                .map(|i| plan.range(i).1 - plan.range(i).0)
+                .sum()
+        })
+    };
+    let mut units = vec![(MAW_EXTRACT, m as u64), (QUARTET_COUNT, q)];
+    let mut finished = vec![
+        (
+            MAW_EXTRACT,
+            if done(MAW_EXTRACT) {
+                m as u64
+            } else {
+                (0..m).filter(|&t| maw_file(&dir, t).exists()).count() as u64
+            },
+        ),
+        (QUARTET_COUNT, chunked(QUARTET_COUNT)),
+    ];
+    if config.weighting != WEIGHTING_NONE {
+        units.push((QUARTET_WEIGHT, q));
+        finished.push((QUARTET_WEIGHT, chunked(QUARTET_WEIGHT)));
+        if config.bootstrap > 0 {
+            let b = config.bootstrap as u64;
+            units.push((BOOTSTRAP, b));
+            finished.push((
+                BOOTSTRAP,
+                if done(BOOTSTRAP) {
+                    b
+                } else {
+                    (0..b).filter(|&i| replicate_file(&dir, i).exists()).count() as u64
+                },
+            ));
+        }
+    }
+    let mut estimator = Estimator::new(&units);
+    for (stage, rate) in &state.throughput {
+        if units.iter().any(|(s, _)| s == stage) {
+            estimator.set_rate(stage, *rate);
+        }
+    }
+    for (stage, n) in finished {
+        estimator.set_done(stage, n);
+    }
+    // Whole stages are short; only finished runs reach 100%.
+    (100.0 * estimator.overall_fraction()).min(99.9)
 }
 
 /// Starts a new analysis run in `run_dir`.
@@ -264,7 +350,7 @@ fn start_session(
             .unwrap_or_else(|| format!("run_{}", created.run_id_part())),
         created_utc: created.iso8601(),
         kind: KIND.to_string(),
-        config_sha256: sha256_hex(config_value.to_string().as_bytes()),
+        config_sha256: config_sha256(&options.config),
         config: config_value,
         inputs: Vec::new(),
         stages: STAGES.iter().map(|s| StageState::pending(s)).collect(),
@@ -305,6 +391,7 @@ pub(crate) fn resume(
         chunk_quartets: None,
         memory_limit: None,
         live_tree: true,
+        cores: None,
     };
     let mut s = Session::new(RunDir::new(run_dir), state, options, sink, cancel);
     s.emit(Event::Started {
@@ -331,6 +418,8 @@ struct Session<'a> {
     until_matrix: bool,
     /// Live provisional tree, while `quartet_weight` runs.
     live: Option<Live>,
+    /// Thread pool limited to `options.cores`; `None` uses the global pool.
+    pool: Option<std::sync::Arc<rayon::ThreadPool>>,
 }
 
 fn maws_dir(dir: &RunDir) -> PathBuf {
@@ -358,7 +447,16 @@ impl<'a> Session<'a> {
         cancel: &'a AtomicBool,
     ) -> Self {
         let elapsed_before = state.elapsed_seconds;
+        let pool = options.cores.map(|n| {
+            std::sync::Arc::new(
+                rayon::ThreadPoolBuilder::new()
+                    .num_threads(n.max(1))
+                    .build()
+                    .expect("thread pool"),
+            )
+        });
         Self {
+            pool,
             dir,
             state,
             options,
@@ -375,6 +473,18 @@ impl<'a> Session<'a> {
 
     fn elapsed(&self) -> f64 {
         self.elapsed_before + self.started.elapsed().as_secs_f64() - self.paused
+    }
+
+    /// Runs `f` in the session's thread pool (all cores when none is set).
+    fn pooled<R: Send>(&self, f: impl FnOnce() -> R + Send) -> R {
+        in_pool(self.pool.as_deref(), f)
+    }
+
+    /// Number of threads that parallel work uses.
+    fn threads(&self) -> usize {
+        self.pool
+            .as_ref()
+            .map_or_else(rayon::current_num_threads, |p| p.current_num_threads())
     }
 
     fn emit(&self, e: Event) {
@@ -724,9 +834,7 @@ impl<'a> Session<'a> {
         let longest = seqs.iter().flatten().map(|s| s.len()).max().unwrap_or(0);
         let total: u64 = seqs.iter().flatten().map(|s| s.len() as u64).sum();
         let per = extraction_bytes(longest).max(1);
-        let cores = std::thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1);
+        let cores = self.threads();
         let workers = ((limit.saturating_sub(total) / per) as usize).clamp(1, cores);
         self.log(&format!(
             "MAW extraction: {} taxa to do, {workers} at a time, strand filter {}.",
@@ -1113,13 +1221,16 @@ impl<'a> Session<'a> {
     ) -> Result<Option<Outcome>, EngineError> {
         let stage = spec.stage;
         let block = spec.block;
-        let run_range = |s: u64, e: u64| -> Vec<u8> { run_blocks(block, s, e, range) };
+        let pool = self.pool.clone();
+        let run_range = |s: u64, e: u64| -> Vec<u8> {
+            in_pool(pool.as_deref(), || run_blocks(block, s, e, range))
+        };
         let plan = match self.state.chunk_plans.get(stage) {
             Some(p) => *p,
             None => {
                 // Calibration: time a sample of quartets the same way chunks
                 // are processed, then fix the plan.
-                let threads = rayon::current_num_threads() as u64;
+                let threads = self.threads() as u64;
                 let sample = q.min(block * threads);
                 let t0 = Instant::now();
                 std::hint::black_box(run_range(0, sample));
@@ -1332,14 +1443,17 @@ impl<'a> Session<'a> {
                     format!("replicate {} of {b_total}", b + 1),
                 );
                 let t0 = Instant::now();
-                let r = crate::bootstrap::replicate_tree(
-                    &names,
-                    &full,
-                    &model,
-                    self.options.config.seed,
-                    b,
-                    crate::bootstrap::Inner::W2b,
-                );
+                let seed = self.options.config.seed;
+                let r = self.pooled(|| {
+                    crate::bootstrap::replicate_tree(
+                        &names,
+                        &full,
+                        &model,
+                        seed,
+                        b,
+                        crate::bootstrap::Inner::W2b,
+                    )
+                });
                 let p = replicate_file(&self.dir, b);
                 if let Some(parent) = p.parent() {
                     std::fs::create_dir_all(parent).map_err(io_err(parent))?;
@@ -1577,10 +1691,12 @@ impl<'a> Session<'a> {
         };
         let ranks = sample_ranks(self.options.config.seed, q, SAMPLE_WORKSHEETS);
         let config = &self.options.config;
-        let sheets: Vec<(String, weight::QuartetWeights)> = ranks
-            .par_iter()
-            .map(|&r| worksheet_of(config, &names, &weigher, quartet::unrank(r)))
-            .collect();
+        let sheets: Vec<(String, weight::QuartetWeights)> = self.pooled(|| {
+            ranks
+                .par_iter()
+                .map(|&r| worksheet_of(config, &names, &weigher, quartet::unrank(r)))
+                .collect()
+        });
         let mut text = format!(
             "Sample worksheets: {} quartets drawn with seed quartet_seed({}, 2^64 - 1), in rank order.\n\
              Each worksheet recomputes the quartet from M_full and is compared with the stored {source} weights.\n",
@@ -1956,6 +2072,14 @@ impl Weigher<'_> {
     }
 }
 
+/// Runs `f` in `pool`, or in the global pool when there is none.
+fn in_pool<R: Send>(pool: Option<&rayon::ThreadPool>, f: impl FnOnce() -> R + Send) -> R {
+    match pool {
+        Some(p) => p.install(f),
+        None => f(),
+    }
+}
+
 /// Records of positions `s..e`, computed in parallel blocks of `block`
 /// positions and joined in order, so the bytes do not depend on threads.
 pub(crate) fn run_blocks(
@@ -2219,6 +2343,7 @@ mod tests {
             chunk_quartets: Some(chunk),
             memory_limit: Some(1 << 30),
             live_tree: false,
+            cores: None,
         }
     }
 
@@ -2285,6 +2410,11 @@ mod tests {
         let a = finish(&tmp.path().join("a"), &options(&input, 3));
         let b = finish(&tmp.path().join("b"), &options(&input, 70));
         assert_eq!(a, b);
+        let one_core = AnalysisOptions {
+            cores: Some(1),
+            ..options(&input, 3)
+        };
+        assert_eq!(finish(&tmp.path().join("one_core"), &one_core), a);
 
         for stop_after in [0u32, 2, 5, 12] {
             let dir = tmp.path().join(format!("stopped_{stop_after}"));
@@ -2323,6 +2453,7 @@ mod tests {
         let run = tmp.path().join("live");
         let live = AnalysisOptions {
             live_tree: true,
+            cores: None,
             ..options(&input, 3)
         };
         let sink = Collect::default();
@@ -2386,6 +2517,7 @@ mod tests {
         let run = tmp.path().join("run");
         let live = AnalysisOptions {
             live_tree: true,
+            cores: None,
             ..options(&input, 3)
         };
         let cancel = AtomicBool::new(false);
@@ -2409,6 +2541,42 @@ mod tests {
         assert_eq!(numbers, (1..=state.frames.len() as u32).collect::<Vec<_>>());
         let percents: Vec<f64> = state.frames.iter().map(|f| f.percent).collect();
         assert!(percents.windows(2).all(|w| w[0] < w[1]));
+    }
+
+    #[test]
+    fn unfinished_runs_show_their_percentage_and_match_their_settings() {
+        let tmp = TempDir::new("analysis_percent");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 600, 11);
+        let root = tmp.path().join("runs");
+        let run = root.join("r1");
+        let cancel = AtomicBool::new(false);
+        let sink = StopAfter {
+            left: Cell::new(30),
+            cancel: &cancel,
+        };
+        let first = start(&run, &options(&input, 3), "terminal", &sink, &cancel).unwrap();
+        assert_eq!(first, Outcome::Stopped);
+        let summary = crate::launch::RunSummary::read(&run).unwrap();
+        assert!(!summary.finished);
+        assert!(
+            summary.percent > 0.0 && summary.percent < 100.0,
+            "{}",
+            summary.percent
+        );
+        let roots = [root.clone()];
+        let same = crate::launch::matching_unfinished(&roots, &options(&input, 3).config);
+        assert_eq!(same.len(), 1);
+        assert_eq!(same[0].dir, run);
+        let mut other = options(&input, 3).config;
+        other.seed = 8;
+        assert!(crate::launch::matching_unfinished(&roots, &other).is_empty());
+        let cancel = AtomicBool::new(false);
+        crate::runner::resume_run(&run, "gui", &NullSink, &cancel).unwrap();
+        let summary = crate::launch::RunSummary::read(&run).unwrap();
+        assert!(summary.finished && summary.percent == 100.0);
+        assert_eq!(summary.last_interface, Some(crate::launch::Interface::Gui));
+        assert!(crate::launch::unfinished(&roots).is_empty());
     }
 
     /// Asks for a pause on the first `polls` checks.

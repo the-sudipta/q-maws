@@ -285,6 +285,7 @@ fn matrix(run: &Run, w: &mut Writer, cancel: &AtomicBool) -> Result<Option<Matri
         chunk_quartets: None,
         memory_limit: None,
         live_tree: false,
+        cores: None,
     };
     let Some(full) = analysis::build_matrix_only(&tmp, &options, &NullSink, cancel)? else {
         return Ok(None);
@@ -447,6 +448,7 @@ fn full(run: &Run, root: &str, w: &mut Writer, cancel: &AtomicBool) -> Result<()
         chunk_quartets: None,
         memory_limit: None,
         live_tree: false,
+        cores: None,
     };
     let outcome = analysis::start(&tmp, &options, "terminal", &NullSink, cancel)?;
     match outcome {
@@ -622,6 +624,7 @@ mod tests {
             chunk_quartets: Some(3),
             memory_limit: Some(1 << 30),
             live_tree: false,
+            cores: None,
         };
         start(
             &run,
