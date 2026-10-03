@@ -68,9 +68,10 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
 - **Found:** ML-MAWS sorts the candidate lengths by entropy with `std::sort`, which is not stable, so equal entropies have no defined order. Exact ties of floating-point entropy sums are not expected in practice.
 - **Resolution:** Q-MAWS uses a stable sort on lengths in ascending order, so ties go to the shorter length (the specification's rule). The selection itself follows ML-MAWS: lengths with at least 5 variable columns and positive entropy; if fewer than 3, lengths with at least one variable column; the 3 with the highest entropy; if none, the single best length.
 
-## OI-11: License statements inside ML-MAWS source files (open, 2026-10-02)
+## OI-11: License statements inside ML-MAWS source files (resolved, 2026-10-03)
 
 - **Found:** `LICENSE.txt` of the ML-MAWS repository is the Apache License 2.0, while the header of `SuffixAutomaton.h` states "License: MIT" and "Authors: [Your Name]". No ML-MAWS code is copied into Q-MAWS; the behaviour is reimplemented, so the difference does not affect Q-MAWS. It is recorded for the baselines notes (M11).
+- **Resolution:** recorded neutrally in `baselines/README.md` (M11, 2026-10-03). Nothing to change in Q-MAWS.
 
 ## OI-12: Golden worksheet wording (resolved, 2026-10-02)
 
