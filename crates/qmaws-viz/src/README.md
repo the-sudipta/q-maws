@@ -8,7 +8,7 @@ Source code of the figure crate. Modules receive data and return figure text (SV
 |---|---|
 | `lib.rs` | Crate root: module list |
 | `chart.rs` | Small-multiple line charts as SVG: logarithmic x axis, reference lines, colour-blind safe colours with line styles and markers, legend |
-| `render.rs` | SVG to PNG (`resvg`) and SVG to PDF (`svg2pdf`), with the fonts installed on the computer |
+| `render.rs` | SVG to PNG (`resvg`) and SVG to PDF (`svg2pdf`), with the fonts installed on the computer; `system_font` gives the GUI an installed font |
 | `tree.rs` | Circular cladogram layout (midpoint display root, leaves equally spaced, internal angles as means), changed edges between two trees, and the basic provisional Halo Tree as SVG: branches, label ring, halo ring on a diverging colour-blind safe scale with a symbol for values below 0.6, legend, watermark |
 
 ## Relationships

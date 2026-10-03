@@ -165,6 +165,30 @@ impl NewRun {
     }
 }
 
+/// The review text of plan 5.3: taxa, quartets, folders and settings.
+pub fn review_text(run: &NewRun, taxa: usize) -> String {
+    let quartets = qmaws_core::quartet::quartet_count(taxa);
+    let mut text = format!(
+        "{taxa} taxa, {} quartets
+Data: {}
+Output folder: {}
+",
+        qmaws_data::loader::group_thousands(quartets),
+        run.input.display(),
+        run.output.display()
+    );
+    for line in run.settings.describe() {
+        text.push_str(&format!(
+            "  {line}
+"
+        ));
+    }
+    text
+}
+
+/// The time estimate line of the review step.
+pub const ESTIMATE_NOTE: &str = "Estimated time on this device: measured during a short calibration at the start of the run, then shown with the progress.";
+
 /// The default run folder: `<runs_root>/<name>_<date>_<time>`.
 pub fn default_output(runs_root: &Path, name: &str) -> PathBuf {
     new_run_dir(runs_root, &run_id(name, UtcDateTime::now()))
@@ -324,6 +348,28 @@ impl UserConfig {
         roots
     }
 
+    /// Replaces the resume queue with these run folders (stored absolute).
+    pub fn set_queue(&mut self, dirs: &[PathBuf]) {
+        self.queue = dirs.iter().map(|d| absolute_text(d)).collect();
+    }
+
+    /// The queued run folders that are still unfinished, in order.
+    pub fn queued_unfinished(&self) -> Vec<PathBuf> {
+        self.queue
+            .iter()
+            .map(PathBuf::from)
+            .filter(|d| RunSummary::read(d).is_some_and(|r| !r.finished))
+            .collect()
+    }
+
+    /// Removes a run folder from the queue. Returns true when it was there.
+    pub fn dequeue(&mut self, dir: &Path) -> bool {
+        let text = absolute_text(dir);
+        let before = self.queue.len();
+        self.queue.retain(|q| *q != text);
+        self.queue.len() != before
+    }
+
     /// Remembers the results folder that holds `run_dir`, unless it is the
     /// default one. Returns true when something changed.
     pub fn remember_run(&mut self, run_dir: &Path) -> bool {
@@ -343,10 +389,45 @@ impl UserConfig {
     }
 }
 
+fn absolute_text(p: &Path) -> String {
+    std::path::absolute(p)
+        .unwrap_or_else(|_| p.to_path_buf())
+        .display()
+        .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::testutil::TempDir;
+
+    #[test]
+    fn the_queue_keeps_unfinished_runs_and_removes_finished_ones() {
+        let tmp = TempDir::new("launch_queue");
+        let root = tmp.path().to_path_buf();
+        let cancel = std::sync::atomic::AtomicBool::new(false);
+        let options = crate::ToyOptions {
+            seed: 1,
+            blocks: 4,
+            chunk_seconds: 1.0,
+            chunk_blocks: Some(1),
+        };
+        crate::start_toy_run(
+            &root.join("done"),
+            &options,
+            "terminal",
+            &crate::NullSink,
+            &cancel,
+        )
+        .unwrap();
+        let mut c = UserConfig::default();
+        c.set_queue(&[root.join("done"), root.join("missing")]);
+        assert!(c.queue.iter().all(|q| Path::new(q).is_absolute()));
+        assert!(c.queued_unfinished().is_empty());
+        assert!(c.dequeue(&root.join("done")));
+        assert!(!c.dequeue(&root.join("done")));
+        assert_eq!(c.queue.len(), 1);
+    }
 
     #[test]
     fn interface_names_round_trip() {

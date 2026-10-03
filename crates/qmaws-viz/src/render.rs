@@ -15,6 +15,25 @@ fn fonts() -> Arc<resvg::usvg::fontdb::Database> {
         .clone()
 }
 
+/// The data of an installed sans-serif (or monospace) font and the index
+/// of the face in it (for font collections), for the GUI's text.
+pub fn system_font(monospace: bool) -> Option<(Vec<u8>, u32)> {
+    use resvg::usvg::fontdb::{Family, Query};
+    let db = fonts();
+    let family = if monospace {
+        Family::Monospace
+    } else {
+        Family::SansSerif
+    };
+    let id = db
+        .query(&Query {
+            families: &[family],
+            ..Default::default()
+        })
+        .or_else(|| db.faces().next().map(|f| f.id))?;
+    db.with_face_data(id, |data, index| (data.to_vec(), index))
+}
+
 fn parse(svg: &str) -> Result<resvg::usvg::Tree, String> {
     let options = resvg::usvg::Options {
         fontdb: fonts(),
@@ -71,6 +90,15 @@ mod tests {
     fn pdf_is_a_pdf_file() {
         let bytes = pdf(SVG).unwrap();
         assert!(bytes.starts_with(b"%PDF-"));
+    }
+
+    #[test]
+    fn a_system_font_is_found_when_fonts_are_installed() {
+        // Build machines without fonts return None; the PNG test above
+        // already needs installed fonts for its text.
+        if let Some((data, _)) = system_font(false) {
+            assert!(data.len() > 1000);
+        }
     }
 
     #[test]

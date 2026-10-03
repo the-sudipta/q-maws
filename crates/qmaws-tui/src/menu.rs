@@ -270,7 +270,7 @@ fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
         for (run, s) in runs.iter().zip(&sources) {
             p.say(&review_text(run, s.taxa));
         }
-        p.say("Estimated time on this device: measured during a short calibration at the start of the run, then shown with the progress.");
+        p.say(launch::ESTIMATE_NOTE);
         if !p.confirm("Start now?", true)? {
             continue;
         }
@@ -279,20 +279,7 @@ fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
     }
 }
 
-/// The review text of plan 5.3: taxa, quartets, folders and settings.
-pub fn review_text(run: &NewRun, taxa: usize) -> String {
-    let quartets = qmaws_core::quartet::quartet_count(taxa);
-    let mut text = format!(
-        "{taxa} taxa, {} quartets\nData: {}\nOutput folder: {}\n",
-        loader::group_thousands(quartets),
-        run.input.display(),
-        run.output.display()
-    );
-    for line in run.settings.describe() {
-        text.push_str(&format!("  {line}\n"));
-    }
-    text
-}
+pub use launch::review_text;
 
 fn own_folder(p: &mut dyn Prompter) -> Option<Source> {
     loop {
