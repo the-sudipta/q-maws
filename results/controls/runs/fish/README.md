@@ -7,7 +7,7 @@ One analysis run of Q-MAWS: its configuration, log, verification record, trees a
 | Item | Description |
 |---|---|
 | `audit/` | Verification record |
-| `report/` | Tree, matrix export, support and halo tables, verification reports |
+| `report/` | Tree, matrix export, support, bootstrap and halo tables, verification reports |
 | `run.json` | Configuration, input fingerprints, stage states, chunk plans, throughput, working time |
 | `run.json.sha256` | SHA-256 of `run.json`, written after it (validity check) |
 | `run.log` | Chronological log in English, UTC timestamps |

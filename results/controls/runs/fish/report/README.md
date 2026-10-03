@@ -6,6 +6,8 @@ Tables and reports of the run.
 ## Contents
 | Item | Description |
 |---|---|
+| `bootstrap.tsv` | S2 of every internal edge: fraction and number of bootstrap replicates containing its split, clade |
+| `bootstrap.tsv.sha256` | SHA-256 of `bootstrap.tsv`, written after it (validity check) |
 | `halo.tsv` | Halo value of every taxon with its weights |
 | `halo.tsv.sha256` | SHA-256 of `halo.tsv`, written after it (validity check) |
 | `m_ml.phy` | M_ml in PHYLIP format |
@@ -14,12 +16,12 @@ Tables and reports of the run.
 | `support.tsv.sha256` | SHA-256 of `support.tsv`, written after it (validity check) |
 | `tree.nwk` | The tree of wQFM-rs (Newick, unrooted) |
 | `tree.nwk.sha256` | SHA-256 of `tree.nwk`, written after it (validity check) |
-| `verify_2026-10-02_193241.txt` | Report of `qmaws verify`: every comparison and the verdict |
-| `verify_2026-10-02_193241.txt.sha256` | SHA-256 of `verify_2026-10-02_193241.txt`, written after it (validity check) |
-| `verify_2026-10-02_193322.txt` | Report of `qmaws verify`: every comparison and the verdict |
-| `verify_2026-10-02_193322.txt.sha256` | SHA-256 of `verify_2026-10-02_193322.txt`, written after it (validity check) |
-| `verify_2026-10-02_193338.txt` | Report of `qmaws verify`: every comparison and the verdict |
-| `verify_2026-10-02_193338.txt.sha256` | SHA-256 of `verify_2026-10-02_193338.txt`, written after it (validity check) |
+| `verify_2026-10-03_030204.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-03_030204.txt.sha256` | SHA-256 of `verify_2026-10-03_030204.txt`, written after it (validity check) |
+| `verify_2026-10-03_030250.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-03_030250.txt.sha256` | SHA-256 of `verify_2026-10-03_030250.txt`, written after it (validity check) |
+| `verify_2026-10-03_030433.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-03_030433.txt.sha256` | SHA-256 of `verify_2026-10-03_030433.txt`, written after it (validity check) |
 
 ## Relationships
 Written by `crates/qmaws-engine` (analysis run and `qmaws verify`).
