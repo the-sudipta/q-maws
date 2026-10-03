@@ -46,6 +46,13 @@ External tools, services and repositories used during development or by the prog
 - **Used for:** the accession lists of the NCBI datasets (Supplementary Tables S1 to S5). Article and supplement are open access under CC BY 4.0 (license stated in the article page metadata).
 - **Read:** the article text (dataset descriptions; influenza A data are segment 6, neuraminidase) and the supplementary PDF (1,808,034 bytes, SHA-256 `d4c5b48e...945b`), converted with `pdftotext -raw` (Xpdf 4.06, installed in the MSYS2 UCRT64 environment on the development laptop). Details: `data/manifests/accessions/README.md`.
 
+### Open Tree of Life web API v3 (https://api.opentreeoflife.org/v3)
+
+- **Used for:** taxonomic groups of the Halo Tree's group bands, on request (`qmaws figures --otl`; plan 4.8.1, 6.7). Not used for reference trees yet.
+- **Documentation read on 2026-10-03:** the TNRS API v3 and Taxonomy API v3 pages of the OpenTreeOfLife/germinator wiki on GitHub. `POST /v3/tnrs/match_names` takes `{"names": [...], "do_approximate_matching": false}` and answers `results[i].name` with `results[i].matches[j].taxon.ott_id`, `.name`, `.rank`, `.unique_name`, plus a `taxonomy` object with `version`. `POST /v3/taxonomy/taxon_info` takes `{"ott_id": n, "include_lineage": true}` and answers `lineage`, the higher taxa from the least inclusive, each with `rank` and `name`. `POST /v3/taxonomy/about` gives the taxonomy version.
+- **Verified by live calls on 2026-10-03:** taxonomy `ott3.7draft3`, version `3.7`. `Astronotus ocellatus` matched OTT 952936, whose lineage reads genus Astronotus, family Cichlidae, order Cichliformes, and so on. `Oreochromis sp-KM2006` had no match. For the 25 Fish mtDNA species names of the AFproject name table, 23 matched once, 1 had no match and 1 more than one; the family rank gave 5 groups.
+- **Rules applied:** names are searched with underscores read as spaces and nothing else changed (strain suffixes are kept); no approximate matching; a name with several matches gets no group. The queries are recorded in the run's `audit/otl_taxonomy.json`.
+
 ### GitHub raw file service
 
 - `https://raw.githubusercontent.com/<owner>/<repository>/<commit>/<path>` serves a file at a fixed commit. Verified on 2026-10-02 by downloading the five ML-MAWS data files and comparing their SHA-256 with `git show <commit>:<path>` in the clone: all identical.

@@ -2,7 +2,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: early development (milestone M9, GUI).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, and can be verified; the final figures, the benchmark comparison and the releases come in later milestones. This README is a draft and is completed as features are added.
+> **Status: early development (milestone M10, figures).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, can be verified, and ends with its figures; the benchmark comparison and the releases come in later milestones. This README is a draft and is completed as features are added.
 
 License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
 
@@ -48,7 +48,11 @@ cargo build --release
 
 ## Direct commands
 
-Available in this build: `qmaws menu`, `qmaws gui`, `qmaws run` (from sequences to the tree with S1 and S2 support and halo values; `--gui` or `--terminal`), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
+Available in this build: `qmaws menu`, `qmaws gui`, `qmaws figures`, `qmaws run` (from sequences to the tree with S1 and S2 support and halo values; `--gui` or `--terminal`), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
+
+## Figures
+
+Every finished run gets its figures in `figures/`: the Quartet Halo Tree (support-coloured branches, the halo ring that shows how well each taxon agrees with the tree, group bands), a rectangular tree, a tanglegram against the reference tree when there is one (with nRF, nQD and MSD), an interactive HTML tree that works offline, an animation of the live provisional trees and a convergence chart. Formats: SVG, PDF and PNG at 300 dots per inch. `qmaws figures --output "<run folder>"` draws them again, optionally with a group file or the Open Tree of Life taxonomy for the group bands. Details: `docs/USER_GUIDE.md`.
 
 ## Benchmark datasets
 

@@ -111,3 +111,24 @@ Problems, ambiguities and discrepancies found during development. Each entry sta
   On shuffled sequences, which share no history, W2c as implemented gives a mean S1 of 0.649; with either tie rule every quartet becomes a tie and S1 is 1/3, the value for no signal. On the simulated tree-like data, most quartets also have star fits (1,159 of 1,820), yet the tiny differences recover the tree better (nRF 0.154 against 0.308). So the two-state model fitted to MAW columns puts the internal branch at zero for most quartets, and the remaining signal sits in differences of about 10⁻⁵; W2c as implemented uses that signal but overstates its certainty.
 - **Resolution:** the owner chose (b) on 2026-10-03. Implemented in `weight::resample_winners` (milestone M8): a W2c resample whose three fits all have the internal branch at the lower bound is a three-way tie. The example quartet above now gets W2c 1/3 each. H3 (M6) was run again: W1 and W2 are unchanged, so the verdict stands; only the supplementary W2c column of `results/h3/` changed. The IQ-TREE cross-check compares log-likelihoods, which this rule does not change; it runs again on GitHub Actions because `weight.rs` changed. The pre-registration records the change in a dated amendment.
 - **Controls with the rule (2026-10-03, seed 1, committed in `results/controls/`):** shuffled Fish mtDNA nRF 0.909, mean S1 0.333 (every edge), mean S2 0.001; Fish mtDNA nRF 0.455, mean S1 0.577; simulated nRF 0.308, mean S1 0.655. These equal the exploratory measurements of the rule above. The negative control now shows low support; the cost is a worse recovery of the simulated tree (nRF 0.308 against 0.154).
+
+## OI-15: Normalisation of the matching split distance (open, 2026-10-03)
+
+- **Specification:** MSD (Bogdanowicz and Giaro, 2012) with the Hungarian algorithm; "confirm ML-MAWS's normalisation in its scripts and match it".
+- **Found:** the ML-MAWS repository (commit `0c38db1`) computes nRF with DendroPy in `run_baselines.sh` and calls an `evaluate.py` for nRF and nQD from `run_all_benchmarks.sh`, but `evaluate.py` is not in the repository, and no script computes MSD. There is no ML-MAWS normalisation to match.
+- **Implemented now (M10, for the tanglegram header):** the raw MSD, the minimum total cost of matching the splits of the two trees, with a split `A|B` against `C|D` costing `min(|A Δ C|, |A Δ D|)` and trivial splits padding the smaller set; labelled "not normalised".
+- **Options:** (a) keep the raw MSD (the definition of the paper) and report the number of taxa beside it; (b) divide by the largest possible value for the number of taxa, if a closed form from the paper is used and cited; (c) divide by the number of splits matched. To be decided before M11, where the metrics enter the comparison tables. **Owner decision needed.**
+
+## OI-16: Which taxa the tanglegram marks (open, 2026-10-03)
+
+- **Specification (4.8.2):** "lines for taxa whose position disagrees (taxa involved in splits present in only one tree) are drawn in a contrasting colour".
+- **Found:** read literally (every taxon on the smaller side of a split that only one tree has), the rule marked all 25 taxa of the Fish mtDNA tanglegram, because 20 of its 44 splits differ and their sides cover every taxon. The marking then carries no information.
+- **Implemented now (M10):** a taxon is marked when its closest relatives differ, that is when the smallest clade around it (the smallest side of a split that contains it) is not the same in the two trees. On Fish mtDNA this marks 10 of 25 taxa, and the two taxa of the Alepocephalidae pair, sisters in both trees, stay grey. The legend states the rule.
+- **Options:** (a) keep this rule; (b) the literal rule; (c) mark the taxa of the smallest differing split only. **Owner decision needed.**
+
+## OI-17: When the Open Tree of Life is asked for group bands (open, 2026-10-03)
+
+- **Specification (4.8.1, 6.7):** group bands from, in priority, a user group file, the Open Tree of Life taxonomy when names match, and automatic clades.
+- **Found:** asking the Open Tree of Life sends the taxon names over the internet after every run, also for runs of the user's own data, and it needs a network connection. For accession names (most benchmark datasets) nothing matches.
+- **Implemented now (M10):** the Open Tree of Life is asked only on request (`qmaws figures --otl`); benchmark datasets with a name table (Fish mtDNA, E. coli/Shigella HGT, Yersinia HGT) are searched by their published names. Without a group file or `--otl`, the bands are automatic clades. Every query is recorded in `audit/otl_taxonomy.json` (API, taxonomy version, date, names, SHA-256 of every answer).
+- **Options:** (a) keep it on request; (b) ask automatically after every run when a network is available, with a setting to turn it off; (c) ask in the menu's settings step, default off. **Owner decision needed.**

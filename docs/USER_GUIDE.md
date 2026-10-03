@@ -12,6 +12,7 @@ How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; 
 | `qmaws --version` | Prints the version |
 | `qmaws run --dataset <id> | --input "<folder>" [--output "<run folder>"] [--no-strand] [--lengths a,b,c] [--seed S] [--weighting w2-sym|w2-emp|none] [--replicates B] [--bootstrap B]` | Analyses the data as a resumable run: input check, MAW extraction, length selection, matrices, the pattern counts of every quartet, the quartet weights, the tree (wQFM-rs), S1 support and halo values, and S2 bootstrap support. `--weighting`: the two-state symmetric model (default), the model with the frequencies of 0 and 1 of the full matrix, or no weighting. `--replicates`: resamples per quartet for W2c (default 100; 0 skips W2c). `--bootstrap`: S2 column-bootstrap replicates with W2b weights inside (default 100; 0 skips S2). `--seed` sets the quartet order and the resamples. `--no-live-tree` turns off the live provisional tree. `--gui` shows the run in the window, `--terminal` (the default) in the terminal. Stop with Ctrl+C and continue with `qmaws resume` |
 | `qmaws verify --output "<run folder>" [--quick \| --full \| --quartet A,B,C,D \| --inputs] [--seed N] [--input "<folder>"]` | Checks a finished run against its `audit/` record: the input check, then the quick check (20 chunks of each chunked stage and 3 bootstrap replicates, drawn with a printed seed), the full recomputation of the root, or one quartet with its worksheet. Writes `report/verify_<time>.txt`; exit status 1 if anything differs. `--input` gives the data's new place if they were moved |
+| `qmaws figures --output "<run folder>" [--reference "<tree.nwk>"] [--groups "<groups.tsv>"] [--otl] [--s2]` | Draws the figures of a finished run again (they are drawn after every run). `--reference` gives a tree for the tanglegram (a benchmark dataset's reference tree is found by itself); `--groups` a group file for the group bands; `--otl` takes the groups from the Open Tree of Life taxonomy (needs the internet); `--s2` colours the branches by S2 instead of S1 |
 | `qmaws teach --example` or `qmaws teach --input "<folder>" [--reference "<tree.nwk>"]` | Prints the hand-calculable teaching worksheet (see `docs/TEACHING.md`) |
 | `qmaws simulate-h3 [--output "<folder>"] [--seed S] [--replicates R] [--w2c-replicates B]` | Runs the long-branch simulation of hypothesis H3 (default: into `results/h3`, seed 1, 200 replicates per setting, 100 W2c resamples) and writes `recovery.csv`, `replicates.csv`, `recovery.svg` and `evaluation.txt`; about one minute |
 | `qmaws toy-run [--output "<folder>"] [--blocks N] [--seed S] [--chunk-seconds T]` | Runs a toy computation that exercises checkpoints, resume and the progress display (development command) |
@@ -57,6 +58,24 @@ The theme follows the system; the buttons at the top right choose light or dark,
 
 While the quartets are weighed, Q-MAWS draws a provisional tree from the quartets finished so far: every 5% of the quartets or every 3 minutes, whichever comes first. If drawing takes more than 10% of the time between two updates, both intervals are doubled (shown in the log). The latest tree is in `figures/live/halo_tree_latest.svg`, `.png` and `.pdf`, marked `PROVISIONAL — <x>% of quartets`; small frames are kept in `work/provisional/frames/`. At the end, `report/convergence.csv` lists the nRF of each provisional tree to the final tree. The provisional trees do not change the results; turn them off with `--no-live-tree` or in the settings.
 
+## Figures
+
+When an analysis run finishes, Q-MAWS draws its figures into the run's `figures/` folder:
+
+| File | Figure |
+|---|---|
+| `halo_tree.svg`, `.pdf`, `.png` | The Quartet Halo Tree: the tree in a circle, branches coloured and widened by S1 support, the halo ring (one segment per taxon, orange for low and purple for high halo values, a dot below 0.6), group bands with their names, and a title block with the settings |
+| `rectangular_tree.svg`, `.pdf`, `.png` | The same tree drawn rectangular, with S1/S2 at every node, a halo square and the group beside each name |
+| `tanglegram.svg`, `.pdf`, `.png` | The tree beside the reference tree, lines joining the same taxa; dashed vermillion lines mark taxa whose closest relatives differ. The header gives nRF, nQD and MSD (also in `report/reference_comparison.tsv`). Only when a reference tree is known |
+| `interactive_tree.html` | Opens in any web browser, also without internet: zoom with the wheel or buttons, drag to pan, find a taxon, hover for values, switch between the circular and the rectangular layout and between S1 and S2 colours |
+| `halo_tree_growth.gif` | Animation of the live provisional trees, ending with the final tree |
+| `convergence.svg`, `.pdf`, `.png` | How far each provisional tree was from the final tree (nRF) by the percentage of quartets finished |
+| `groups.tsv` | The group of every taxon in the bands, with their source |
+
+PNG files have 300 dots per inch. The colours were chosen to stay distinguishable with the common forms of colour blindness (checked by a simulation in the tests), and width, labels and symbols repeat what the colours show.
+
+**Groups.** Put a file `groups.tsv` in the folder with your sequences (or give one with `qmaws figures --groups`): one line per taxon, the taxon name, a tab, and the group name; a first line `taxon<TAB>group` and lines starting with `#` are skipped. Without a group file, the bands show clades cut from the tree (named Clade A, Clade B, ...). With `qmaws figures --otl`, the groups come from the Open Tree of Life taxonomy (family, order or another rank that gives 2 to 7 groups); this sends the taxon names to the Open Tree of Life and needs the internet, and the query is recorded in `audit/otl_taxonomy.json`.
+
 ## Stopping and resuming
 
 In the window, Pause holds the run after the current step (paused time is not counted) and Stop ends it after the current step. In the terminal, press Ctrl+C once to stop after the current step; the run is saved and can be resumed. Press Ctrl+C a second time to exit at once; this is also safe, because every file is written in a way that survives interruption. Closing the terminal or a power cut is equally safe. To continue, run `qmaws resume --output "<run folder>"`; the progress so far is checked and kept. A run can be continued in either interface, whichever it was started in (`--gui` or `--terminal`); the result is the same.
@@ -74,7 +93,9 @@ Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unl
 | `trees/tree_s2.nwk`, `report/bootstrap.tsv`, `trees/bootstrap_trees.nwk` | S2 bootstrap support and the replicate trees |
 | `report/halo.tsv` | Halo value of every taxon |
 | `report/m_ml.phy` | The ML-MAWS-style matrix in PHYLIP format |
+| `figures/` | The figures (see "Figures") |
 | `figures/live/` | The latest provisional Halo Tree (SVG, PNG, PDF), unless the live tree was turned off |
+| `report/reference_comparison.tsv` | nRF, nQD and MSD against the reference tree, when one is known |
 | `report/convergence.csv` | nRF of each provisional tree to the final tree |
 | `audit/` | The verification record (see `qmaws verify`) |
 | `run.json`, `run.log` | Settings, stage states and the log |
