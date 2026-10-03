@@ -387,7 +387,7 @@ pub fn render(
                 let mut right = TreeLayout::from_tree(&reference.tree);
                 let crossings = qmaws_viz::rect::untangle(&mut left, &mut right);
                 let header = format!(
-                    "nRF {:.3} ({} of {} splits differ); nQD {:.3} ({} of {} quartets differ{}); MSD {} (not normalised)",
+                    "nRF {:.3} ({} of {} splits differ); nQD {:.3} ({} of {} quartets differ{}); MSD {} (raw, {m} taxa)",
                     c.nrf,
                     c.rf,
                     2 * m.saturating_sub(3),
@@ -418,7 +418,7 @@ pub fn render(
                 );
                 write_formats(&figures, "tanglegram", &svg, &mut out)?;
                 let tsv = format!(
-                    "metric\tvalue\tdetail\nnRF\t{:.6}\t{} of {} splits differ\nnQD\t{:.6}\t{} of {} quartets differ; {} unresolved in the reference left out\nMSD\t{}\tnot normalised\nreference\t{}\t\ncrossings\t{crossings}\tconnector crossings left in the tanglegram\n",
+                    "metric\tvalue\tdetail\nnRF\t{:.6}\t{} of {} splits differ\nnQD\t{:.6}\t{} of {} quartets differ; {} unresolved in the reference left out\nMSD\t{}\traw matching split distance for {m} taxa (not normalised)\nreference\t{}\t\ncrossings\t{crossings}\tconnector crossings left in the tanglegram\n",
                     c.nrf,
                     c.rf,
                     2 * m.saturating_sub(3),

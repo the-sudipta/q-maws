@@ -66,7 +66,7 @@ When an analysis run finishes, Q-MAWS draws its figures into the run's `figures/
 |---|---|
 | `halo_tree.svg`, `.pdf`, `.png` | The Quartet Halo Tree: the tree in a circle, branches coloured and widened by S1 support, the halo ring (one segment per taxon, orange for low and purple for high halo values, a dot below 0.6), group bands with their names, and a title block with the settings |
 | `rectangular_tree.svg`, `.pdf`, `.png` | The same tree drawn rectangular, with S1/S2 at every node, a halo square and the group beside each name |
-| `tanglegram.svg`, `.pdf`, `.png` | The tree beside the reference tree, lines joining the same taxa; dashed vermillion lines mark taxa whose closest relatives differ. The header gives nRF, nQD and MSD (also in `report/reference_comparison.tsv`). Only when a reference tree is known |
+| `tanglegram.svg`, `.pdf`, `.png` | The tree beside the reference tree, lines joining the same taxa; dashed vermillion lines mark taxa whose closest relatives differ. The header gives nRF, nQD and MSD (the raw matching split distance, with the number of taxa beside it); the same numbers are in `report/reference_comparison.tsv`. Only when a reference tree is known |
 | `interactive_tree.html` | Opens in any web browser, also without internet: zoom with the wheel or buttons, drag to pan, find a taxon, hover for values, switch between the circular and the rectangular layout and between S1 and S2 colours |
 | `halo_tree_growth.gif` | Animation of the live provisional trees, ending with the final tree |
 | `convergence.svg`, `.pdf`, `.png` | How far each provisional tree was from the final tree (nRF) by the percentage of quartets finished |
