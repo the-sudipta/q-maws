@@ -25,7 +25,8 @@ use crate::atomic;
 use crate::clock::UtcDateTime;
 use crate::hash::{sha256_hex, StreamHasher};
 use crate::matrix_pipeline::{extraction_bytes, measured_memory_limit, EntropyRow};
-use crate::progress::{Estimator, Event, ProgressSink, Snapshot};
+use crate::progress::{Estimator, Event, LiveQuartet, ProgressSink, ProvisionalTree, Snapshot};
+use crate::provisional::{self, Live};
 use crate::rundir::RunDir;
 use crate::runner::{io_err, verify_inputs, EngineError, Outcome};
 use crate::state::{
@@ -154,6 +155,9 @@ pub struct AnalysisOptions {
     pub chunk_quartets: Option<u64>,
     /// Memory limit in bytes; `None` measures 70% of the available memory.
     pub memory_limit: Option<u64>,
+    /// Draw the live provisional tree while quartets are weighed (plan 4.7).
+    /// A resumed run keeps the setting it started with.
+    pub live_tree: bool,
 }
 
 impl AnalysisConfig {
@@ -300,6 +304,7 @@ pub(crate) fn resume(
         chunk_seconds: 3.0,
         chunk_quartets: None,
         memory_limit: None,
+        live_tree: true,
     };
     let mut s = Session::new(RunDir::new(run_dir), state, options, sink, cancel);
     s.emit(Event::Started {
@@ -319,9 +324,13 @@ struct Session<'a> {
     cancel: &'a AtomicBool,
     started: Instant,
     elapsed_before: f64,
+    /// Seconds paused in this session, not counted as working time.
+    paused: f64,
     estimator: Estimator,
     /// Stop after `matrix_build` (verification).
     until_matrix: bool,
+    /// Live provisional tree, while `quartet_weight` runs.
+    live: Option<Live>,
 }
 
 fn maws_dir(dir: &RunDir) -> PathBuf {
@@ -357,13 +366,15 @@ impl<'a> Session<'a> {
             cancel,
             started: Instant::now(),
             elapsed_before,
+            paused: 0.0,
             estimator: Estimator::new(&[]),
             until_matrix: false,
+            live: None,
         }
     }
 
     fn elapsed(&self) -> f64 {
-        self.elapsed_before + self.started.elapsed().as_secs_f64()
+        self.elapsed_before + self.started.elapsed().as_secs_f64() - self.paused
     }
 
     fn emit(&self, e: Event) {
@@ -464,6 +475,20 @@ impl<'a> Session<'a> {
         self.cancel.load(Ordering::SeqCst)
     }
 
+    /// Called between units of work: waits while the interface asks for a
+    /// pause, then returns true when the run must stop.
+    fn should_stop(&mut self) -> Result<bool, EngineError> {
+        if self.sink.pause_requested() && !self.cancelled() {
+            self.save()?;
+            self.log("Paused.")?;
+            self.paused += crate::progress::wait_while_paused(self.sink, self.cancel);
+            if !self.cancelled() {
+                self.log("Continuing.")?;
+            }
+        }
+        Ok(self.cancelled())
+    }
+
     fn outputs_valid(&self, stage: &str) -> bool {
         self.state.stage(stage).is_some_and(|s| {
             s.outputs.iter().all(|(rel, hash)| {
@@ -544,7 +569,7 @@ impl<'a> Session<'a> {
         if let Some(outcome) = self.maw_extract(&inputs)? {
             return Ok(outcome);
         }
-        if self.cancelled() {
+        if self.should_stop()? {
             return self.stop();
         }
         if self.status(LENGTH_SELECT) != StageStatus::Done {
@@ -567,6 +592,7 @@ impl<'a> Session<'a> {
         }
         if self.status(AMALGAMATE) != StageStatus::Done {
             self.amalgamate(m)?;
+            self.write_convergence()?;
         }
         if self.status(SUPPORT) != StageStatus::Done {
             self.support(m)?;
@@ -713,7 +739,7 @@ impl<'a> Session<'a> {
             .expect("thread pool");
         let mut done = (m - pending.len()) as u64;
         for batch in pending.chunks(workers) {
-            if self.cancelled() {
+            if self.should_stop()? {
                 return self.stop().map(Some);
             }
             let jobs: Vec<(usize, Vec<u8>)> = batch
@@ -873,6 +899,7 @@ impl<'a> Session<'a> {
             },
             q,
             &count_range,
+            None,
         )
     }
 
@@ -897,7 +924,9 @@ impl<'a> Session<'a> {
             replicates: self.options.config.replicates,
         };
         let weigh_range = |s: u64, e: u64| -> Vec<u8> { weigher.positions(s, e) };
-        self.run_chunks(
+        let counts = |quad: [usize; 4]| weigher.counts(quad);
+        self.live = Some(Live::open(&self.dir, self.options.live_tree));
+        let outcome = self.run_chunks(
             ChunkedStage {
                 stage: QUARTET_WEIGHT,
                 label: "Quartet weighting",
@@ -910,7 +939,164 @@ impl<'a> Session<'a> {
             },
             q,
             &weigh_range,
-        )
+            Some(&counts),
+        );
+        self.live = None;
+        outcome
+    }
+
+    /// Sends the last quartet of a weighed chunk to the interface.
+    fn live_quartet(
+        &self,
+        chunk: &[u8],
+        counts: &dyn Fn([usize; 4]) -> quartet::PatternCounts,
+        done: u64,
+        q: u64,
+    ) -> Result<(), EngineError> {
+        let records =
+            store::weight_records(chunk).map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let Some(r) = records.last() else {
+            return Ok(());
+        };
+        let quad = quartet::unrank(r.rank);
+        let c = counts(quad);
+        let names = self.names()?;
+        self.emit(Event::Quartet(Box::new(LiveQuartet {
+            taxa: quad.map(|i| names[i].clone()),
+            counts: c,
+            w1: weight::w1(&c),
+            log_likelihoods: r.fitted().then_some(r.log_likelihoods),
+            weights: r.tree_weights(),
+            weights_name: if r.resampled() { "w2c" } else { "w2b" }.to_string(),
+            quartets_done: done,
+            quartets_total: q,
+        })));
+        Ok(())
+    }
+
+    /// Weights of the quartets whose chunk is finished, by rank.
+    fn finished_weights(&self) -> Result<Vec<(u64, [f64; 3])>, EngineError> {
+        let plan = self.state.chunk_plans[QUARTET_WEIGHT];
+        let mut out = Vec::new();
+        for i in 0..plan.chunk_count() {
+            let Some(bytes) = atomic::read_verified(&self.dir.chunk_file(QUARTET_WEIGHT, i)) else {
+                continue;
+            };
+            for r in
+                store::weight_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?
+            {
+                if let Some(w) = r.tree_weights() {
+                    out.push((r.rank, w));
+                }
+            }
+        }
+        out.sort_unstable_by_key(|&(rank, _)| rank);
+        Ok(out)
+    }
+
+    /// A provisional tree from the finished quartets, when one is due.
+    fn provisional_update(&mut self, done: u64, q: u64) -> Result<(), EngineError> {
+        if !self.live.as_ref().is_some_and(|l| l.due(done, q)) {
+            return Ok(());
+        }
+        let started = Instant::now();
+        let weights = self.finished_weights()?;
+        if weights.is_empty() {
+            return Ok(());
+        }
+        let names = self.names()?;
+        let quartets: Vec<amalgamate::Quartet> = weights
+            .iter()
+            .flat_map(|&(rank, w)| amalgamate::quartets_of(quartet::unrank(rank), w))
+            .collect();
+        let result = amalgamate::wqfm(&names, &quartets, &amalgamate::Settings::default());
+        drop(quartets);
+        let mut acc =
+            support::Accumulator::new(&names, &result.newick).map_err(EngineError::Invalid)?;
+        for &(rank, w) in &weights {
+            acc.add(quartet::unrank(rank), w);
+        }
+        let halo: Vec<(String, Option<f64>)> = acc
+            .finish()
+            .halo
+            .into_iter()
+            .map(|h| (h.taxon, h.value))
+            .collect();
+        let percent = 100.0 * done as f64 / q as f64;
+        let frame = self
+            .live
+            .as_ref()
+            .map_or(0, |l| l.state.frames.len() as u32)
+            + 1;
+        let layout = qmaws_viz::tree::TreeLayout::from_newick(&result.newick)
+            .map_err(EngineError::Invalid)?;
+        let style = qmaws_viz::tree::HaloTreeStyle {
+            title: vec![
+                format!("Provisional Halo Tree: {}", self.state.run_id),
+                format!(
+                    "{} taxa, {done} of {q} quartets ({percent:.0}%), update {frame}",
+                    names.len()
+                ),
+            ],
+            watermark: Some(format!("PROVISIONAL \u{2014} {percent:.0}% of quartets")),
+            size: 800.0,
+        };
+        let svg = qmaws_viz::tree::halo_tree_svg(&layout, &halo.iter().cloned().collect(), &style);
+        let render = |r: Result<Vec<u8>, String>| r.map_err(EngineError::Invalid);
+        let png = render(qmaws_viz::render::png(&svg, provisional::LATEST_WIDTH))?;
+        let pdf = render(qmaws_viz::render::pdf(&svg))?;
+        let small = render(qmaws_viz::render::png(&svg, provisional::FRAME_WIDTH))?;
+        for (path, bytes) in [
+            (provisional::latest_file(&self.dir, "svg"), svg.as_bytes()),
+            (provisional::latest_file(&self.dir, "png"), &png[..]),
+            (provisional::latest_file(&self.dir, "pdf"), &pdf[..]),
+            (provisional::frame_file(&self.dir, frame), &small[..]),
+        ] {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent).map_err(io_err(parent))?;
+            }
+            atomic::write_atomic(&path, bytes).map_err(io_err(&path))?;
+        }
+        let seconds = started.elapsed().as_secs_f64();
+        let live = self.live.as_mut().expect("live tree");
+        let note = live.record(provisional::Frame {
+            frame,
+            percent,
+            quartets: done,
+            newick: result.newick.clone(),
+            seconds,
+        });
+        live.save(&self.dir)?;
+        self.log(&format!(
+            "Provisional tree {frame}: {percent:.0}% of quartets, in {seconds:.2} s."
+        ))?;
+        if let Some(line) = note {
+            self.log(&line)?;
+        }
+        self.emit(Event::Provisional(ProvisionalTree {
+            frame,
+            percent,
+            newick: result.newick,
+            halo,
+            svg: provisional::latest_file(&self.dir, "svg")
+                .display()
+                .to_string(),
+        }));
+        Ok(())
+    }
+
+    /// `report/convergence.csv` from the saved provisional trees, if any.
+    fn write_convergence(&self) -> Result<(), EngineError> {
+        let Some(state) = provisional::load(&self.dir) else {
+            return Ok(());
+        };
+        if state.frames.is_empty() || !self.weighted() {
+            return Ok(());
+        }
+        let tree = String::from_utf8_lossy(&self.read("report/tree.nwk")?).into_owned();
+        let csv = provisional::convergence_csv(&state.frames, &tree)?;
+        let p = self.dir.report().join("convergence.csv");
+        atomic::write_atomic(&p, csv.as_bytes()).map_err(io_err(&p))
     }
 
     /// Runs a stage over all q processing positions in chunks: the chunk
@@ -923,6 +1109,7 @@ impl<'a> Session<'a> {
         spec: ChunkedStage,
         q: u64,
         range: &(dyn Fn(u64, u64) -> Vec<u8> + Sync),
+        counts: Option<&dyn Fn([usize; 4]) -> quartet::PatternCounts>,
     ) -> Result<Option<Outcome>, EngineError> {
         let stage = spec.stage;
         let block = spec.block;
@@ -979,7 +1166,7 @@ impl<'a> Session<'a> {
             if valid[i as usize] {
                 continue;
             }
-            if self.cancelled() {
+            if self.should_stop()? {
                 return self.stop().map(Some);
             }
             let (s, e) = plan.range(i);
@@ -997,6 +1184,10 @@ impl<'a> Session<'a> {
                 .record(stage, e - s, t0.elapsed().as_secs_f64());
             done += e - s;
             self.save()?;
+            if let Some(counts) = counts {
+                self.live_quartet(&out, counts, done, q)?;
+                self.provisional_update(done, q)?;
+            }
         }
         self.progress(stage, q, q, format!("all {chunks} chunks done"));
         self.set_done(stage, BTreeMap::new())?;
@@ -1131,7 +1322,7 @@ impl<'a> Session<'a> {
             }
             let before = b_total - pending.len() as u64;
             for (i, &b) in pending.iter().enumerate() {
-                if self.cancelled() {
+                if self.should_stop()? {
                     return self.stop().map(Some);
                 }
                 self.progress(
@@ -2027,6 +2218,7 @@ mod tests {
             chunk_seconds: 3.0,
             chunk_quartets: Some(chunk),
             memory_limit: Some(1 << 30),
+            live_tree: false,
         }
     }
 
@@ -2111,6 +2303,190 @@ mod tests {
                 assert_eq!(first, Outcome::Finished { root: a.clone() });
             }
         }
+    }
+
+    /// Collects the events of a run.
+    #[derive(Default)]
+    struct Collect(std::cell::RefCell<Vec<Event>>);
+    impl ProgressSink for Collect {
+        fn event(&self, e: &Event) {
+            self.0.borrow_mut().push(e.clone());
+        }
+    }
+
+    #[test]
+    fn live_tree_writes_frames_figures_and_convergence_without_changing_the_root() {
+        let tmp = TempDir::new("analysis_live");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 600, 11);
+        let plain = finish(&tmp.path().join("plain"), &options(&input, 3));
+        let run = tmp.path().join("live");
+        let live = AnalysisOptions {
+            live_tree: true,
+            ..options(&input, 3)
+        };
+        let sink = Collect::default();
+        let cancel = AtomicBool::new(false);
+        let outcome = start(&run, &live, "gui", &sink, &cancel).unwrap();
+        assert_eq!(outcome, Outcome::Finished { root: plain });
+        let events = sink.0.into_inner();
+        // One live quartet per weighing chunk: 70 quartets in chunks of 3.
+        let quartets: Vec<&LiveQuartet> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Quartet(q) => Some(q.as_ref()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(quartets.len(), 24);
+        let last = quartets.last().unwrap();
+        assert_eq!((last.quartets_done, last.quartets_total), (70, 70));
+        assert!(last.counts.iter().sum::<u64>() > 0);
+        assert!(last.w1.is_some() && last.weights.is_some());
+        let frames: Vec<&ProvisionalTree> = events
+            .iter()
+            .filter_map(|e| match e {
+                Event::Provisional(p) => Some(p),
+                _ => None,
+            })
+            .collect();
+        let dir = RunDir::new(&run);
+        let state = provisional::load(&dir).unwrap();
+        // Chunks of 3 of 70 quartets take milliseconds, so updates exceed
+        // the overhead budget and the interval doubles from 5% each time.
+        assert!(frames.len() >= 3, "{} frames", frames.len());
+        assert_eq!(state.frames.len(), frames.len());
+        let doublings = (state.interval_percent / provisional::INTERVAL_PERCENT).log2() as usize;
+        let log = std::fs::read_to_string(run.join("run.log")).unwrap();
+        assert_eq!(log.matches("updating every").count(), doublings);
+        for (i, f) in frames.iter().enumerate() {
+            assert_eq!(f.frame as usize, i + 1);
+            assert!(f.percent < 100.0);
+            assert_eq!(f.halo.len(), 8);
+            assert!(provisional::frame_file(&dir, f.frame).exists());
+        }
+        for ext in ["svg", "png", "pdf"] {
+            assert!(provisional::latest_file(&dir, ext).exists(), "{ext}");
+        }
+        let svg = std::fs::read_to_string(provisional::latest_file(&dir, "svg")).unwrap();
+        assert!(svg.contains("PROVISIONAL"));
+        let csv = std::fs::read_to_string(dir.report().join("convergence.csv")).unwrap();
+        assert_eq!(csv.lines().count(), frames.len() + 1);
+        // The run without a live tree has none of these files.
+        let plain = RunDir::new(tmp.path().join("plain"));
+        assert!(!provisional::latest_file(&plain, "svg").exists());
+        assert!(!plain.report().join("convergence.csv").exists());
+    }
+
+    #[test]
+    fn live_tree_continues_after_a_resume() {
+        let tmp = TempDir::new("analysis_live_resume");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 600, 11);
+        let run = tmp.path().join("run");
+        let live = AnalysisOptions {
+            live_tree: true,
+            ..options(&input, 3)
+        };
+        let cancel = AtomicBool::new(false);
+        // Stop inside quartet_weight: after the counting chunks and a few
+        // weighing chunks.
+        let sink = StopAfter {
+            left: Cell::new(40),
+            cancel: &cancel,
+        };
+        let first = start(&run, &live, "terminal", &sink, &cancel).unwrap();
+        assert_eq!(first, Outcome::Stopped);
+        let dir = RunDir::new(&run);
+        let before = provisional::load(&dir).unwrap().frames.len();
+        assert!(before > 0);
+        let cancel = AtomicBool::new(false);
+        let again = crate::runner::resume_run(&run, "gui", &NullSink, &cancel).unwrap();
+        assert!(matches!(again, Outcome::Finished { .. }));
+        let state = provisional::load(&dir).unwrap();
+        assert!(state.frames.len() > before);
+        let numbers: Vec<u32> = state.frames.iter().map(|f| f.frame).collect();
+        assert_eq!(numbers, (1..=state.frames.len() as u32).collect::<Vec<_>>());
+        let percents: Vec<f64> = state.frames.iter().map(|f| f.percent).collect();
+        assert!(percents.windows(2).all(|w| w[0] < w[1]));
+    }
+
+    /// Asks for a pause on the first `polls` checks.
+    struct PauseFor {
+        polls: Cell<u32>,
+    }
+    impl ProgressSink for PauseFor {
+        fn event(&self, _e: &Event) {}
+        fn pause_requested(&self) -> bool {
+            let n = self.polls.get();
+            self.polls.set(n.saturating_sub(1));
+            n > 0
+        }
+    }
+
+    #[test]
+    fn pause_waits_and_continues_with_the_same_root() {
+        let tmp = TempDir::new("analysis_pause");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 7, 500, 2);
+        let plain = finish(&tmp.path().join("plain"), &options(&input, 4));
+        let run = tmp.path().join("paused");
+        let sink = PauseFor {
+            polls: Cell::new(4),
+        };
+        let cancel = AtomicBool::new(false);
+        let outcome = start(&run, &options(&input, 4), "gui", &sink, &cancel).unwrap();
+        assert_eq!(outcome, Outcome::Finished { root: plain });
+        let log = std::fs::read_to_string(run.join("run.log")).unwrap();
+        assert!(log.contains("Paused.") && log.contains("Continuing."));
+    }
+
+    /// Always asks for a pause; records when it was first asked.
+    #[derive(Default)]
+    struct PauseForever {
+        first: std::sync::OnceLock<std::time::Instant>,
+    }
+    impl ProgressSink for PauseForever {
+        fn event(&self, _e: &Event) {}
+        fn pause_requested(&self) -> bool {
+            self.first.get_or_init(std::time::Instant::now);
+            true
+        }
+    }
+
+    #[test]
+    fn stop_during_a_pause_stops_the_run() {
+        let tmp = TempDir::new("analysis_pause_stop");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 6, 500, 2);
+        let run = tmp.path().join("run");
+        let cancel = AtomicBool::new(false);
+        let sink = PauseForever::default();
+        let pause = std::time::Duration::from_millis(500);
+        let started = std::time::Instant::now();
+        let outcome = std::thread::scope(|scope| {
+            scope.spawn(|| {
+                // Stop half a second after the pause began.
+                while sink.first.get().is_none() {
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                std::thread::sleep(pause);
+                cancel.store(true, Ordering::SeqCst);
+            });
+            start(&run, &options(&input, 4), "gui", &sink, &cancel).unwrap()
+        });
+        let wall = started.elapsed().as_secs_f64();
+        assert_eq!(outcome, Outcome::Stopped);
+        let state = RunState::load(&RunDir::new(&run).run_json()).unwrap();
+        // Working time excludes the pause: at most the wall time minus the
+        // half second paused (with 50 ms for the polling interval).
+        assert!(
+            state.elapsed_seconds <= wall - pause.as_secs_f64() + 0.05,
+            "working time {} s of {wall} s",
+            state.elapsed_seconds
+        );
+        let log = std::fs::read_to_string(run.join("run.log")).unwrap();
+        assert!(log.contains("Paused.") && log.contains("Stopped on request"));
     }
 
     #[test]

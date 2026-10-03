@@ -58,12 +58,74 @@ pub enum Event {
     Finished { root: String },
     /// The run stopped on request; it can be resumed.
     Stopped,
+    /// The most recent quartet weighed (one per chunk), for the GUI's live
+    /// worksheet panel.
+    Quartet(Box<LiveQuartet>),
+    /// A provisional tree from the quartets finished so far (plan 4.7).
+    Provisional(ProvisionalTree),
+}
+
+/// One quartet as shown in the live worksheet panel.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct LiveQuartet {
+    /// Taxa a, b, c, d.
+    pub taxa: [String; 4],
+    /// Counts of the 16 patterns 0000 to 1111 (bit order a, b, c, d).
+    pub counts: [u64; 16],
+    /// W1 weights of ab|cd, ac|bd, ad|bc; `None` without split columns.
+    pub w1: Option<[f64; 3]>,
+    /// W2 log-likelihoods of the three topologies; `None` without a fit.
+    pub log_likelihoods: Option<[f64; 3]>,
+    /// Weights used for the tree (`weights_name`); `None` without a fit.
+    pub weights: Option<[f64; 3]>,
+    /// `w2c` or `w2b`.
+    pub weights_name: String,
+    pub quartets_done: u64,
+    pub quartets_total: u64,
+}
+
+/// A provisional tree with its halo values.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ProvisionalTree {
+    /// Update number, from 1.
+    pub frame: u32,
+    /// Percentage of quartets finished.
+    pub percent: f64,
+    pub newick: String,
+    /// Halo value per taxon (`None` without weighted quartets).
+    pub halo: Vec<(String, Option<f64>)>,
+    /// Latest SVG file of the provisional tree.
+    pub svg: String,
 }
 
 /// Receives progress events. Implementations must be cheap: the engine calls
 /// them from its working thread.
 pub trait ProgressSink {
     fn event(&self, event: &Event);
+
+    /// True while the interface asks the engine to pause. The engine checks
+    /// it between units of work (taxa, chunks, replicates) and waits there,
+    /// without counting the pause as working time.
+    fn pause_requested(&self) -> bool {
+        false
+    }
+}
+
+/// How often a paused engine checks whether to continue.
+const PAUSE_POLL: std::time::Duration = std::time::Duration::from_millis(100);
+
+/// Waits while `sink` asks for a pause and `cancel` is not set; returns the
+/// seconds spent waiting.
+pub(crate) fn wait_while_paused(
+    sink: &dyn ProgressSink,
+    cancel: &std::sync::atomic::AtomicBool,
+) -> f64 {
+    use std::sync::atomic::Ordering;
+    let start = std::time::Instant::now();
+    while sink.pause_requested() && !cancel.load(Ordering::SeqCst) {
+        std::thread::sleep(PAUSE_POLL);
+    }
+    start.elapsed().as_secs_f64()
 }
 
 /// A sink that ignores every event.

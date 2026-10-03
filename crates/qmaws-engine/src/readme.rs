@@ -1,7 +1,7 @@
 //! README files of a run folder. Committed run folders follow the
 //! repository rule that every folder has a README listing its items, so
 //! the engine writes one into the run folder and each of its committed
-//! subfolders (`audit/`, `trees/`, `report/`, `figures/`) that holds files.
+//! subfolders (`audit/`, `trees/`, `report/`, `figures/`, `figures/live/`) that holds files.
 //! The `work/` folder is never committed and gets none. READMEs are not
 //! part of the root fingerprint.
 
@@ -39,6 +39,11 @@ fn describe(folder: &str, name: &str) -> String {
         ("report", "halo.tsv") => "Halo value of every taxon with its weights",
         ("report", "bootstrap.tsv") => "S2 of every internal edge: fraction and number of bootstrap replicates containing its split, clade",
         ("report", "s2_cost.txt") => "Measured cost of S2 bootstrap replicates (development)",
+        ("report", "convergence.csv") => "nRF of every provisional tree to the final tree, by percentage of quartets finished",
+        ("figures", "live/") => "Latest provisional Halo Tree, drawn while the quartets were weighed",
+        ("figures/live", "halo_tree_latest.svg") => "Latest provisional Halo Tree (SVG), with a PROVISIONAL watermark",
+        ("figures/live", "halo_tree_latest.png") => "Latest provisional Halo Tree (PNG, 1,200 pixels wide)",
+        ("figures/live", "halo_tree_latest.pdf") => "Latest provisional Halo Tree (PDF)",
         _ => "",
     };
     if known.is_empty() {
@@ -54,6 +59,8 @@ fn purpose(folder: &str) -> &'static str {
         "audit" => "Small verification record of the run (design: `docs/DESIGN.md`, \"Audit files\"). `qmaws verify` checks the run against it.",
         "trees" => "Final trees of the run.",
         "report" => "Tables and reports of the run.",
+        "figures" => "Figures of the run.",
+        "figures/live" => "The provisional Halo Tree, overwritten at each update while quartets were weighed (plan 4.7). Its trees depend on timing and are not part of the root fingerprint.",
         _ => "Output of the run.",
     }
 }
@@ -61,7 +68,7 @@ fn purpose(folder: &str) -> &'static str {
 /// Writes README.md into the run folder and its committed subfolders that
 /// hold files, listing their items.
 pub fn write_run_readmes(run_dir: &Path) -> std::io::Result<()> {
-    for folder in ["", "audit", "trees", "report", "figures"] {
+    for folder in ["", "audit", "trees", "report", "figures", "figures/live"] {
         let dir = if folder.is_empty() {
             run_dir.to_path_buf()
         } else {

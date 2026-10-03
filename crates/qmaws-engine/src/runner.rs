@@ -259,6 +259,8 @@ struct Session<'a> {
     cancel: &'a AtomicBool,
     started: Instant,
     elapsed_before: f64,
+    /// Seconds paused in this session, not counted as working time.
+    paused: f64,
     estimator: Estimator,
 }
 
@@ -285,12 +287,13 @@ impl<'a> Session<'a> {
             cancel,
             started: Instant::now(),
             elapsed_before,
+            paused: 0.0,
             estimator,
         }
     }
 
     fn elapsed(&self) -> f64 {
-        self.elapsed_before + self.started.elapsed().as_secs_f64()
+        self.elapsed_before + self.started.elapsed().as_secs_f64() - self.paused
     }
 
     fn config(&self) -> ToyConfig {
@@ -458,6 +461,9 @@ impl<'a> Session<'a> {
             let path = self.dir.chunk_file(TOY_COUNT, index);
             if atomic::is_valid(&path) {
                 continue;
+            }
+            if self.sink.pause_requested() {
+                self.paused += crate::progress::wait_while_paused(self.sink, self.cancel);
             }
             if self.cancel.load(Ordering::SeqCst) {
                 return self.stop().map(Some);

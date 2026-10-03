@@ -227,6 +227,7 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
             chunk_seconds: 3.0,
             chunk_quartets: None,
             memory_limit: None,
+            live_tree: false,
         };
         let dir = runs.join(c.name);
         let root = match analysis::start(&dir, &options, "terminal", &NullSink, cancel) {

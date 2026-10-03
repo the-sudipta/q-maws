@@ -179,6 +179,7 @@ mod tests {
             chunk_seconds: 3.0,
             chunk_quartets: Some(4),
             memory_limit: Some(1 << 30),
+            live_tree: false,
         };
         start(
             &run,

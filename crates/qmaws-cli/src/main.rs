@@ -91,6 +91,10 @@ enum Command {
         #[arg(long, default_value_t = qmaws_engine::analysis::BOOTSTRAP_REPLICATES)]
         bootstrap: u32,
 
+        /// Do not draw the live provisional tree while quartets are weighed
+        #[arg(long)]
+        no_live_tree: bool,
+
         /// For a folder: one taxon per file (records joined) or one per record
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
@@ -546,6 +550,7 @@ fn main() -> ExitCode {
             weighting,
             replicates,
             bootstrap,
+            no_live_tree,
             records,
             data_dir,
         } => {
@@ -603,6 +608,7 @@ fn main() -> ExitCode {
                 chunk_seconds,
                 chunk_quartets,
                 memory_limit: None,
+                live_tree: !no_live_tree,
             };
             let result =
                 qmaws_engine::analysis::start(&run_dir, &options, "terminal", &display, &cancel);

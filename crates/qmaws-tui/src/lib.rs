@@ -177,6 +177,8 @@ impl ProgressSink for TerminalDisplay {
                 Event::Progress(s) => self.show(s),
                 Event::Log { message } => self.line(message),
                 Event::Finished { .. } | Event::Stopped => self.clear(),
+                // Shown by the GUI; the log already reports provisional trees.
+                Event::Quartet(_) | Event::Provisional(_) => {}
             },
         }
     }
