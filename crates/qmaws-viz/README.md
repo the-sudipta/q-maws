@@ -13,4 +13,4 @@ Figures in pure Rust: the Quartet Halo Tree, tanglegram, rectangular tree, SVG, 
 Used by `qmaws-engine` for run figures and by `qmaws-gui` for display. Produces files in each run's `figures/` folder.
 
 ## Notes
-Skeleton only (milestone M0): the crate compiles and has trivial tests. Functionality is added in the milestones named above.
+Line charts since M6; the circular tree layout, the basic provisional Halo Tree and PNG and PDF output since M9. The final figures come with M10.
