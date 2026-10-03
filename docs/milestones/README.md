@@ -16,7 +16,7 @@ One report per completed milestone: what was built, how it was verified, measure
 | `M07.md` | M7: amalgamation (wQFM-rs) |
 | `M08.md` | M8: support, audit, verification, controls |
 | `M09.md` | M9: GUI, terminal menu, live provisional tree, interface switching |
-| `M10_HANDOFF.md` | M10 work in progress: what is done and what is next (replaced by `M10.md`) |
+| `M10.md` | M10: figures, group bands, nQD and MSD, colour-blind check |
 
 ## Relationships
 Reports refer to code in `crates/`, scripts in `scripts/`, and run records in `results/`. Each report corresponds to a milestone tag.
