@@ -32,11 +32,31 @@ pub fn run(args: VerifyArgs, cancel: &AtomicBool) -> ExitCode {
     } else {
         Mode::Quick(args.seed)
     };
+    run_mode(args.output, &mode, args.input, args.quiet, cancel)
+}
+
+/// Verifies `output` in this mode and prints the report.
+pub fn run_mode(
+    output: &Path,
+    mode: &Mode,
+    input: Option<&Path>,
+    quiet: bool,
+    cancel: &AtomicBool,
+) -> ExitCode {
+    let args = VerifyArgs {
+        output,
+        inputs: false,
+        full: false,
+        quartet: None,
+        seed: None,
+        input,
+        quiet,
+    };
     if !args.quiet {
         eprintln!(
             "Verifying {} ({})...",
             args.output.display(),
-            match &mode {
+            match mode {
                 Mode::Inputs => "input check",
                 Mode::Quick(_) => "quick check",
                 Mode::Full => "full check: the whole run is recomputed",
@@ -44,7 +64,7 @@ pub fn run(args: VerifyArgs, cancel: &AtomicBool) -> ExitCode {
             }
         );
     }
-    match verify::verify(args.output, &mode, args.input, cancel) {
+    match verify::verify(args.output, mode, args.input, cancel) {
         Ok(report) => {
             if !args.quiet {
                 for l in &report.lines {

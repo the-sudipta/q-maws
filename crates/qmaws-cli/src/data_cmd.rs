@@ -74,14 +74,37 @@ pub fn datasets(data_dir: &Path) -> ExitCode {
 
 /// `qmaws download`
 pub fn download(selection: &str, data_dir: &Path, mode: DisplayMode, color: bool) -> ExitCode {
-    let reg = Registry::builtin();
-    let selected = match reg.select(selection) {
-        Ok(s) => s,
+    match fetch_selected(selection, data_dir, mode, color) {
         Err(e) => {
             eprintln!("Error: {e}");
-            return ExitCode::from(2);
+            ExitCode::from(2)
         }
-    };
+        Ok(0) => ExitCode::SUCCESS,
+        Ok(failures) => {
+            eprintln!("{failures} problem(s); see the messages above.");
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// Downloads, verifies and checks the selected datasets for the menu and
+/// the GUI; an error when there was a problem.
+pub fn download_for_menu(id: &str, data_dir: &Path, mode: DisplayMode) -> Result<(), String> {
+    match fetch_selected(id, data_dir, mode, false)? {
+        0 => Ok(()),
+        n => Err(format!("{n} problem(s); see the messages in the terminal")),
+    }
+}
+
+/// Downloads the selection; returns the number of problems.
+fn fetch_selected(
+    selection: &str,
+    data_dir: &Path,
+    mode: DisplayMode,
+    color: bool,
+) -> Result<usize, String> {
+    let reg = Registry::builtin();
+    let selected = reg.select(selection).map_err(|e| e.to_string())?;
     let data = DataDir::new(data_dir);
     let fetcher = HttpFetcher::new();
     let mut done_downloads = BTreeSet::new();
@@ -147,12 +170,7 @@ pub fn download(selection: &str, data_dir: &Path, mode: DisplayMode, color: bool
             failures += 1;
         }
     }
-    if failures > 0 {
-        eprintln!("{failures} problem(s); see the messages above.");
-        ExitCode::from(1)
-    } else {
-        ExitCode::SUCCESS
-    }
+    Ok(failures)
 }
 
 /// Reads a downloaded dataset and checks its taxon count and reference

@@ -1,11 +1,13 @@
 //! The `qmaws` binary: argument parsing and dispatch to terminal or GUI mode.
 //!
-//! Commands available in this development build: `toy-run` (a toy computation
-//! that exercises checkpoints, resume and progress display) and `resume`.
+//! `qmaws menu` (also `run.bat` and `run.sh` without arguments) shows the
+//! interactive main menu; `qmaws gui` opens the window; `run` and `resume`
+//! take `--gui` or `--terminal` (default: terminal).
 
 use clap::{Parser, Subcommand};
-use qmaws_engine::rundir::{find_unfinished_runs, new_run_dir, run_id, DEFAULT_RUNS_ROOT};
-use qmaws_engine::{clock::UtcDateTime, resume_run, start_toy_run, Outcome, ToyOptions};
+use qmaws_engine::launch::{self, UserConfig};
+use qmaws_engine::rundir::{new_run_dir, run_id, DEFAULT_RUNS_ROOT};
+use qmaws_engine::{clock::UtcDateTime, start_toy_run, Outcome, ToyOptions};
 use qmaws_tui::{DisplayMode, TerminalDisplay};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -24,7 +26,7 @@ const EXIT_USAGE: u8 = 2;
     name = "qmaws",
     version,
     about = "Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets",
-    after_help = "This is a development build. Analysis commands are added in later versions."
+    after_help = "Start the interactive menu with 'qmaws menu', or the window with 'qmaws gui'."
 )]
 struct Cli {
     /// Show only the final result and errors
@@ -45,6 +47,20 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    /// Show the interactive main menu: start, resume or verify a run
+    Menu {
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
+    /// Open the graphical interface (main menu in a window)
+    Gui {
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
     /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 and S2 support and halo values)
     Run {
         /// Folder of sequence files, or one multi-FASTA file
@@ -95,6 +111,14 @@ enum Command {
         #[arg(long)]
         no_live_tree: bool,
 
+        /// Show the run in the graphical interface
+        #[arg(long, conflicts_with = "terminal")]
+        gui: bool,
+
+        /// Show the run in the terminal (the default)
+        #[arg(long)]
+        terminal: bool,
+
         /// For a folder: one taxon per file (records joined) or one per record
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
@@ -129,9 +153,25 @@ enum Command {
 
     /// Resume an unfinished run
     Resume {
-        /// Run folder to resume [default: the only unfinished run in results/runs]
-        #[arg(long)]
+        /// Run folder to resume [default: the only unfinished run]
+        #[arg(long, conflicts_with = "all")]
         output: Option<PathBuf>,
+
+        /// Resume every unfinished run, one after another (the queue survives interruptions)
+        #[arg(long)]
+        all: bool,
+
+        /// Show the run in the graphical interface
+        #[arg(long, conflicts_with = "terminal")]
+        gui: bool,
+
+        /// Show the run in the terminal (the default)
+        #[arg(long)]
+        terminal: bool,
+
+        /// Data folder, for downloads from the window [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR, hide = true)]
+        data_dir: PathBuf,
     },
 
     /// Check a finished run against its audit record (default: input check and quick check)
@@ -141,8 +181,12 @@ enum Command {
         output: PathBuf,
 
         /// Only the input check
-        #[arg(long, conflicts_with_all = ["full", "quartet"])]
+        #[arg(long, conflicts_with_all = ["full", "quartet", "quick"])]
         inputs: bool,
+
+        /// Input check and quick check (the default)
+        #[arg(long, conflicts_with_all = ["full", "quartet"])]
+        quick: bool,
 
         /// Recompute the whole run and compare the root fingerprint
         #[arg(long, conflicts_with = "quartet")]
@@ -359,6 +403,7 @@ mod data_cmd;
 mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
+mod menu_cmd;
 mod s2_cmd;
 mod teach_cmd;
 mod verify_cmd;
@@ -383,7 +428,7 @@ fn install_interrupt_handler(cancel: Arc<AtomicBool>) {
     }
 }
 
-fn report(outcome: Outcome, run_dir: &Path, mode: DisplayMode) -> ExitCode {
+pub(crate) fn report(outcome: Outcome, run_dir: &Path, mode: DisplayMode) -> ExitCode {
     match outcome {
         Outcome::Finished { root } => {
             if mode != DisplayMode::Json {
@@ -483,6 +528,7 @@ fn main() -> ExitCode {
         Command::Download { dataset, data_dir } => {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
+        Command::Gui { data_dir } => return menu_cmd::gui(Vec::new(), false, &data_dir),
         Command::Inspect {
             input,
             dataset,
@@ -513,9 +559,11 @@ fn main() -> ExitCode {
             data_dir,
             seed,
         } => return controls_cmd::run(&output, &data_dir, seed, &cancel),
+        Command::Menu { data_dir } => return menu_cmd::menu(&data_dir, &display, &cancel, mode),
         Command::Verify {
             output,
             inputs,
+            quick: _,
             full,
             quartet,
             seed,
@@ -551,6 +599,8 @@ fn main() -> ExitCode {
             replicates,
             bootstrap,
             no_live_tree,
+            gui,
+            terminal: _,
             records,
             data_dir,
         } => {
@@ -611,6 +661,17 @@ fn main() -> ExitCode {
                 live_tree: !no_live_tree,
                 cores: None,
             };
+            let mut config = UserConfig::load();
+            if config.remember_run(&run_dir) {
+                let _ = config.save();
+            }
+            if gui {
+                let job = qmaws_gui::Job::Start {
+                    dir: run_dir,
+                    options,
+                };
+                return menu_cmd::gui(vec![job], false, &data_dir);
+            }
             let result =
                 qmaws_engine::analysis::start(&run_dir, &options, "terminal", &display, &cancel);
             (run_dir, result)
@@ -637,16 +698,37 @@ fn main() -> ExitCode {
             let result = start_toy_run(&run_dir, &options, "terminal", &display, &cancel);
             (run_dir, result)
         }
-        Command::Resume { output } => {
-            let run_dir = match output {
-                Some(dir) => dir,
-                None => match choose_unfinished_run() {
-                    Ok(dir) => dir,
-                    Err(code) => return code,
-                },
+        Command::Resume {
+            output,
+            all,
+            gui,
+            terminal: _,
+            data_dir,
+        } => {
+            let (dirs, queue) = if all {
+                let dirs = menu_cmd::queue_for_all();
+                if dirs.is_empty() {
+                    println!("There are no unfinished runs.");
+                    return ExitCode::SUCCESS;
+                }
+                (dirs, true)
+            } else {
+                match output {
+                    Some(dir) => (vec![dir], false),
+                    None => match choose_unfinished_run() {
+                        Ok(dir) => (vec![dir], false),
+                        Err(code) => return code,
+                    },
+                }
             };
-            let result = resume_run(&run_dir, "terminal", &display, &cancel);
-            (run_dir, result)
+            if gui {
+                let jobs = dirs
+                    .into_iter()
+                    .map(|dir| qmaws_gui::Job::Resume { dir })
+                    .collect();
+                return menu_cmd::gui(jobs, queue, &data_dir);
+            }
+            return menu_cmd::resume_terminal(&dirs, queue, &display, &cancel, mode);
         }
         Command::Datasets { .. }
         | Command::Download { .. }
@@ -660,6 +742,8 @@ fn main() -> ExitCode {
         | Command::WqfmCompare { .. }
         | Command::S2Cost { .. }
         | Command::Controls { .. }
+        | Command::Menu { .. }
+        | Command::Gui { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
@@ -674,20 +758,22 @@ fn main() -> ExitCode {
     }
 }
 
-/// The run to resume when no folder was given: the only unfinished run in the
-/// default runs folder.
+/// The run to resume when no folder was given: the only unfinished run in
+/// the results folders (`results/runs` and the remembered ones).
 fn choose_unfinished_run() -> Result<PathBuf, ExitCode> {
-    let runs = find_unfinished_runs(Path::new(DEFAULT_RUNS_ROOT));
+    let runs = launch::unfinished(&UserConfig::load().roots());
     match runs.len() {
         0 => {
-            println!("There are no unfinished runs in {DEFAULT_RUNS_ROOT}.");
+            println!("There are no unfinished runs.");
             Err(ExitCode::SUCCESS)
         }
-        1 => Ok(runs.into_iter().next().expect("one run").0),
+        1 => Ok(runs.into_iter().next().expect("one run").dir),
         _ => {
-            eprintln!("There are several unfinished runs. Choose one with --output:");
-            for (dir, state) in &runs {
-                eprintln!("  {}  (started {})", dir.display(), state.created_utc);
+            eprintln!(
+                "There are several unfinished runs. Choose one with --output, or resume all with --all:"
+            );
+            for r in &runs {
+                eprintln!("  {}  ({})", r.dir.display(), r.line());
             }
             Err(ExitCode::from(EXIT_USAGE))
         }
@@ -734,6 +820,31 @@ mod tests {
     #[test]
     fn quiet_and_json_progress_conflict() {
         assert!(Cli::try_parse_from(["qmaws", "--quiet", "--json-progress", "resume"]).is_err());
+    }
+
+    #[test]
+    fn interface_flags_parse_and_conflict() {
+        let cli = Cli::try_parse_from(["qmaws", "run", "--input", "x", "--gui"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Run { gui: true, .. })));
+        assert!(
+            Cli::try_parse_from(["qmaws", "run", "--input", "x", "--gui", "--terminal"]).is_err()
+        );
+        let cli = Cli::try_parse_from(["qmaws", "resume", "--all", "--terminal"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            Some(Command::Resume {
+                all: true,
+                gui: false,
+                ..
+            })
+        ));
+        assert!(Cli::try_parse_from(["qmaws", "resume", "--all", "--output", "x"]).is_err());
+        assert!(Cli::try_parse_from(["qmaws", "verify", "--output", "x", "--quick"]).is_ok());
+        assert!(
+            Cli::try_parse_from(["qmaws", "verify", "--output", "x", "--quick", "--full"]).is_err()
+        );
+        assert!(Cli::try_parse_from(["qmaws", "menu"]).is_ok());
+        assert!(Cli::try_parse_from(["qmaws", "gui"]).is_ok());
     }
 
     #[test]
