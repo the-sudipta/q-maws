@@ -44,11 +44,11 @@ To be written (milestone M9).
 
 ## Terminal mode
 
-To be written (milestones M1 to M8).
+In this build the terminal mode is the set of direct commands below: each long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume`. The interactive menu (plan 5.2) comes with milestone M9.
 
 ## Direct commands
 
-Available in this build: `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws resume`, `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
+Available in this build: `qmaws run` (from sequences to the tree with S1 and S2 support and halo values), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
 
 ## Benchmark datasets
 
@@ -56,7 +56,21 @@ Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch th
 
 ## Verifying a run
 
-To be written (milestone M8).
+Every finished run keeps a small verification record in `audit/` (inputs, stage and chunk hashes, the root fingerprint, quartet decisions, 50 sample worksheets, the environment). `qmaws verify` checks a run against it and writes every comparison to `report/verify_<time>.txt`; the exit status is 1 if anything differs.
+
+```
+qmaws verify --output "<run folder>"                       # quick check (default)
+qmaws verify --output "<run folder>" --full                # recompute everything, compare the root
+qmaws verify --output "<run folder>" --quartet A,B,C,D     # one quartet with its worksheet
+qmaws verify --output "<run folder>" --inputs              # only the input check
+```
+
+- The input check always runs first: it recomputes the hash of every input file and cleaned sequence.
+- The quick check recomputes 20 chunks of each chunked stage and 3 bootstrap replicates, drawn with a printed seed (`--seed` repeats the draw).
+- If the data were moved, give their new place with `--input "<folder>"`; the root fingerprint does not depend on where the data are.
+- A reviewer needs only the run's `run.json`, its `audit/` folder and the raw data: without the `work/` folder the matrix is rebuilt from the inputs.
+
+The committed control runs in `results/controls/runs/` can be checked this way.
 
 ## Reproducing the paper's results
 

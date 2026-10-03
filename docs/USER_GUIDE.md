@@ -8,7 +8,8 @@ How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; 
 |---|---|
 | `qmaws --help`, `qmaws <command> --help` | Prints the available commands and options |
 | `qmaws --version` | Prints the version |
-| `qmaws run --dataset <id> | --input "<folder>" [--output "<run folder>"] [--no-strand] [--lengths a,b,c] [--seed S] [--weighting w2-sym|w2-emp|none] [--replicates B]` | Analyses the data as a resumable run: input check, MAW extraction, length selection, matrices, the pattern counts of every quartet and the quartet weights (later versions continue to the tree). `--weighting`: the two-state symmetric model (default), the model with the frequencies of 0 and 1 of the full matrix, or no weighting. `--replicates`: resamples per quartet for W2c (default 100; 0 skips W2c). `--seed` sets the quartet order and the resamples. Stop with Ctrl+C and continue with `qmaws resume` |
+| `qmaws run --dataset <id> | --input "<folder>" [--output "<run folder>"] [--no-strand] [--lengths a,b,c] [--seed S] [--weighting w2-sym|w2-emp|none] [--replicates B] [--bootstrap B]` | Analyses the data as a resumable run: input check, MAW extraction, length selection, matrices, the pattern counts of every quartet, the quartet weights, the tree (wQFM-rs), S1 support and halo values, and S2 bootstrap support. `--weighting`: the two-state symmetric model (default), the model with the frequencies of 0 and 1 of the full matrix, or no weighting. `--replicates`: resamples per quartet for W2c (default 100; 0 skips W2c). `--bootstrap`: S2 column-bootstrap replicates with W2b weights inside (default 100; 0 skips S2). `--seed` sets the quartet order and the resamples. Stop with Ctrl+C and continue with `qmaws resume` |
+| `qmaws verify --output "<run folder>" [--full \| --quartet A,B,C,D \| --inputs] [--seed N] [--input "<folder>"]` | Checks a finished run against its `audit/` record: the input check, then the quick check (20 chunks of each chunked stage and 3 bootstrap replicates, drawn with a printed seed), the full recomputation of the root, or one quartet with its worksheet. Writes `report/verify_<time>.txt`; exit status 1 if anything differs. `--input` gives the data's new place if they were moved |
 | `qmaws teach --example` or `qmaws teach --input "<folder>" [--reference "<tree.nwk>"]` | Prints the hand-calculable teaching worksheet (see `docs/TEACHING.md`) |
 | `qmaws simulate-h3 [--output "<folder>"] [--seed S] [--replicates R] [--w2c-replicates B]` | Runs the long-branch simulation of hypothesis H3 (default: into `results/h3`, seed 1, 200 replicates per setting, 100 W2c resamples) and writes `recovery.csv`, `replicates.csv`, `recovery.svg` and `evaluation.txt`; about one minute |
 | `qmaws toy-run [--output "<folder>"] [--blocks N] [--seed S] [--chunk-seconds T]` | Runs a toy computation that exercises checkpoints, resume and the progress display (development command) |
@@ -35,7 +36,18 @@ Exit status: 0 when the run finished, 3 when it stopped and can be resumed, 1 on
 
 ## Run folders
 
-Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unless `--output` names another folder. A finished toy run contains `audit/root.txt`, the run's root fingerprint: the same settings give the same fingerprint on every computer.
+Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unless `--output` names another folder. A finished toy run contains `audit/root.txt`, the run's root fingerprint: the same settings give the same fingerprint on every computer. A finished analysis run contains:
+
+| Item | Content |
+|---|---|
+| `report/tree.nwk` | The tree |
+| `trees/tree_s1.nwk`, `report/support.tsv` | S1 support of every internal edge |
+| `trees/tree_s2.nwk`, `report/bootstrap.tsv`, `trees/bootstrap_trees.nwk` | S2 bootstrap support and the replicate trees |
+| `report/halo.tsv` | Halo value of every taxon |
+| `report/m_ml.phy` | The ML-MAWS-style matrix in PHYLIP format |
+| `audit/` | The verification record (see `qmaws verify`) |
+| `run.json`, `run.log` | Settings, stage states and the log |
+| `work/` | Large intermediate files; not needed to verify the run, and never committed |
 
 ## Launch scripts
 
