@@ -4,7 +4,9 @@
 //! overall bar and a stage bar with elapsed time, remaining time and the
 //! current item, with the run log scrolling above the bars. When the output is
 //! not a terminal (for example a log file or CI), it prints plain progress
-//! lines instead. Menus are added in later milestones.
+//! lines instead. The interactive main menu is in [`menu`].
+
+pub mod menu;
 
 use indicatif::{MultiProgress, ProgressBar, ProgressDrawTarget, ProgressStyle};
 use qmaws_engine::progress::format_duration;

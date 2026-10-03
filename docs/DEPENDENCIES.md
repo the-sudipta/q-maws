@@ -20,6 +20,7 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 | `serde_json` | 1.0.151 | MIT OR Apache-2.0 | `qmaws-engine`, `qmaws-tui`; tests of `qmaws-cli` | JSON for `run.json`, audit files and `--json-progress` output | 2026-10-02 |
 | `sha2` | 0.11.0 | MIT OR Apache-2.0 | `qmaws-engine`, `qmaws-core` (from M5) | SHA-256 of every output file and of the root fingerprint; per-quartet seeds of W2c (pure Rust, RustCrypto) | 2026-10-02 |
 | `indicatif` | 0.18.6 | MIT | `qmaws-tui` | Terminal progress bars (overall and stage bars, log lines above the bars) | 2026-10-02 |
+| `dialoguer` (no default features) | 0.12.0 | MIT | `qmaws-tui` (from M9) | Interactive terminal menus (plan 4.9, 5.2): numbered choices, text input with defaults, yes/no questions. The default features (editor, password, fuzzy select, history, completion) are not needed | 2026-10-03 |
 | `clap` (feature `derive`) | 4.6.7 | MIT OR Apache-2.0 | `qmaws-cli` | Command-line parsing, help and version output | 2026-10-02 |
 | `ctrlc` | 3.5.2 | MIT/Apache-2.0 | `qmaws-cli` | Ctrl+C handling on Windows, macOS and Linux for clean stopping | 2026-10-02 |
 | `toml` | 1.1.6 | MIT OR Apache-2.0 | `qmaws-data` | Reading the benchmark registry `benchmarks.toml` | 2026-10-02 |
@@ -40,7 +41,7 @@ Versions are those in `Cargo.lock`. "Maintenance checked" means: the version use
 
 ## Indirect dependencies
 
-The direct dependencies bring in further crates; 181 crates in total are used to build Q-MAWS for the release platforms (2026-10-03; 129 before `resvg` and `svg2pdf` were added in M9, 123 before `zstd` was added in M8). Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-03): MIT, Apache-2.0, ISC, BSD-2-Clause (`arrayref`, from M9), BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
+The direct dependencies bring in further crates; 183 crates in total are used to build Q-MAWS for the release platforms (2026-10-03; 181 before `dialoguer` was added in M9, 129 before `resvg` and `svg2pdf`, 123 before `zstd` was added in M8). Each is listed with its license, authors and source in `THIRD_PARTY_NOTICES`. Declared licenses (2026-10-03): MIT, Apache-2.0, ISC, BSD-2-Clause (`arrayref`, from M9), BSD-3-Clause, Zlib and Unicode-3.0, alone or as alternatives; `ring` is "Apache-2.0 AND ISC"; `memchr` is "Unlicense OR MIT" and is used under MIT; `adler2` is "0BSD OR MIT OR Apache-2.0" and is used under MIT. `cargo deny check licenses bans sources` passes.
 
 ## Considered and not used
 
