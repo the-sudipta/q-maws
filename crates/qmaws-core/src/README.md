@@ -14,6 +14,7 @@ Source code of the science crate. Each module receives data and returns data; no
 | `input.rs` | Input reading and cleaning: FASTA or raw text, cleaning rules, record modes, Newick-safe names, validation findings with their choices, renaming of duplicates |
 | `lib.rs` | Crate root: module list |
 | `sim.rs` | The four-taxon long-branch simulation of H3: per-character simulator, replicate seeds, recovery with ties shared |
+| `stats.rs` | Statistics of the H1 test: exact one-sided Wilcoxon signed-rank test (all sign assignments enumerated; zeros dropped or Pratt), Holm correction, median, Hodges–Lehmann estimate, mean and sample SD |
 | `support.rs` | S1 support of every internal edge and halo values of every taxon, summed over a stream of weighted quartets in a fixed order; the tree with S1 labels; S2 split frequencies of bootstrap replicate trees |
 | `quartet.rs` | Quartet ranks and unranking, the keyed Feistel processing order, co-occurrence tables, the inclusion–exclusion pattern counts with run-time popcount dispatch, the column-scan oracle |
 | `teach.rs` | The teaching worksheet: two-letter MAWs, matrix, pattern table, W1 votes, classroom amalgamation, nRF, model example |

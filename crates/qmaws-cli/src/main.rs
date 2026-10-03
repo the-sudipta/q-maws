@@ -397,6 +397,29 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development: comparison tables of the benchmark (milestone M11)
+    #[command(hide = true)]
+    Summary {
+        /// Folder of the runs
+        #[arg(long, default_value = "results/runs")]
+        runs: PathBuf,
+        /// Folder of the published values
+        #[arg(long, default_value = "baselines/published")]
+        baselines: PathBuf,
+        /// Folder for the tables
+        #[arg(long, default_value = "results/summary")]
+        output: PathBuf,
+        /// H1: Q-MAWS value of a pair (OI-18); H1 is skipped without it
+        #[arg(long, value_enum, requires = "h1_zeros")]
+        h1_pairs: Option<summary_cmd::H1Pairs>,
+        /// H1: treatment of zero differences (OI-18)
+        #[arg(long, value_enum, requires = "h1_pairs")]
+        h1_zeros: Option<summary_cmd::H1Zeros>,
+        /// Also write the AFproject upload files (seed-1 trees) to this folder
+        #[arg(long)]
+        afproject: Option<PathBuf>,
+    },
+
     /// Development: time S2 bootstrap replicates of a finished run (decision D7)
     #[command(hide = true)]
     S2Cost {
@@ -451,6 +474,7 @@ mod iqtree_cmd;
 mod matrix_cmd;
 mod menu_cmd;
 mod s2_cmd;
+mod summary_cmd;
 mod teach_cmd;
 mod verify_cmd;
 mod wqfm_cmd;
@@ -546,6 +570,22 @@ fn main() -> ExitCode {
             replicates,
             w2b,
         } => return s2_cmd::run(&run, replicates, !w2b),
+        Command::Summary {
+            runs,
+            baselines,
+            output,
+            h1_pairs,
+            h1_zeros,
+            afproject,
+        } => {
+            return summary_cmd::run(
+                &runs,
+                &baselines,
+                &output,
+                h1_pairs.zip(h1_zeros),
+                afproject.as_deref(),
+            )
+        }
         Command::Teach {
             example,
             input,
@@ -820,6 +860,7 @@ fn main() -> ExitCode {
         | Command::WqfmExport { .. }
         | Command::WqfmCompare { .. }
         | Command::S2Cost { .. }
+        | Command::Summary { .. }
         | Command::Controls { .. }
         | Command::Menu { .. }
         | Command::Gui { .. }
