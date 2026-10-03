@@ -44,3 +44,9 @@ If decision D8 is declined, H2 and H4 are reported as "not tested" with the reas
 - **Change:** in W2c, a resample in which all three fitted topologies have the internal branch at its lower bound (0.000001) counts as a three-way tie, in addition to the ties of log-likelihoods within 10⁻⁸. The rest of the primary configuration is unchanged.
 - **Reason:** found in milestone M8 (`docs/OPEN_ISSUES.md`, OI-14). Such fits favour no resolution, but their log-likelihoods still differed by about 10⁻⁵, so W2c gave near-certain weights to quartets without signal, and the negative control (shuffled sequences) had a mean S1 of 0.649 instead of a value near 1/3.
 - **Decided by:** the owner, 2026-10-03, before any experiment of H1, H2 or H4 was run. H3 (milestone M6) was run again with the rule; its pre-registered criterion uses W2, which the rule does not change.
+
+## Amendment 2 (2026-10-03): Pairing value and zero differences in the H1 test
+
+- **Change:** in the H1 test, the Q-MAWS value of each dataset is the mean over the 5 seeds, and zero paired differences are dropped before ranking (Wilcoxon's original procedure). The test, metrics, datasets, Holm correction and success criterion are unchanged.
+- **Reason:** the original text did not say which Q-MAWS value enters a pair when there are 5 seeds, or how a zero difference is treated (`docs/OPEN_ISSUES.md`, OI-18). Both change the p-value, and a zero difference is likely on Yersinia HGT, where ML-MAWS reports nRF 1.000.
+- **Decided by:** the owner, 2026-10-03, before any H1 number was computed. At that time, seed-1 runs of Fish mtDNA, E. coli/Shigella and Yersinia HGT were finished; no H1 pair or test statistic had been computed.
