@@ -215,6 +215,10 @@ mod tests {
             assert!((got - want).abs() < 1e-6, "{got} vs {want}");
         }
         assert_eq!(r.w2_recovery, 0.0);
-        assert_eq!(r.w2c, Some([0.16, 0.22, 0.62]));
+        // One resample is a star fit, a three-way tie (OI-14).
+        let w2c = r.w2c.unwrap();
+        for (got, want) in w2c.iter().zip([0.156667, 0.216667, 0.626667]) {
+            assert!((got - want).abs() < 1e-6, "{got} vs {want}");
+        }
     }
 }

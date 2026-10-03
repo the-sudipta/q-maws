@@ -741,6 +741,22 @@ pub fn fit_all(model: &Model, cond: Conditioning, counts: &PatternCounts) -> Opt
     Some(fits)
 }
 
+/// True when the internal branch of all three fits is at the lower bound
+/// (a star fit): the data favour no resolution of the quartet.
+pub fn is_star(fits: &[Fit; 3]) -> bool {
+    fits.iter().all(|f| f.lengths[4] <= MIN_LENGTH)
+}
+
+/// Winners of one W2c resample: all three topologies on a star fit
+/// (OI-14, option b), otherwise `winners` of the log-likelihoods.
+pub fn resample_winners(fits: &[Fit; 3]) -> [bool; 3] {
+    if is_star(fits) {
+        [true; 3]
+    } else {
+        winners(&fits.map(|f| f.log_likelihood))
+    }
+}
+
 /// Topologies whose log-likelihood is within `TIE_TOLERANCE` of the best.
 pub fn winners(ll: &[f64; 3]) -> [bool; 3] {
     let best = ll[0].max(ll[1]).max(ll[2]);
@@ -880,7 +896,8 @@ pub fn resample(rng: &mut SplitMix64, counts: &PatternCounts, cond: Conditioning
 }
 
 /// W2c: fraction of `replicates` multinomial resamples in which each
-/// topology has the highest refitted likelihood (ties split equally). The
+/// topology has the highest refitted likelihood (ties split equally; a
+/// resample whose three fits are stars is a three-way tie). The
 /// resamples come from `SplitMix64::new(seed)`. `None` if no column is
 /// counted.
 pub fn w2c(
@@ -898,8 +915,7 @@ pub fn w2c(
     for _ in 0..replicates {
         let sample = resample(&mut rng, counts, cond);
         let fits = fit_all(model, cond, &sample).expect("a resample keeps the total");
-        let ll = fits.map(|f| f.log_likelihood);
-        let w = winners(&ll);
+        let w = resample_winners(&fits);
         let share = 1.0 / w.iter().filter(|&&v| v).count() as f64;
         for t in 0..3 {
             if w[t] {
@@ -1289,6 +1305,41 @@ mod tests {
         assert_eq!(
             w2c(&model, Conditioning::NotAllZero, &empty, seed, 30),
             None
+        );
+    }
+
+    /// Quartet NC_009057, NC_009066, NC_011177, NC_013564 of Fish mtDNA
+    /// (seed 1, strand filter on), the example of OI-14.
+    const FISH_STAR: PatternCounts = [
+        24744, 2356, 2094, 215, 2973, 311, 246, 54, 2136, 255, 366, 56, 236, 61, 80, 34,
+    ];
+
+    #[test]
+    fn star_resamples_are_three_way_ties() {
+        let model = Model::symmetric();
+        let cond = Conditioning::NotAllZero;
+        let fits = fit_all(&model, cond, &FISH_STAR).unwrap();
+        assert!(is_star(&fits));
+        // The log-likelihoods differ by about 1e-5, more than TIE_TOLERANCE,
+        // but a star fit favours no topology.
+        assert_eq!(
+            winners(&fits.map(|f| f.log_likelihood)),
+            [false, true, false]
+        );
+        assert_eq!(resample_winners(&fits), [true; 3]);
+        let w = w2c(&model, cond, &FISH_STAR, 5031545449894749448, 100).unwrap();
+        assert!(w.iter().all(|&v| (v - 1.0 / 3.0).abs() < 1e-12), "{w:?}");
+    }
+
+    #[test]
+    fn resolved_fits_keep_the_likelihood_winner() {
+        let model = Model::symmetric();
+        let counts: PatternCounts = [0, 40, 38, 3, 4, 14, 5, 2, 3, 5, 14, 1, 10, 2, 1, 6];
+        let fits = fit_all(&model, Conditioning::NotAllZero, &counts).unwrap();
+        assert!(!is_star(&fits));
+        assert_eq!(
+            resample_winners(&fits),
+            winners(&fits.map(|f| f.log_likelihood))
         );
     }
 

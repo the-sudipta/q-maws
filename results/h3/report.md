@@ -19,7 +19,7 @@ As pre-registered (plan 2.7.6):
 - **Methods:**
   - W1: the topology with the highest count of its two split patterns.
   - W2: the W2-sym conditioned likelihood ("not 0000"), with the optimiser of M5.
-  - W2c, supplementary: the topology with the highest W2c weight, from 100 resamples seeded with `quartet_seed(replicate seed, 1)`.
+  - W2c, supplementary: the topology with the highest W2c weight, from 100 resamples seeded with `quartet_seed(replicate seed, 1)`; a resample whose three fits have the internal branch at the lower bound counts as a three-way tie (rule added in M8, `docs/OPEN_ISSUES.md` OI-14).
 - **Recovery** of a replicate: 1 if ab|cd is the only best topology, 1 ÷ k if it is one of k tied best topologies (the expected value of a random choice among them), 0 otherwise. W1 with no split pattern counts as a tie of all three. W2 ties are log-likelihoods within 10⁻⁸. The number of replicates with ties is reported.
 
 ## Results
@@ -28,16 +28,16 @@ Recovery rate of ab|cd over 200 replicates (from `recovery.csv`):
 
 | t_long | N | Columns left (mean) | W1 | W2 | W2c (supplementary) |
 |---|---|---|---|---|---|
-| 0.5 | 100 | 79.9 | 0.100 (12 tied) | 0.598 (1 tied) | 0.570 |
+| 0.5 | 100 | 79.9 | 0.100 (12 tied) | 0.598 (1 tied) | 0.580 |
 | 0.5 | 1,000 | 797.5 | 0.000 | 0.915 | 0.923 |
 | 0.5 | 10,000 | 7,972.5 | 0.000 | 1.000 | 1.000 |
 | 0.5 | 100,000 | 79,742.3 | 0.000 | 1.000 | 1.000 |
-| 1.0 | 100 | 86.3 | 0.005 | 0.300 (15 tied) | 0.235 |
-| 1.0 | 1,000 | 860.6 | 0.000 | 0.655 | 0.645 |
+| 1.0 | 100 | 86.3 | 0.005 | 0.300 (15 tied) | 0.263 |
+| 1.0 | 1,000 | 860.6 | 0.000 | 0.655 | 0.653 |
 | 1.0 | 10,000 | 8,599.3 | 0.000 | 0.980 | 0.980 |
 | 1.0 | 100,000 | 86,004.8 | 0.000 | 1.000 | 1.000 |
-| 1.5 | 100 | 88.1 | 0.000 | 0.208 (16 tied) | 0.130 |
-| 1.5 | 1,000 | 879.4 | 0.000 | 0.355 (2 tied) | 0.245 |
+| 1.5 | 100 | 88.1 | 0.000 | 0.208 (16 tied) | 0.140 |
+| 1.5 | 1,000 | 879.4 | 0.000 | 0.355 (2 tied) | 0.285 |
 | 1.5 | 10,000 | 8,799.4 | 0.000 | 0.635 | 0.625 |
 | 1.5 | 100,000 | 88,027.0 | 0.000 | 0.985 | 0.985 |
 
@@ -50,7 +50,7 @@ Figure: `recovery.svg`. Criterion applied mechanically: `evaluation.txt`.
   - In this design, conditioning on "not 0000" does not prevent consistency. The risk listed in the plan, that this conditioning might be insufficient for identifiability, was not observed here.
 - **Convergence is slow for the longest branches.** At t_long = 1.5, W2 needs about 100,000 characters to reach 95%: it recovers 0.635 at N = 10,000.
 - **At small N, W2 is also drawn towards the wrong topology:** 0.208 at t_long = 1.5 and N = 100 is below the 1/3 of a random choice. The finite-sample bias is in the same direction as W1's, but much weaker, and it disappears as N grows.
-- **W2c behaves like W2 at large N,** and is lower than W2 at small N (for example 0.130 against 0.208 at t_long = 1.5, N = 100).
+- **W2c behaves like W2 at large N,** and is lower than W2 at small N (for example 0.140 against 0.208 at t_long = 1.5, N = 100).
 
 ## Limitations
 
@@ -59,4 +59,4 @@ Figure: `recovery.svg`. Criterion applied mechanically: `evaluation.txt`.
 
 ## Reproduce
 
-`qmaws simulate-h3 --output results/h3` (global seed 1, 200 replicates, 100 W2c resamples; 60.8 s and 59.3 s in two runs on the owner's laptop, one thread). Two runs gave byte-identical `recovery.csv`, `replicates.csv` and `recovery.svg`. A test reproduces one committed replicate exactly on every CI platform.
+`qmaws simulate-h3 --output results/h3` (global seed 1, 200 replicates, 100 W2c resamples; 60.8 s and 59.3 s in two runs on the owner's laptop, one thread). Two runs gave byte-identical `recovery.csv`, `replicates.csv` and `recovery.svg`. A test reproduces one committed replicate exactly on every CI platform. Re-run on 2026-10-03 after the W2c tie rule of OI-14 (M8): W1 and W2 are unchanged, only the W2c column changed.
