@@ -206,7 +206,7 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
     });
     // Runs and summary.
     let mut tsv = String::from(
-        "control\tkind\ttaxa\tnrf\tsplits_differing\trandom_nrf_mean\trandom_nrf_p05\tmean_s1\tmin_s1\tmax_s1\tmean_halo\troot\n",
+        "control\tkind\ttaxa\tnrf\tsplits_differing\trandom_nrf_mean\trandom_nrf_p05\tmean_s1\tmin_s1\tmax_s1\tmean_s2\tmin_s2\tmax_s2\tmean_halo\troot\n",
     );
     let mut md = String::new();
     for c in &controls {
@@ -222,6 +222,7 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
                 ml_max_columns: qmaws_core::matrix::MAX_ML_COLUMNS,
                 weighting: WEIGHTING_SYM.into(),
                 replicates: qmaws_core::weight::REPLICATES,
+                bootstrap: qmaws_engine::analysis::BOOTSTRAP_REPLICATES,
             },
             chunk_seconds: 3.0,
             chunk_quartets: None,
@@ -261,6 +262,7 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
                 .collect()
         };
         let s1 = column("report/support.tsv", 2);
+        let s2 = column("report/bootstrap.tsv", 2);
         let halo = column("report/halo.tsv", 1);
         let mean = |v: &[f64]| {
             if v.is_empty() {
@@ -271,27 +273,31 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
         };
         let min = s1.iter().copied().fold(f64::INFINITY, f64::min);
         let max = s1.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+        let min2 = s2.iter().copied().fold(f64::INFINITY, f64::min);
+        let max2 = s2.iter().copied().fold(f64::NEG_INFINITY, f64::max);
         let _ = writeln!(
             tsv,
-            "{}\t{}\t{}\t{n:.4}\t{diff}\t{rmean:.4}\t{p05:.4}\t{:.4}\t{min:.4}\t{max:.4}\t{:.4}\t{root}",
+            "{}\t{}\t{}\t{n:.4}\t{diff}\t{rmean:.4}\t{p05:.4}\t{:.4}\t{min:.4}\t{max:.4}\t{:.4}\t{min2:.4}\t{max2:.4}\t{:.4}\t{root}",
             c.name,
             c.kind,
             tree.leaf_names().len(),
             mean(&s1),
+            mean(&s2),
             mean(&halo)
         );
         let _ = writeln!(
             md,
-            "| {} | {} | {} | {n:.3} ({diff} splits) | {rmean:.3} / {p05:.3} | {:.3} ({min:.3} to {max:.3}) | {:.3} |",
+            "| {} | {} | {} | {n:.3} ({diff} splits) | {rmean:.3} / {p05:.3} | {:.3} ({min:.3} to {max:.3}) | {:.3} ({min2:.3} to {max2:.3}) | {:.3} |",
             c.name,
             c.kind,
             tree.leaf_names().len(),
             mean(&s1),
+            mean(&s2),
             mean(&halo)
         );
     }
     let summary = format!(
-        "# Controls\n\nProduced by `qmaws controls --seed {seed}` (hidden development command). Each control is an analysis run in `runs/<control>/` with the default settings (W2-sym, W2c with 100 resamples, wQFM-rs). The first positive control, the hand-calculable worksheet example, is covered by golden tests G1 and G2 (`cargo test`): its sequences have 6 letters, below the 100 that an analysis run accepts. Random-tree levels: nRF of {RANDOM_TREES} random binary trees (random stepwise addition, seed {seed}) to the same reference: mean and 5th percentile.\n\n| Control | Kind | Taxa | nRF to the true or reference tree | Random trees: mean / 5th percentile | Mean S1 (range) | Mean halo |\n|---|---|---|---|---|---|---|\n{md}\nAll values: `controls.tsv`.\n"
+        "# Controls\n\nProduced by `qmaws controls --seed {seed}` (hidden development command). Each control is an analysis run in `runs/<control>/` with the default settings (W2-sym, W2c with 100 resamples, wQFM-rs, S2 with 100 bootstrap replicates and W2b inside). The first positive control, the hand-calculable worksheet example, is covered by golden tests G1 and G2 (`cargo test`): its sequences have 6 letters, below the 100 that an analysis run accepts. Random-tree levels: nRF of {RANDOM_TREES} random binary trees (random stepwise addition, seed {seed}) to the same reference: mean and 5th percentile.\n\n| Control | Kind | Taxa | nRF to the true or reference tree | Random trees: mean / 5th percentile | Mean S1 (range) | Mean S2 (range) | Mean halo |\n|---|---|---|---|---|---|---|---|\n{md}\nAll values: `controls.tsv`.\n"
     );
     for (name, text) in [("controls.tsv", tsv), ("summary.md", summary.clone())] {
         if let Err(e) = std::fs::write(output.join(name), text) {

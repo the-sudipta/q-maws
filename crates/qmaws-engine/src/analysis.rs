@@ -12,6 +12,7 @@
 //! | `quartet_weight` | one chunk of quartets in Feistel order (counts recomputed from `M_full`) | `work/chunks/quartet_weight_<n>.bin` |
 //! | `amalgamate` | whole stage: `wQFM-rs` on the weighted quartets in rank order | `report/tree.nwk`, `work/amalgamation.json` |
 //! | `support` | whole stage: S1 per internal edge and halo value per taxon on the same weights | `trees/tree_s1.nwk`, `report/support.tsv`, `report/halo.tsv` |
+//! | `bootstrap` | one S2 replicate (Poisson(1) column weights, W2b, wQFM-rs); skipped when `bootstrap` is 0 | `work/bootstrap/replicate_<b>.nwk`, then `trees/bootstrap_trees.nwk`, `trees/tree_s2.nwk`, `report/bootstrap.tsv` |
 //! | `finalize` | whole stage | `audit/results.json`, `audit/quartet_decisions.bin.zst`, `audit/sample_worksheets.txt`, `audit/environment.json`, `audit/stages.json`, `audit/chunks.json`, `audit/root.txt` |
 //!
 //! Every file is written atomically with a hash file; a unit is done exactly
@@ -59,6 +60,7 @@ pub const QUARTET_COUNT: &str = "quartet_count";
 pub const QUARTET_WEIGHT: &str = "quartet_weight";
 pub const AMALGAMATE: &str = "amalgamate";
 pub const SUPPORT: &str = "support";
+pub const BOOTSTRAP: &str = "bootstrap";
 pub const FINALIZE: &str = "finalize";
 /// Quartets per parallel block when counting.
 pub(crate) const COUNT_BLOCK: u64 = 4096;
@@ -81,7 +83,7 @@ struct ChunkedStage {
     note: String,
 }
 
-pub const STAGES: [&str; 9] = [
+pub const STAGES: [&str; 10] = [
     INGEST,
     MAW_EXTRACT,
     LENGTH_SELECT,
@@ -90,6 +92,7 @@ pub const STAGES: [&str; 9] = [
     QUARTET_WEIGHT,
     AMALGAMATE,
     SUPPORT,
+    BOOTSTRAP,
     FINALIZE,
 ];
 
@@ -112,7 +115,19 @@ pub struct AnalysisConfig {
     /// Number of W2c resamples per quartet (0: no W2c).
     #[serde(default = "default_replicates")]
     pub replicates: u32,
+    /// Number of S2 column-bootstrap replicates with W2b inside (0: no S2;
+    /// decision D7). Left out of `run.json` when 0, so the configuration of
+    /// a run without S2 reads and hashes as before.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub bootstrap: u32,
 }
+
+fn is_zero(v: &u32) -> bool {
+    *v == 0
+}
+
+/// Default number of S2 replicates of a run (decision D7).
+pub const BOOTSTRAP_REPLICATES: u32 = 100;
 
 fn default_weighting() -> String {
     WEIGHTING_SYM.to_string()
@@ -318,6 +333,12 @@ fn matrix_dir(dir: &RunDir) -> PathBuf {
 fn maw_file(dir: &RunDir, taxon: usize) -> PathBuf {
     maws_dir(dir).join(format!("taxon_{taxon:04}.bin"))
 }
+fn bootstrap_dir(dir: &RunDir) -> PathBuf {
+    dir.work().join("bootstrap")
+}
+fn replicate_file(dir: &RunDir, b: u64) -> PathBuf {
+    bootstrap_dir(dir).join(format!("replicate_{b:04}.nwk"))
+}
 
 impl<'a> Session<'a> {
     fn new(
@@ -384,9 +405,12 @@ impl<'a> Session<'a> {
         stage: &str,
         outputs: BTreeMap<String, String>,
     ) -> Result<(), EngineError> {
+        let now = UtcDateTime::now().iso8601();
         if let Some(s) = self.state.stage_mut(stage) {
             s.status = StageStatus::Done;
             s.outputs = outputs;
+            s.started_utc.get_or_insert_with(|| now.clone());
+            s.finished_utc = Some(now);
         }
         self.save()
     }
@@ -394,6 +418,9 @@ impl<'a> Session<'a> {
     fn set_running(&mut self, stage: &str) -> Result<(), EngineError> {
         if let Some(s) = self.state.stage_mut(stage) {
             s.status = StageStatus::Running;
+            s.started_utc
+                .get_or_insert_with(|| UtcDateTime::now().iso8601());
+            s.finished_utc = None;
         }
         self.save()
     }
@@ -406,6 +433,7 @@ impl<'a> Session<'a> {
             }
             if on && s.status == StageStatus::Done {
                 s.status = StageStatus::Running;
+                s.finished_utc = None;
             }
         }
     }
@@ -472,6 +500,7 @@ impl<'a> Session<'a> {
             self.dir.chunks(),
             self.dir.audit(),
             self.dir.report(),
+            bootstrap_dir(&self.dir),
         ] {
             atomic::remove_stale_tmp(&d).map_err(io_err(&d))?;
         }
@@ -483,6 +512,7 @@ impl<'a> Session<'a> {
             MATRIX_BUILD,
             AMALGAMATE,
             SUPPORT,
+            BOOTSTRAP,
             FINALIZE,
         ] {
             if self.status(stage) == StageStatus::Done && !self.outputs_valid(stage) {
@@ -501,6 +531,9 @@ impl<'a> Session<'a> {
         let mut units = vec![(MAW_EXTRACT, m as u64), (QUARTET_COUNT, q)];
         if self.weighted() {
             units.push((QUARTET_WEIGHT, q));
+        }
+        if self.bootstrapped() {
+            units.push((BOOTSTRAP, self.options.config.bootstrap as u64));
         }
         self.estimator = Estimator::new(&units);
         for (stage, rate) in self.state.throughput.clone() {
@@ -537,6 +570,11 @@ impl<'a> Session<'a> {
         }
         if self.status(SUPPORT) != StageStatus::Done {
             self.support(m)?;
+        }
+        if self.status(BOOTSTRAP) != StageStatus::Done {
+            if let Some(outcome) = self.bootstrap()? {
+                return Ok(outcome);
+            }
         }
         if self.status(FINALIZE) != StageStatus::Done {
             self.finalize(m)?;
@@ -808,6 +846,10 @@ impl<'a> Session<'a> {
         self.options.config.weighting != WEIGHTING_NONE
     }
 
+    fn bootstrapped(&self) -> bool {
+        self.weighted() && self.options.config.bootstrap > 0
+    }
+
     fn load_full(&self) -> Result<Matrix, EngineError> {
         store::matrix_from_bytes(&self.read("work/matrix/m_full.bin")?)
             .map_err(|e| EngineError::Invalid(e.to_string()))
@@ -1062,6 +1104,112 @@ impl<'a> Session<'a> {
         self.set_done(SUPPORT, outputs)
     }
 
+    /// S2 (decision D7): `bootstrap` column-bootstrap replicates with W2b
+    /// weights inside, one replicate per unit (`work/bootstrap/`), then the
+    /// split frequency of every internal edge of the run's tree. Returns
+    /// `Some(Stopped)` when stopped on request.
+    fn bootstrap(&mut self) -> Result<Option<Outcome>, EngineError> {
+        if !self.bootstrapped() {
+            self.set_done(BOOTSTRAP, BTreeMap::new())?;
+            return Ok(None);
+        }
+        let b_total = self.options.config.bootstrap as u64;
+        let pending: Vec<u64> = (0..b_total)
+            .filter(|&b| !atomic::is_valid(&replicate_file(&self.dir, b)))
+            .collect();
+        self.estimator
+            .set_done(BOOTSTRAP, b_total - pending.len() as u64);
+        if !pending.is_empty() {
+            self.set_running(BOOTSTRAP)?;
+            let names = self.names()?;
+            let full = self.load_full()?;
+            let model = weight_model(&self.options.config, &full)?;
+            if pending.len() as u64 == b_total {
+                self.log(&format!(
+                    "Bootstrap (S2): {b_total} replicates, Poisson(1) column weights, W2b weights inside."
+                ))?;
+            }
+            let before = b_total - pending.len() as u64;
+            for (i, &b) in pending.iter().enumerate() {
+                if self.cancelled() {
+                    return self.stop().map(Some);
+                }
+                self.progress(
+                    BOOTSTRAP,
+                    before + i as u64,
+                    b_total,
+                    format!("replicate {} of {b_total}", b + 1),
+                );
+                let t0 = Instant::now();
+                let r = crate::bootstrap::replicate_tree(
+                    &names,
+                    &full,
+                    &model,
+                    self.options.config.seed,
+                    b,
+                    crate::bootstrap::Inner::W2b,
+                );
+                let p = replicate_file(&self.dir, b);
+                if let Some(parent) = p.parent() {
+                    std::fs::create_dir_all(parent).map_err(io_err(parent))?;
+                }
+                atomic::write_verified(&p, format!("{}\n", r.newick).as_bytes())
+                    .map_err(io_err(&p))?;
+                self.estimator
+                    .record(BOOTSTRAP, 1, t0.elapsed().as_secs_f64());
+                self.save()?;
+            }
+            self.progress(BOOTSTRAP, b_total, b_total, "all replicates done".into());
+        }
+        let started = Instant::now();
+        let mut trees = Vec::with_capacity(b_total as usize);
+        for b in 0..b_total {
+            let text = String::from_utf8_lossy(
+                &atomic::read_verified(&replicate_file(&self.dir, b)).ok_or_else(|| {
+                    EngineError::Invalid(format!("bootstrap replicate {b} is missing or damaged"))
+                })?,
+            )
+            .trim()
+            .to_string();
+            trees.push(text);
+        }
+        let tree = String::from_utf8_lossy(&self.read("report/tree.nwk")?)
+            .trim()
+            .to_string();
+        let (edges, labelled) =
+            support::split_frequencies(&tree, &trees).map_err(EngineError::Invalid)?;
+        let mut tsv = String::from("edge\tsize\ts2\treplicates\tclade\n");
+        for (i, e) in edges.iter().enumerate() {
+            tsv.push_str(&format!(
+                "{}\t{}\t{:.6}\t{}\t{}\n",
+                i + 1,
+                e.clade.len(),
+                e.s2,
+                e.replicates,
+                e.clade.join(",")
+            ));
+        }
+        let mut outputs = BTreeMap::new();
+        for (rel, text) in [
+            ("trees/bootstrap_trees.nwk", trees.join("\n") + "\n"),
+            ("trees/tree_s2.nwk", format!("{labelled}\n")),
+            ("report/bootstrap.tsv", tsv),
+        ] {
+            outputs.insert(rel.to_string(), self.write(rel, text.as_bytes())?);
+        }
+        let s2: Vec<f64> = edges.iter().map(|e| e.s2).collect();
+        let fmt = |v: Option<f64>| v.map_or("NA".to_string(), |x| format!("{x:.3}"));
+        self.log(&format!(
+            "Bootstrap (S2): {b_total} replicates; {} internal edges, S2 from {} to {}; split frequencies in {:.1} s.",
+            edges.len(),
+            fmt(s2.iter().copied().reduce(f64::min)),
+            fmt(s2.iter().copied().reduce(f64::max)),
+            started.elapsed().as_secs_f64()
+        ))?;
+        self.set_done(BOOTSTRAP, outputs)?;
+        Ok(None)
+    }
+
     /// Amalgamation with `wQFM-rs`: the weighted quartets of every quartet
     /// (W2c weights, or W2b when no resamples were made), in rank order so
     /// the tree does not depend on the processing order.
@@ -1109,6 +1257,108 @@ impl<'a> Session<'a> {
                 ("work/amalgamation.json".to_string(), h_summary),
             ]),
         )
+    }
+
+    /// Summary numbers of the whole stages for `audit/stages.json` (plan
+    /// 4.6.2), read from their outputs. The chunked stages are summarised
+    /// in `finalize` while their chunks are read.
+    fn stage_summaries(
+        &self,
+        m: usize,
+    ) -> Result<BTreeMap<&'static str, serde_json::Value>, EngineError> {
+        let inputs = self.inputs()?;
+        let mut out = BTreeMap::new();
+        out.insert(
+            INGEST,
+            serde_json::json!({
+                "taxa": inputs.taxa.len(),
+                "average_length": inputs.average_length,
+                "maw_lengths": [inputs.lmin, inputs.lmax],
+            }),
+        );
+        let sets = self.load_maws(m)?;
+        let per_taxon: serde_json::Map<String, serde_json::Value> = inputs
+            .taxa
+            .iter()
+            .zip(&sets)
+            .map(|(t, s)| (t.name.clone(), serde_json::json!(s.count())))
+            .collect();
+        drop(sets);
+        out.insert(
+            MAW_EXTRACT,
+            serde_json::json!({ "maws_per_taxon": per_taxon }),
+        );
+        let sel: Selection = serde_json::from_slice(&self.read("work/matrix/selection.json")?)
+            .map_err(|e| EngineError::Invalid(format!("selection.json: {e}")))?;
+        out.insert(
+            LENGTH_SELECT,
+            serde_json::json!({
+                "entropy_per_length": sel.entropies.iter().map(|e| serde_json::json!({
+                    "length": e.length, "variable_columns": e.characters, "entropy": sig9(e.entropy),
+                })).collect::<Vec<_>>(),
+                "selected_lengths": sel.selected,
+            }),
+        );
+        let full_columns = self.load_full()?.columns_len();
+        let phy = self.read("report/m_ml.phy")?;
+        let ml_columns = String::from_utf8_lossy(&phy).lines().next().and_then(|l| {
+            l.split_whitespace()
+                .nth(1)
+                .and_then(|c| c.parse::<u64>().ok())
+        });
+        out.insert(
+            MATRIX_BUILD,
+            serde_json::json!({
+                "taxa": m,
+                "m_full_columns": full_columns,
+                "m_ml_columns": ml_columns,
+            }),
+        );
+        if !self.weighted() {
+            return Ok(out);
+        }
+        let amalgamation: serde_json::Value =
+            serde_json::from_slice(&self.read("work/amalgamation.json")?)
+                .map_err(|e| EngineError::Invalid(format!("amalgamation.json: {e}")))?;
+        out.insert(AMALGAMATE, amalgamation);
+        let column = |rel: &str, i: usize| -> Result<Vec<f64>, EngineError> {
+            Ok(String::from_utf8_lossy(&self.read(rel)?)
+                .lines()
+                .skip(1)
+                .filter_map(|l| l.split('\t').nth(i).and_then(|v| v.parse::<f64>().ok()))
+                .collect())
+        };
+        let stats = |v: &[f64]| {
+            let mean = (!v.is_empty()).then(|| v.iter().sum::<f64>() / v.len() as f64);
+            serde_json::json!({
+                "min": v.iter().copied().reduce(f64::min).map(sig9),
+                "mean": mean.map(sig9),
+                "max": v.iter().copied().reduce(f64::max).map(sig9),
+            })
+        };
+        let s1 = column("report/support.tsv", 2)?;
+        let halo = column("report/halo.tsv", 1)?;
+        out.insert(
+            SUPPORT,
+            serde_json::json!({
+                "internal_edges": s1.len(),
+                "s1": stats(&s1),
+                "halo": stats(&halo),
+                "taxa_with_halo_below_0_6": halo.iter().filter(|&&h| h < LOW_HALO).count(),
+            }),
+        );
+        if self.bootstrapped() {
+            let s2 = column("report/bootstrap.tsv", 2)?;
+            out.insert(
+                BOOTSTRAP,
+                serde_json::json!({
+                    "replicates": self.options.config.bootstrap,
+                    "weights": "w2b",
+                    "s2": stats(&s2),
+                }),
+            );
+        }
+        Ok(out)
     }
 
     /// `audit/results.json`, `audit/quartet_decisions.bin.zst` and
@@ -1192,7 +1442,7 @@ impl<'a> Session<'a> {
             .iter()
             .map(|r| serde_json::json!({ "taxon": r[0], "halo": num(&r[1]) }))
             .collect();
-        let results = serde_json::json!({
+        let mut results = serde_json::json!({
             "tree": read_text("report/tree.nwk")?,
             "tree_with_s1": read_text("trees/tree_s1.nwk")?,
             "weights": source,
@@ -1201,6 +1451,25 @@ impl<'a> Session<'a> {
             "halo": halo,
             "metrics": {},
         });
+        if self.bootstrapped() {
+            let s2: Vec<serde_json::Value> = tsv_rows("report/bootstrap.tsv")?
+                .iter()
+                .map(|r| {
+                    serde_json::json!({
+                        "clade": r[4].split(',').collect::<Vec<_>>(),
+                        "s2": num(&r[2]),
+                        "replicates": r[3].parse::<u64>().unwrap_or(0),
+                    })
+                })
+                .collect();
+            results["tree_with_s2"] = read_text("trees/tree_s2.nwk")?.into();
+            results["bootstrap"] = serde_json::json!({
+                "replicates": self.options.config.bootstrap,
+                "weights": "w2b",
+                "column_weights": "Poisson(1), seed replicate_seed(global, b)",
+            });
+            results["support_s2"] = s2.into();
+        }
         Ok(vec![
             (
                 "audit/results.json",
@@ -1228,11 +1497,25 @@ impl<'a> Session<'a> {
                 EngineError::Invalid(format!("{} is missing or damaged", p.display()))
             })
         };
+        let mut summaries = self.stage_summaries(m)?;
         let plan = self.state.chunk_plans[QUARTET_COUNT];
         let mut counts = StreamHasher::new();
         let mut chunk_list = Vec::new();
+        // Quartets with no split pattern (uninformative for W1) and with no
+        // counted column (no W2 fit).
+        let (mut no_split, mut no_column) = (0u64, 0u64);
         for i in 0..plan.chunk_count() {
             let bytes = read_chunk(&self.dir.chunk_file(QUARTET_COUNT, i))?;
+            for (_, c) in
+                store::count_records(&bytes).map_err(|e| EngineError::Invalid(e.to_string()))?
+            {
+                if weight::SUPPORTING.iter().flatten().all(|&x| c[x] == 0) {
+                    no_split += 1;
+                }
+                if c[1..].iter().all(|&x| x == 0) {
+                    no_column += 1;
+                }
+            }
             counts.update(&bytes);
             let (s, e) = plan.range(i);
             chunk_list.push(serde_json::json!({
@@ -1257,6 +1540,7 @@ impl<'a> Session<'a> {
             let plan = self.state.chunk_plans[QUARTET_WEIGHT];
             let mut weights = StreamHasher::new();
             let mut chunk_list = Vec::new();
+            let (mut fitted, mut resampled) = (0u64, 0u64);
             for i in 0..plan.chunk_count() {
                 let bytes = read_chunk(&self.dir.chunk_file(QUARTET_WEIGHT, i))?;
                 let recs = store::weight_records(&bytes)
@@ -1264,6 +1548,8 @@ impl<'a> Session<'a> {
                 let mut text = String::with_capacity(recs.len() * 120);
                 for r in &recs {
                     text.push_str(&r.canonical());
+                    fitted += r.fitted() as u64;
+                    resampled += r.resampled() as u64;
                 }
                 weights.update(text.as_bytes());
                 let (s, e) = plan.range(i);
@@ -1287,7 +1573,52 @@ impl<'a> Session<'a> {
                 support.update(&self.read(rel)?);
             }
             stage_hashes.push((SUPPORT, support.finish_hex()));
+            summaries.insert(
+                QUARTET_WEIGHT,
+                serde_json::json!({
+                    "fitted_quartets": fitted,
+                    "resampled_quartets": resampled,
+                    "quartets_without_weight": quartet::quartet_count(m) - fitted,
+                }),
+            );
         }
+        if self.bootstrapped() {
+            // Each replicate tree is a unit; its hash is that of its line
+            // in trees/bootstrap_trees.nwk (with the newline), so quick
+            // verification needs no work folder.
+            let trees = self.read("trees/bootstrap_trees.nwk")?;
+            let text = String::from_utf8_lossy(&trees);
+            let chunk_list: Vec<serde_json::Value> = text
+                .lines()
+                .enumerate()
+                .map(|(b, line)| {
+                    serde_json::json!({
+                        "index": b, "start": b, "end": b + 1,
+                        "sha256": sha256_hex(format!("{line}\n").as_bytes()),
+                        "seed": qmaws_core::bootstrap::replicate_seed(self.options.config.seed, b as u64),
+                    })
+                })
+                .collect();
+            chunk_stages.push(serde_json::json!({
+                "stage": BOOTSTRAP,
+                "units_per_chunk": 1,
+                "chunks": chunk_list,
+            }));
+            let mut boot = StreamHasher::new();
+            boot.update(&trees);
+            for rel in ["trees/tree_s2.nwk", "report/bootstrap.tsv"] {
+                boot.update(&self.read(rel)?);
+            }
+            stage_hashes.push((BOOTSTRAP, boot.finish_hex()));
+        }
+        summaries.insert(
+            QUARTET_COUNT,
+            serde_json::json!({
+                "quartets": quartet::quartet_count(m),
+                "quartets_without_split_pattern": no_split,
+                "quartets_without_counted_column": no_column,
+            }),
+        );
         let mut outputs = BTreeMap::new();
         if self.weighted() {
             for (rel, bytes) in self.audit_files(m)? {
@@ -1307,8 +1638,23 @@ impl<'a> Session<'a> {
             root_text.push_str(&format!("stage {stage} {h}\n"));
         }
         let root = sha256_hex(root_text.as_bytes());
+        // Times and summary numbers are not part of the root: the times
+        // describe this device, the numbers repeat hashed content.
+        let stage_rows: Vec<serde_json::Value> = stage_hashes
+            .iter()
+            .map(|(s, h)| {
+                let st = self.state.stage(s);
+                serde_json::json!({
+                    "stage": s,
+                    "content_sha256": h,
+                    "started_utc": st.and_then(|x| x.started_utc.clone()),
+                    "finished_utc": st.and_then(|x| x.finished_utc.clone()),
+                    "summary": summaries.get(s).cloned().unwrap_or_else(|| serde_json::json!({})),
+                })
+            })
+            .collect();
         let stages_json = serde_json::json!({
-            "stages": stage_hashes.iter().map(|(s, h)| serde_json::json!({"stage": s, "content_sha256": h})).collect::<Vec<_>>(),
+            "stages": stage_rows,
             "quartets": quartet::quartet_count(m),
             "seed": self.options.config.seed,
         });
@@ -1538,6 +1884,7 @@ fn environment(config: &AnalysisConfig) -> serde_json::Value {
             "processing_order": config.seed,
             "w2c": "per quartet: quartet_seed(global, rank)",
             "sample_worksheets": "quartet_seed(global, 2^64 - 1)",
+            "bootstrap_replicate": "replicate_seed(global, b) = quartet_seed(global, 2^63 + b)",
         },
     })
 }
@@ -1675,6 +2022,7 @@ mod tests {
                 ml_max_columns: matrix::MAX_ML_COLUMNS,
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 3,
+                bootstrap: 0,
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(chunk),
@@ -1780,6 +2128,131 @@ mod tests {
         let cancel = AtomicBool::new(false);
         let again = crate::runner::resume_run(&dir, "terminal", &NullSink, &cancel).unwrap();
         assert_eq!(again, Outcome::Finished { root });
+    }
+
+    #[test]
+    fn bootstrap_stage_gives_s2_and_enters_the_root() {
+        let tmp = TempDir::new("analysis_bootstrap");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 7, 600, 13);
+        let plain = finish(&tmp.path().join("plain"), &options(&input, 6));
+        let mut opts = options(&input, 6);
+        opts.config.bootstrap = 4;
+        let dir = tmp.path().join("boot");
+        let root = finish(&dir, &opts);
+        assert_ne!(root, plain, "the bootstrap stage is part of the root");
+        let run = RunDir::new(&dir);
+        let text = |rel: &str| {
+            String::from_utf8(atomic::read_verified(&run.root().join(rel)).unwrap()).unwrap()
+        };
+        // Replicate trees: one per line, each a W2b replicate of the run.
+        let trees: Vec<String> = text("trees/bootstrap_trees.nwk")
+            .lines()
+            .map(str::to_string)
+            .collect();
+        assert_eq!(trees.len(), 4);
+        for (b, t) in trees.iter().enumerate() {
+            let again = crate::bootstrap::replicate(&dir, b as u64, false).unwrap();
+            assert_eq!(&again.newick, t);
+        }
+        // S2 per edge of the run's tree, in the order of support.tsv.
+        let tree = text("report/tree.nwk");
+        let (edges, labelled) = support::split_frequencies(tree.trim(), &trees).unwrap();
+        let s2_rows: Vec<String> = text("report/bootstrap.tsv")
+            .lines()
+            .skip(1)
+            .map(str::to_string)
+            .collect();
+        let s1_rows: Vec<String> = text("report/support.tsv")
+            .lines()
+            .skip(1)
+            .map(str::to_string)
+            .collect();
+        assert_eq!(s2_rows.len(), edges.len());
+        assert_eq!(s2_rows.len(), s1_rows.len());
+        for (row, (e, s1)) in s2_rows.iter().zip(edges.iter().zip(&s1_rows)) {
+            let cols: Vec<&str> = row.split('\t').collect();
+            assert_eq!(cols[2], format!("{:.6}", e.s2));
+            assert_eq!(cols[4], s1.split('\t').nth(6).unwrap());
+        }
+        assert_eq!(text("trees/tree_s2.nwk").trim(), labelled);
+        let results: serde_json::Value = serde_json::from_str(&text("audit/results.json")).unwrap();
+        assert_eq!(results["bootstrap"]["replicates"], 4);
+        assert_eq!(results["support_s2"].as_array().unwrap().len(), edges.len());
+        // chunks.json lists each replicate with its seed and tree hash.
+        let chunks: serde_json::Value = serde_json::from_str(&text("audit/chunks.json")).unwrap();
+        let boot = chunks["stages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["stage"] == BOOTSTRAP)
+            .unwrap();
+        assert_eq!(boot["chunks"].as_array().unwrap().len(), 4);
+        assert_eq!(
+            boot["chunks"][1]["sha256"].as_str().unwrap(),
+            sha256_hex(format!("{}\n", trees[1]).as_bytes())
+        );
+        // A lost replicate and damaged S2 files are recomputed on resume.
+        std::fs::remove_file(replicate_file(&run, 2)).unwrap();
+        std::fs::write(run.root().join("report/bootstrap.tsv"), b"damaged").unwrap();
+        let cancel = AtomicBool::new(false);
+        let again = crate::runner::resume_run(&dir, "terminal", &NullSink, &cancel).unwrap();
+        assert_eq!(again, Outcome::Finished { root });
+        // Without S2, run.json has no bootstrap setting at all.
+        let plain_state = std::fs::read_to_string(tmp.path().join("plain/run.json")).unwrap();
+        let plain_state: serde_json::Value = serde_json::from_str(&plain_state).unwrap();
+        assert!(plain_state["config"].get("bootstrap").is_none());
+        let boot_state: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(dir.join("run.json")).unwrap()).unwrap();
+        assert_eq!(boot_state["config"]["bootstrap"], 4);
+    }
+
+    #[test]
+    fn stages_json_has_times_and_summaries() {
+        let tmp = TempDir::new("analysis_stages");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 6, 500, 17);
+        let dir = tmp.path().join("r");
+        finish(&dir, &options(&input, 4));
+        let stages: serde_json::Value = serde_json::from_slice(
+            &atomic::read_verified(&RunDir::new(&dir).audit().join("stages.json")).unwrap(),
+        )
+        .unwrap();
+        let rows = stages["stages"].as_array().unwrap();
+        assert_eq!(rows.len(), 8);
+        for r in rows {
+            assert!(
+                r["started_utc"].as_str().is_some_and(|t| t.ends_with('Z')),
+                "{r}"
+            );
+            assert!(
+                r["finished_utc"].as_str().is_some_and(|t| t.ends_with('Z')),
+                "{r}"
+            );
+            assert!(r["content_sha256"].as_str().unwrap().len() == 64);
+        }
+        let summary = |stage: &str| &rows.iter().find(|r| r["stage"] == stage).unwrap()["summary"];
+        assert_eq!(summary(INGEST)["taxa"], 6);
+        assert_eq!(
+            summary(MAW_EXTRACT)["maws_per_taxon"]
+                .as_object()
+                .unwrap()
+                .len(),
+            6
+        );
+        assert!(!summary(LENGTH_SELECT)["selected_lengths"]
+            .as_array()
+            .unwrap()
+            .is_empty());
+        assert!(summary(MATRIX_BUILD)["m_full_columns"].as_u64().unwrap() > 0);
+        let q = quartet::quartet_count(6);
+        assert_eq!(summary(QUARTET_COUNT)["quartets"], q);
+        let w = summary(QUARTET_WEIGHT);
+        assert_eq!(
+            w["fitted_quartets"].as_u64().unwrap() + w["quartets_without_weight"].as_u64().unwrap(),
+            q
+        );
+        assert!(summary(SUPPORT)["internal_edges"].as_u64().unwrap() > 0);
     }
 
     #[test]

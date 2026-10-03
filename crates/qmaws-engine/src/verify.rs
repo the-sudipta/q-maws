@@ -3,7 +3,7 @@
 //! | Mode | What it does |
 //! |---|---|
 //! | input check | Recomputes the hash of every input file and of every cleaned sequence and compares them with `run.json` and `audit/inputs.json`. Always runs first |
-//! | quick | Recomputes 20 chunks of each chunked stage, drawn with a printed seed, and compares their hashes with `audit/chunks.json` |
+//! | quick | Recomputes 20 chunks of each chunked stage, drawn with a printed seed, and compares their hashes with `audit/chunks.json`; also 3 bootstrap replicates, whose trees are compared the same way |
 //! | full | Recomputes the whole run in a temporary folder and compares the root fingerprint |
 //! | single quartet | Recomputes one quartet, writes its worksheet, and compares it with `audit/quartet_decisions.bin.zst` (and the stored weights, if present) |
 //!
@@ -14,7 +14,7 @@
 
 use crate::analysis::{
     self, count_positions, run_blocks, weight_model, worksheet_of, AnalysisConfig, AnalysisOptions,
-    InputsRecord, Weigher, COUNT_BLOCK, QUARTET_COUNT, QUARTET_WEIGHT, WEIGHT_BLOCK,
+    InputsRecord, Weigher, BOOTSTRAP, COUNT_BLOCK, QUARTET_COUNT, QUARTET_WEIGHT, WEIGHT_BLOCK,
 };
 use crate::atomic;
 use crate::clock::UtcDateTime;
@@ -31,6 +31,10 @@ use std::sync::atomic::AtomicBool;
 
 /// Chunks recomputed per chunked stage in the quick mode.
 pub const QUICK_CHUNKS: usize = 20;
+
+/// Bootstrap replicates recomputed in the quick mode (each one weighs every
+/// quartet once).
+pub const QUICK_REPLICATES: usize = 3;
 
 /// Floating-point tolerance against stored weights (determinism contract).
 pub const TOLERANCE: f64 = 0.000_001;
@@ -329,7 +333,7 @@ fn quick(
     });
     w.line(String::new());
     w.line(format!(
-        "Quick check: {QUICK_CHUNKS} chunks per chunked stage drawn with seed {seed} (repeat with --seed {seed})"
+        "Quick check: {QUICK_CHUNKS} chunks per chunked stage and up to {QUICK_REPLICATES} bootstrap replicates, drawn with seed {seed} (repeat with --seed {seed})"
     ));
     let Some(full) = matrix(run, w, cancel)? else {
         w.check(false, "stopped before the matrix was rebuilt");
@@ -396,6 +400,30 @@ fn quick(
                     } else {
                         "; the raw bytes differ in the last bits (allowed by the determinism contract)"
                     }
+                ),
+            );
+        }
+    }
+    let replicates = chunk_list(&run.chunks, BOOTSTRAP);
+    if !replicates.is_empty() {
+        let names: Vec<String> = run.inputs.taxa.iter().map(|t| t.name.clone()).collect();
+        let model = weight_model(&run.config, &full)?;
+        for b in draw(seed.wrapping_add(2), replicates.len(), QUICK_REPLICATES) {
+            let c = replicates[b];
+            let r = crate::bootstrap::replicate_tree(
+                &names,
+                &full,
+                &model,
+                run.config.seed,
+                b as u64,
+                crate::bootstrap::Inner::W2b,
+            );
+            w.check(
+                Some(sha256_hex(format!("{}\n", r.newick).as_bytes()).as_str())
+                    == c["sha256"].as_str(),
+                format!(
+                    "{BOOTSTRAP} replicate {b} (seed {}): SHA-256 of its tree",
+                    r.seed
                 ),
             );
         }
@@ -586,6 +614,7 @@ mod tests {
                 ml_max_columns: qmaws_core::matrix::MAX_ML_COLUMNS,
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 4,
+                bootstrap: 3,
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(3),
@@ -631,6 +660,8 @@ mod tests {
         let r = verify(&run, &Mode::Quick(Some(9)), None, &cancel).unwrap();
         let text = r.lines.join("\n");
         assert_eq!(text.matches("[PASS] quartet_count chunk").count(), 12);
+        // 3 bootstrap replicates: all recomputed.
+        assert_eq!(text.matches("[PASS] bootstrap replicate").count(), 3);
         assert!(text.contains("taken from the run folder"), "{text}");
         let q = verify(
             &run,
@@ -678,6 +709,17 @@ mod tests {
         atomic::write_verified(&chunks, changed.as_bytes()).unwrap();
         let r = verify(&run, &Mode::Quick(Some(1)), Some(&moved), &cancel).unwrap();
         assert_eq!(r.failures, 1, "{}", r.lines.join("\n"));
+        // So is a changed tree hash of a bootstrap replicate (the last chunk
+        // listed); all 3 replicates are recomputed.
+        let last = changed.rfind("\"sha256\": \"").unwrap() + 11;
+        changed.replace_range(last..last + 4, "0000");
+        atomic::write_verified(&chunks, changed.as_bytes()).unwrap();
+        let r = verify(&run, &Mode::Quick(Some(1)), Some(&moved), &cancel).unwrap();
+        assert_eq!(r.failures, 2, "{}", r.lines.join("\n"));
+        assert!(r
+            .lines
+            .iter()
+            .any(|l| l.starts_with("[FAIL] bootstrap replicate")));
         // A changed input file fails the input check.
         let f = moved.join("T2.fasta");
         let mut body = std::fs::read_to_string(&f).unwrap();

@@ -210,10 +210,10 @@ Written by `finalize` into `audit/` (plan 4.6.2):
 | File | Content | In the root |
 |---|---|---|
 | `inputs.json` | Per taxon: name, source file, lengths, removed symbols, cleaned SHA-256; per file: path, SHA-256, size; MAW length range | Yes, as the ingest stage (paths reduced to file names) |
-| `stages.json` | Content hash of each stage, number of quartets, seed | Its hashes form the root |
-| `chunks.json` | Per chunk of each chunked stage: range and SHA-256; for weights also the SHA-256 of the records rounded to 9 significant digits | No (chunk boundaries depend on the device) |
+| `stages.json` | Per stage: content hash, start and end time (UTC, from `run.json`; kept across resumes), and summary numbers (taxa and length range; MAWs per taxon; entropy per length and selected lengths; matrix dimensions; quartets, quartets without a split pattern or a counted column; fitted and resampled quartets; the amalgamation summary; number of edges, S1 and halo range and mean; S2 range and mean); number of quartets, seed | Its hashes form the root; times and summaries do not (they describe the device or repeat hashed content) |
+| `chunks.json` | Per chunk of each chunked stage: range and SHA-256; for weights also the SHA-256 of the records rounded to 9 significant digits; per bootstrap replicate its seed and the SHA-256 of its tree line | No (chunk boundaries depend on the device) |
 | `root.txt` | Root fingerprint | – |
-| `results.json` | The tree, the tree with S1, the weights used, the amalgamation summary, S1 per edge, halo value per taxon (numbers rounded to 9 significant digits); `metrics` is filled from M9 | No (it repeats values that are) |
+| `results.json` | The tree, the trees with S1 and S2, the weights used, the amalgamation summary, S1 and S2 per edge, halo value per taxon, the bootstrap settings (numbers rounded to 9 significant digits); `metrics` is filled from M9 | No (it repeats values that are) |
 | `quartet_decisions.bin.zst` | Magic `QMAWDEC1` and the number of quartets, then per quartet in rank order the winning topology (0 ab\|cd, 1 ac\|bd, 2 ad\|bc, 3 no weight; the first on equal weights) and its weight × 65,535 rounded to 16 bits; zstd level 19 | No |
 | `sample_worksheets.txt` | Worksheets of 50 quartets drawn with seed `quartet_seed(global, 2^64 − 1)`, in rank order; each is recomputed from `M_full` and must be identical to the stored weights before it is written | No |
 | `environment.json` | Program version, git commit of the build (`build.rs`), operating system, architecture, CPU, logical cores, RAM, popcount path, all settings, seeds | No (it describes the device) |
@@ -228,7 +228,7 @@ The decisions file supports the single-quartet verification. It does not hold en
 
 - **Input check** (always first): SHA-256 and size of every input file against `run.json`; taxon names and cleaned-sequence hashes against `audit/inputs.json`. `--input` gives the new location if the data were moved (paths below the old input folder are mapped below the new one). If the input check fails, nothing else is run.
 - **Full matrix:** taken from `work/matrix/m_full.bin` when its SHA-256 equals the matrix stage hash in `audit/stages.json`; otherwise rebuilt from the inputs by the run's own stages up to `matrix_build` in `work/verify/`, and compared with that hash. A reviewer therefore needs only `run.json`, `audit/` and the raw data.
-- **Quick:** 20 chunks of each chunked stage (all if there are fewer), drawn with SplitMix64 from the given or a fresh seed (printed), recomputed with the run's own counting and weighting functions over the stored ranges. Count chunks must have the same SHA-256; weight chunks the same SHA-256 of the rounded records, and whether the raw bytes also agree is reported.
+- **Quick:** 20 chunks of each chunked stage (all if there are fewer), drawn with SplitMix64 from the given or a fresh seed (printed), recomputed with the run's own counting and weighting functions over the stored ranges. Count chunks must have the same SHA-256; weight chunks the same SHA-256 of the rounded records, and whether the raw bytes also agree is reported. Of the bootstrap replicates, 3 are drawn the same way (all if there are fewer) and recomputed; the SHA-256 of each tree line must agree with `audit/chunks.json`. Three, not 20, because each replicate weighs every quartet once.
 - **Full:** the whole run is recomputed in `work/verify/full_<time>/` and its root compared; the folder is deleted after a completed comparison.
 - **Single quartet:** the worksheet of the four taxa (given in any order) is printed; its winning topology and 16-bit weight must equal the stored decision, and, when the work folder is present, its weights must agree with the stored record within 0.000001.
 
@@ -243,14 +243,16 @@ As in the plan (4.6.4), and checked by tests and by verification:
 - **Seeds:** the processing order and W2c use the run seed; W2c uses `quartet_seed(seed, rank)`; the sample worksheets `quartet_seed(seed, 2^64 − 1)`; bootstrap replicate b `quartet_seed(seed, 2^63 + b)`.
 - A test that finds a cross-platform difference blocks a release. The comparison of the Fish mtDNA root on Windows, macOS and Linux is golden test G12 (CI).
 
-## S2 column bootstrap (M8: cost measurement only)
+## S2 column bootstrap (M8)
 
-Code: `crates/qmaws-core/src/bootstrap.rs`, `crates/qmaws-engine/src/bootstrap.rs`, hidden command `qmaws s2-cost --run <run> [--replicates N] [--w2b]`.
+Code: `crates/qmaws-core/src/bootstrap.rs`, `crates/qmaws-engine/src/bootstrap.rs`, stage `bootstrap` in `crates/qmaws-engine/src/analysis.rs`, split frequencies in `crates/qmaws-core/src/support.rs`; hidden command `qmaws s2-cost --run <run> [--replicates N] [--w2b]` for the cost measurement.
 
 - **Column weights:** Poisson(1) per column by inversion (P(0) = e⁻¹, then P(k) = P(k − 1) ÷ k, at most 20), from SplitMix64 seeded with the replicate seed.
 - **Weighted counts:** the columns of weight k form a class; the rows are masked to the class and counted with the inclusion–exclusion kernel, and the class counts are added k times. A test compares them with a weighted column scan.
 - **A replicate:** weighted counts of every quartet, W2c with per-quartet seeds `quartet_seed(replicate seed, rank)` and the run's number of resamples (or W2b with `--w2b`), then wQFM-rs. `s2-cost` reports the time of each step, the mean per replicate, and how often each split of the run's tree recurs.
-- S2 is not yet a stage of the run: whether to run it, and with how many replicates, is decision D7.
+- **Stage `bootstrap`** (decision D7, 2026-10-03: run S2 with 100 replicates and W2b inside): after `support`, B replicates (`--bootstrap B`, default 100; 0 skips the stage and leaves the setting out of `run.json`). W2b inside, because W2c would take about 18.8 h per 100 replicates on E. coli/Shigella on the owner's laptop against about 1.0 h with W2b (measured in M8). One replicate per unit: `work/bootstrap/replicate_<b>.nwk`, valid when its hash file agrees, so a stopped run resumes at the next replicate. Quartets are weighed in parallel and collected in rank order, so the trees do not depend on threads.
+- **S2** of an internal edge of the run's tree: the fraction of replicate trees that contain its split, read as unrooted (`support::split_frequencies`); edges in the order of `report/support.tsv`.
+- **Outputs:** `trees/bootstrap_trees.nwk` (one tree per line in replicate order), `trees/tree_s2.nwk` (S2 with 3 decimals as internal labels), `report/bootstrap.tsv` (edge, clade size, S2, number of replicates, clade). The three files form the stage's content hash in the root. S1 stays the primary support (pre-registration).
 
 ## Controls (M8)
 

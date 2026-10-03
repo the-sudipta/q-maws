@@ -5,6 +5,8 @@
 //!   split divided by the total weight of those quartets.
 //! - **Halo value** of taxon i: over all quartets containing i, the weight
 //!   of the topology induced by the tree divided by the total weight.
+//! - **S2** of an internal edge: the fraction of column-bootstrap replicate
+//!   trees that contain its split (`split_frequencies`).
 //!
 //! Quartets are added one at a time (the caller streams them in rank
 //! order), and every sum runs in the order of addition, so the results do
@@ -208,10 +210,124 @@ impl Accumulator {
     }
 }
 
+/// S2 of one internal edge.
+#[derive(Clone, Debug, PartialEq)]
+pub struct EdgeFrequency {
+    /// Taxa below the edge (sorted names).
+    pub clade: Vec<String>,
+    /// Fraction of the replicate trees that contain the edge's split.
+    pub s2: f64,
+    /// Number of replicate trees that contain it.
+    pub replicates: usize,
+}
+
+/// S2: for every internal edge of `newick` (in the order of
+/// [`Accumulator`], so of `report/support.tsv`), the fraction of
+/// `replicates` that contain its split, read as unrooted. Also returns the
+/// tree with S2 (3 decimals) as internal node labels.
+pub fn split_frequencies(
+    newick: &str,
+    replicates: &[String],
+) -> Result<(Vec<EdgeFrequency>, String), String> {
+    let mut tree = Tree::parse(newick).map_err(|e| e.to_string())?;
+    let mut all = tree.leaf_names();
+    all.sort();
+    let mut counts: std::collections::BTreeMap<Vec<String>, usize> = Default::default();
+    for (i, r) in replicates.iter().enumerate() {
+        let t = Tree::parse(r).map_err(|e| format!("replicate {i}: {e}"))?;
+        let mut leaves = t.leaf_names();
+        leaves.sort();
+        if leaves != all {
+            return Err(format!("replicate {i}: its leaves differ from the tree's"));
+        }
+        for s in t.splits() {
+            *counts.entry(s).or_insert(0) += 1;
+        }
+    }
+    let m = all.len();
+    let first = all.first().cloned().unwrap_or_default();
+    // Leaves below every node, by a post-order walk.
+    let mut below: Vec<Vec<String>> = vec![Vec::new(); tree.nodes.len()];
+    let mut order = Vec::new();
+    let mut stack = vec![tree.root];
+    while let Some(n) = stack.pop() {
+        order.push(n);
+        stack.extend(&tree.nodes[n].children);
+    }
+    for &n in order.iter().rev() {
+        if tree.is_leaf(n) {
+            below[n] = vec![tree.nodes[n].label.clone().unwrap_or_default()];
+        } else {
+            let mut v: Vec<String> = tree.nodes[n]
+                .children
+                .iter()
+                .flat_map(|&c| below[c].iter().cloned())
+                .collect();
+            v.sort();
+            below[n] = v;
+        }
+    }
+    let mut edges = Vec::new();
+    for (n, clade) in below.into_iter().enumerate() {
+        let size = clade.len();
+        if n == tree.root || tree.is_leaf(n) || size < 2 || m - size < 2 {
+            continue;
+        }
+        let split: Vec<String> = if clade.contains(&first) {
+            all.iter().filter(|x| !clade.contains(x)).cloned().collect()
+        } else {
+            clade.clone()
+        };
+        let found = counts.get(&split).copied().unwrap_or(0);
+        let s2 = if replicates.is_empty() {
+            0.0
+        } else {
+            found as f64 / replicates.len() as f64
+        };
+        tree.nodes[n].label = Some(format!("{s2:.3}"));
+        edges.push(EdgeFrequency {
+            clade,
+            s2,
+            replicates: found,
+        });
+    }
+    Ok((edges, tree.to_newick(false)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::quartet;
+
+    #[test]
+    fn split_frequencies_read_replicates_unrooted() {
+        let tree = "((t0,t1),t2,(t3,t4));";
+        let reps = [
+            // The same tree, rooted elsewhere.
+            "(t0,(t1,(t2,(t3,t4))));".to_string(),
+            // Keeps t3t4, loses t0t1.
+            "((t0,t2),t1,(t3,t4));".to_string(),
+            // Loses both.
+            "((t0,t3),t2,(t1,t4));".to_string(),
+            "((t0,t1),t2,(t3,t4));".to_string(),
+        ];
+        let (edges, labelled) = split_frequencies(tree, &reps).unwrap();
+        assert_eq!(edges.len(), 2);
+        assert_eq!(edges[0].clade, ["t0", "t1"]);
+        assert_eq!((edges[0].replicates, edges[0].s2), (2, 0.5));
+        assert_eq!(edges[1].clade, ["t3", "t4"]);
+        assert_eq!((edges[1].replicates, edges[1].s2), (3, 0.75));
+        assert_eq!(labelled, "((t0,t1)0.500,t2,(t3,t4)0.750);");
+        // Same edge order as the S1 accumulator.
+        let nm = names(5);
+        let s = Accumulator::new(&nm, tree).unwrap().finish();
+        let clades: Vec<_> = s.edges.iter().map(|e| e.clade.clone()).collect();
+        assert_eq!(
+            clades,
+            edges.iter().map(|e| e.clade.clone()).collect::<Vec<_>>()
+        );
+        assert!(split_frequencies(tree, &["((t0,t1),t2,(t3,x));".to_string()]).is_err());
+    }
 
     fn names(m: usize) -> Vec<String> {
         (0..m).map(|i| format!("t{i}")).collect()

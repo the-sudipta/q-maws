@@ -51,6 +51,12 @@ pub struct StageState {
     /// SHA-256 of each output file, keyed by its path relative to the run folder.
     #[serde(default)]
     pub outputs: BTreeMap<String, String>,
+    /// When the stage first started (UTC, ISO 8601); kept across resumes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub started_utc: Option<String>,
+    /// When the stage was marked done (UTC, ISO 8601).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finished_utc: Option<String>,
 }
 
 impl StageState {
@@ -59,6 +65,8 @@ impl StageState {
             name: name.to_string(),
             status: StageStatus::Pending,
             outputs: BTreeMap::new(),
+            started_utc: None,
+            finished_utc: None,
         }
     }
 }

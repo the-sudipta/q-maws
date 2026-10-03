@@ -45,7 +45,7 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
-    /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 support and halo values)
+    /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 and S2 support and halo values)
     Run {
         /// Folder of sequence files, or one multi-FASTA file
         #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
@@ -86,6 +86,10 @@ enum Command {
         /// Number of W2c resamples per quartet (0: no W2c)
         #[arg(long, default_value_t = qmaws_core::weight::REPLICATES)]
         replicates: u32,
+
+        /// Number of S2 column-bootstrap replicates, W2b inside (0: no S2)
+        #[arg(long, default_value_t = qmaws_engine::analysis::BOOTSTRAP_REPLICATES)]
+        bootstrap: u32,
 
         /// For a folder: one taxon per file (records joined) or one per record
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
@@ -541,6 +545,7 @@ fn main() -> ExitCode {
             chunk_quartets,
             weighting,
             replicates,
+            bootstrap,
             records,
             data_dir,
         } => {
@@ -593,6 +598,7 @@ fn main() -> ExitCode {
                     ml_max_columns: qmaws_core::matrix::MAX_ML_COLUMNS,
                     weighting: weighting.config_name().to_string(),
                     replicates,
+                    bootstrap,
                 },
                 chunk_seconds,
                 chunk_quartets,
