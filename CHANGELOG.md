@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- Graphical interface (`qmaws gui`, `--gui` on `run` and `resume`): the main menu as tabs, the steps of a new run, the live provisional Halo Tree with changed branches highlighted, the live worksheet, the stage log, progress, Pause and Stop; unfinished runs offered on launch. Built with `eframe`/`egui` without built-in fonts (a system font is loaded).
+- Interactive terminal menu (`qmaws menu`, started by `run.bat` and `run.sh` without arguments): start, resume (one run, or all one after another), verify, exit.
+- Pause: the engine waits between units of work without counting the time.
+- Live provisional tree while quartets are weighed (`figures/live/`, frames, `report/convergence.csv`); `--no-live-tree`.
+- `qmaws resume --all` with a saved queue; `--gui` and `--terminal`; `qmaws verify --quick`; a CPU core limit in the menu settings.
+- Golden test G10: terminal and GUI give the same root; runs move between the interfaces at any stop.
+
+### Changed
+
+- `qmaws resume` without `--output` also finds runs in the results folders used before (user configuration file).
+- BSL-1.0 added to the allowed licenses (clipboard support of `eframe`).
+
 ## [v0.8-m08-support] - 2026-10-03
 
 ### Added

@@ -2,7 +2,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: early development (milestone M2, input and data).** The run engine works with a toy computation; benchmark datasets can be downloaded and verified, and sequence folders read and checked. No analysis can be run yet. This README is a draft and is completed as features are added.
+> **Status: early development (milestone M9, GUI).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, and can be verified; the final figures, the benchmark comparison and the releases come in later milestones. This README is a draft and is completed as features are added.
 
 License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
 
@@ -40,15 +40,15 @@ cargo build --release
 
 ## GUI mode
 
-To be written (milestone M9).
+`qmaws gui` (or choosing "GUI" in the menu, or `--gui` on `run` and `resume`) opens a window with the same menu as the terminal. A new run goes through the steps Data, Reference, Output, Settings, Review and Run. While it runs, the window shows the live provisional Halo Tree (zoom and pan; branches that changed since the previous update are highlighted), the live worksheet of the latest weighed quartet (its 16 pattern counts, W1 weights, W2 log-likelihoods and weights), the stage log, progress with elapsed and remaining time, and Pause and Stop buttons; the final tree is shown at the end. A run started in the window can be resumed in the terminal and the other way round, with the same result. Details: `docs/USER_GUIDE.md`.
 
 ## Terminal mode
 
-In this build the terminal mode is the set of direct commands below: each long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume`. The interactive menu (plan 5.2) comes with milestone M9.
+`qmaws menu` (also `run.bat` or `./run.sh` without arguments) shows the interactive main menu: start a new run, resume an unfinished run (one, or all one after another), verify a run, exit. Every long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume` (`--all` for every unfinished run).
 
 ## Direct commands
 
-Available in this build: `qmaws run` (from sequences to the tree with S1 and S2 support and halo values), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
+Available in this build: `qmaws menu`, `qmaws gui`, `qmaws run` (from sequences to the tree with S1 and S2 support and halo values; `--gui` or `--terminal`), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
 
 ## Benchmark datasets
 

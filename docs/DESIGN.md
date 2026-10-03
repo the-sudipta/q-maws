@@ -266,3 +266,39 @@ Hidden command `qmaws controls [--output results/controls] [--seed 1]` (`crates/
 | `fish` | Fish mtDNA unchanged | Reference point |
 
 Chance level: nRF of 1,000 random binary trees (random stepwise addition) to the same reference, as mean and 5th percentile. Each control is a normal analysis run with default settings in `runs/<control>/`; `summary.md` and `controls.tsv` hold the results.
+
+## Pause and live events (M9)
+
+Code: `crates/qmaws-engine/src/progress.rs`.
+
+- **Pause:** `ProgressSink::pause_requested` is asked between units of work (taxa, chunks, bootstrap replicates). While it is true the engine waits, checking every 100 ms; the waiting time is not counted as working time, and Stop (the cancel flag) still works during a pause. The log records "Paused." and "Continuing.".
+- **Events for the GUI:** `Quartet` carries the last quartet of each weighing chunk (taxa, the 16 pattern counts, W1 weights, W2 log-likelihoods, the tree weights) for the live worksheet; `Provisional` carries each provisional tree (frame, percentage, Newick, halo values, SVG file). Both appear in `--json-progress`; the terminal display ignores them.
+
+## Live provisional tree (M9)
+
+Code: `crates/qmaws-engine/src/provisional.rs`, drawing in `crates/qmaws-viz/src/tree.rs` and `render.rs`.
+
+- While `quartet_weight` runs, every 5% of the quartets or 3 minutes (whichever comes first) the finished quartets are amalgamated with wQFM-rs, provisional halo values are computed, and the provisional Halo Tree is drawn with the watermark `PROVISIONAL — <x>% of quartets` to `figures/live/halo_tree_latest.svg`, `.png` and `.pdf` (atomic writes), with a 480-pixel frame in `work/provisional/frames/frame_<n>.png`.
+- **Overhead budget:** when an update takes more than 10% of the time since the previous one, both intervals are doubled and the change is logged. Quartets are weighed in a seeded random order, so the finished quartets are a fair sample of all quartets.
+- **Resume:** intervals and frames are kept in `work/provisional/state.json`, so numbering and timing continue.
+- **Convergence:** after the amalgamation, `report/convergence.csv` gives each provisional tree's nRF to the final tree.
+- Nothing here enters the root fingerprint: provisional trees depend on timing, the results do not (tested). `qmaws run --no-live-tree` and the "Live provisional tree" setting turn it off; controls and verification run without it.
+- **Figure (M9 scope, owner's decision):** circular cladogram rooted for display at the midpoint of the longest leaf-to-leaf path, label ring, halo ring with a colour-blind safe diverging scale (ColorBrewer PuOr) and a dot for halo values below 0.6, legend and watermark. Group bands and support colours come with the final figures (M10).
+
+## Menu, launch and interface switching (M9)
+
+Code: `crates/qmaws-engine/src/launch.rs` (shared), `crates/qmaws-tui/src/menu.rs` (terminal), `crates/qmaws-gui/` (window), `crates/qmaws-cli/src/menu_cmd.rs` (dispatch).
+
+- The terminal menu and the GUI ask the same questions in the same order (plan 5.2) and share `launch`: `Settings` (default: the primary configuration), `NewRun` (turned into the engine's options), the review text, the list of runs with their percentage done and last interface, and the unfinished run with the same data and settings (same `config_sha256`).
+- The terminal menu only asks; it returns a `MenuAction` that `qmaws menu` carries out in the interface chosen. Prompts go through the `Prompter` trait (`dialoguer` in the terminal, a script in tests).
+- **User configuration** (plan 5.5): `config.json` in `%APPDATA%\q-maws` (Windows), `~/Library/Application Support/q-maws` (macOS) or `$XDG_CONFIG_HOME/q-maws` (else `~/.config/q-maws`); `QMAWS_CONFIG_DIR` replaces the folder (tests). It holds the results folders used outside `results/runs` and the resume queue. `resume --all` and "All runs, one after another" save the queue; each finished run leaves it; a stopped queue continues with the next `resume --all`.
+- **Interface switching:** `run.json` records the interface used last (`last_interface`). Every stop leaves a normal resumable run, so a run started in one interface continues in the other with the same engine and the same root (G10). `cores` and `memory_limit` belong to one session and are not stored.
+
+## GUI (M9)
+
+Code: `crates/qmaws-gui/src/` (`app.rs` window, `controller.rs` engine thread, `fonts.rs`).
+
+- **Controller:** the engine runs in a worker thread; its sink sends events through an `mpsc` channel and answers `pause_requested` from an atomic flag; Stop sets the cancel flag. A list of runs (new runs, or a resume queue) runs one after another and ends at the first stop or error. The window reads the channel each frame and never blocks; the worker asks for a redraw after each message. Tests use the controller without a window (G10).
+- **Window** (`eframe`/`egui`, OpenGL): tabs for the main menu items; for a new run the steps Data, Reference, Output, Settings, Review and Run on the left; during a run the live Halo Tree in the centre (zoom and pan with `egui::Scene`, branches whose split is new since the previous provisional tree drawn thicker in blue), the final tree afterwards, the live worksheet and the stage log on the right, progress, elapsed and remaining time, Pause or Continue and Stop at the bottom. On launch, unfinished runs are listed with an offer to resume. Closing the window stops the run cleanly.
+- **Fonts:** egui's built-in fonts are turned off (license decision, see `docs/DEPENDENCIES.md`); a sans-serif and a monospace font installed on the computer are loaded at start (`qmaws_viz::render::system_font`). There are no emoji or icon glyphs, so buttons carry plain text. Light and dark themes follow the system or the buttons in the top bar; "A+" and "A-" scale the text.
+- **Paths:** typed, pasted, or dropped onto the window; there is no native file dialog (see "Considered and not used" in `docs/DEPENDENCIES.md`).
