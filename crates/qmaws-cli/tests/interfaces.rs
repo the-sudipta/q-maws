@@ -115,6 +115,10 @@ fn gui_options(size: Size, chunk: Option<u64>) -> AnalysisOptions {
     }
 }
 
+fn data() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data")
+}
+
 fn quiet() -> Arc<dyn Fn() + Send + Sync> {
     Arc::new(|| {})
 }
@@ -161,6 +165,7 @@ fn check_interfaces(size: Size) {
             options: gui_options(size, None),
         }],
         false,
+        data(),
         quiet(),
     );
     let mut provisional = 0;
@@ -212,7 +217,12 @@ fn check_interfaces(size: Size) {
     let before = RunSummary::read(&t2g).expect("the run was recorded");
     assert!(!before.finished, "the run was stopped before the end");
     assert!(before.percent > 0.0 && before.percent < 100.0);
-    let c = Controller::spawn(vec![Job::Resume { dir: t2g.clone() }], false, quiet());
+    let c = Controller::spawn(
+        vec![Job::Resume { dir: t2g.clone() }],
+        false,
+        data(),
+        quiet(),
+    );
     let outcome = single(run_to_end(&c, |_, _, _| {}));
     drop(c);
     assert_eq!(
@@ -231,6 +241,7 @@ fn check_interfaces(size: Size) {
             options: gui_options(size, Some(CHUNK)),
         }],
         false,
+        data(),
         quiet(),
     );
     let outcome = single(run_to_end(&c, |c, _, e| {

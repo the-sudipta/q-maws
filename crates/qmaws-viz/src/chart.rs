@@ -270,6 +270,93 @@ pub fn to_svg(chart: &Chart) -> String {
     out
 }
 
+/// The convergence report as a chart (plan 4.7): nRF of each provisional
+/// tree to the final tree against the percentage of quartets finished,
+/// on linear axes (0 to 100%, 0 to 1).
+pub fn convergence_svg(points: &[(f64, f64)], title: &str) -> String {
+    let (left, top, pw, ph) = (70.0, 50.0, 520.0, 300.0);
+    let (w, h) = (left + pw + 30.0, top + ph + 70.0);
+    let px = |x: f64| left + x.clamp(0.0, 100.0) / 100.0 * pw;
+    let py = |y: f64| top + (1.0 - y.clamp(0.0, 1.0)) * ph;
+    let esc = |s: &str| {
+        s.replace('&', "&amp;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;")
+    };
+    let mut s = String::new();
+    let _ = write!(
+        s,
+        r##"<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="0 0 {w} {h}" font-family="sans-serif"><rect width="{w}" height="{h}" fill="#ffffff"/><text x="12" y="24" font-size="15" font-weight="bold" fill="#222222">{}</text>"##,
+        esc(title)
+    );
+    for i in 0..=5 {
+        let y = i as f64 / 5.0;
+        let _ = write!(
+            s,
+            r##"<line x1="{left}" y1="{0:.1}" x2="{1:.1}" y2="{0:.1}" stroke="#e5e5e5"/><text x="{2:.1}" y="{3:.1}" font-size="11" fill="#333333" text-anchor="end">{y:.1}</text>"##,
+            py(y),
+            left + pw,
+            left - 6.0,
+            py(y) + 4.0
+        );
+    }
+    for i in 0..=5 {
+        let x = i as f64 * 20.0;
+        let _ = write!(
+            s,
+            r##"<line x1="{0:.1}" y1="{top}" x2="{0:.1}" y2="{1:.1}" stroke="#e5e5e5"/><text x="{0:.1}" y="{2:.1}" font-size="11" fill="#333333" text-anchor="middle">{x:.0}</text>"##,
+            px(x),
+            top + ph,
+            top + ph + 16.0
+        );
+    }
+    let _ = write!(
+        s,
+        r##"<rect x="{left}" y="{top}" width="{pw}" height="{ph}" fill="none" stroke="#555555"/><text x="{0:.1}" y="{1:.1}" font-size="12" fill="#222222" text-anchor="middle">Quartets finished (%)</text><text x="18" y="{2:.1}" font-size="12" fill="#222222" text-anchor="middle" transform="rotate(-90 18 {2:.1})">nRF to the final tree</text>"##,
+        left + pw / 2.0,
+        top + ph + 36.0,
+        top + ph / 2.0
+    );
+    if !points.is_empty() {
+        let path: Vec<String> = points
+            .iter()
+            .map(|&(x, y)| format!("{:.2},{:.2}", px(x), py(y)))
+            .collect();
+        let _ = write!(
+            s,
+            r##"<polyline points="{}" fill="none" stroke="#0072b2" stroke-width="2"/>"##,
+            path.join(" ")
+        );
+        for &(x, y) in points {
+            let _ = write!(
+                s,
+                r##"<circle cx="{:.2}" cy="{:.2}" r="3.5" fill="#0072b2"/>"##,
+                px(x),
+                py(y)
+            );
+        }
+    }
+    let _ = writeln!(
+        s,
+        r##"<text x="12" y="{:.1}" font-size="10" fill="#555555">Each point is a provisional tree from the quartets finished so far (seeded random order); 0 means the final tree.</text></svg>"##,
+        h - 10.0
+    );
+    s
+}
+
+#[cfg(test)]
+mod convergence_tests {
+    use super::*;
+
+    #[test]
+    fn convergence_chart_has_one_point_per_tree() {
+        let svg = convergence_svg(&[(5.0, 0.6), (50.0, 0.3), (95.0, 0.0)], "Fish <mtDNA>");
+        assert_eq!(svg.matches("<circle").count(), 3);
+        assert!(svg.contains("Fish &lt;mtDNA&gt;"));
+        assert!(convergence_svg(&[], "x").contains("</svg>"));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

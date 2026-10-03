@@ -13,6 +13,7 @@ pub mod download;
 pub mod extract;
 pub mod loader;
 pub mod ncbi;
+pub mod otl;
 pub mod references;
 pub mod registry;
 

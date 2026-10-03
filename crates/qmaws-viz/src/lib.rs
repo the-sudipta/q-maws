@@ -5,7 +5,12 @@
 //! the circular cladogram layout and the provisional Halo Tree (`tree`) with
 //! PNG and PDF output (`render`). The final tree figures are added in M10.
 
+pub mod anim;
 pub mod chart;
+pub mod colour;
+pub mod groups;
+pub mod html;
+pub mod rect;
 pub mod render;
 pub mod tree;
 

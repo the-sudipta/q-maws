@@ -402,6 +402,23 @@ impl HttpFetcher {
     }
 }
 
+impl HttpFetcher {
+    /// POSTs a JSON body and returns the response text (for web APIs such
+    /// as the Open Tree of Life).
+    pub fn post_json(&self, url: &str, body: &str) -> Result<String, String> {
+        let response = self
+            .agent
+            .post(url)
+            .content_type("application/json")
+            .send(body.as_bytes())
+            .map_err(|e| e.to_string())?;
+        response
+            .into_body()
+            .read_to_string()
+            .map_err(|e| e.to_string())
+    }
+}
+
 impl Default for HttpFetcher {
     fn default() -> Self {
         Self::new()

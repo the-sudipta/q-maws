@@ -19,6 +19,7 @@ Source code of the science crate. Each module receives data and returns data; no
 | `teach.rs` | The teaching worksheet: two-letter MAWs, matrix, pattern table, W1 votes, classroom amalgamation, nRF, model example |
 | `weight.rs` | Quartet weighting: W1 votes; the two-state model and its pattern probabilities; the conditioned log-likelihood; the branch-length optimiser; W2a, W2b and W2c with per-quartet seeds, SplitMix64 and exact binomial draws |
 | `worksheet.rs` | The worksheet of one quartet: co-occurrence counts, pattern counts by inclusion–exclusion written out, W1 votes, W2 fits with branch lengths, W2a, W2b and W2c (audit samples and `qmaws verify --quartet`) |
+| `metrics.rs` | Tree comparison: normalised quartet distance (every quartet, four-point condition, unresolved quartets of the reference counted apart) and the matching split distance with the Hungarian algorithm |
 | `newick.rs` | Newick parsing and writing; comparison of leaf names with taxon names; splits and normalised Robinson–Foulds distance |
 
 ## Relationships

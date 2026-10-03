@@ -65,8 +65,9 @@ pub fn resume_terminal(
     display: &TerminalDisplay,
     cancel: &AtomicBool,
     mode: DisplayMode,
+    data_dir: &Path,
 ) -> ExitCode {
-    match resume_list(dirs, queue, display, cancel, mode) {
+    match resume_list(dirs, queue, display, cancel, mode, data_dir) {
         Ended::AllFinished => ExitCode::SUCCESS,
         Ended::Stopped(code) => code,
         Ended::Failed => ExitCode::from(EXIT_ERROR),
@@ -79,6 +80,7 @@ fn resume_list(
     display: &TerminalDisplay,
     cancel: &AtomicBool,
     mode: DisplayMode,
+    data_dir: &Path,
 ) -> Ended {
     for (i, dir) in dirs.iter().enumerate() {
         if queue && mode != DisplayMode::Json {
@@ -87,6 +89,7 @@ fn resume_list(
         match resume_run(dir, Interface::Terminal.name(), display, cancel) {
             Ok(outcome @ Outcome::Finished { .. }) => {
                 let _ = report(outcome, dir, mode);
+                after_finished(dir, data_dir, mode);
                 if queue {
                     let mut config = UserConfig::load();
                     if config.dequeue(dir) {
@@ -109,12 +112,22 @@ fn resume_list(
     Ended::AllFinished
 }
 
+/// Figures after a finished analysis run (toy runs have none).
+fn after_finished(dir: &Path, data_dir: &Path, mode: DisplayMode) {
+    let analysis = qmaws_engine::state::RunState::load(&dir.join("run.json"))
+        .is_ok_and(|s| s.kind == qmaws_engine::analysis::KIND);
+    if analysis {
+        crate::figures_cmd::after_run(dir, data_dir, mode != DisplayMode::Normal);
+    }
+}
+
 /// Starts new runs one after another in the terminal.
 fn start_terminal(
     runs: &[launch::NewRun],
     display: &TerminalDisplay,
     cancel: &AtomicBool,
     mode: DisplayMode,
+    data_dir: &Path,
 ) -> Ended {
     for run in runs {
         match qmaws_engine::analysis::start(
@@ -126,6 +139,7 @@ fn start_terminal(
         ) {
             Ok(outcome @ Outcome::Finished { .. }) => {
                 let _ = report(outcome, &run.output, mode);
+                after_finished(&run.output, data_dir, mode);
             }
             Ok(Outcome::Stopped) => {
                 return Ended::Stopped(report(Outcome::Stopped, &run.output, mode));
@@ -178,7 +192,7 @@ pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool
                     }
                     Interface::Terminal => {
                         let display = TerminalDisplay::new(mode, color);
-                        start_terminal(&runs, &display, cancel, mode)
+                        start_terminal(&runs, &display, cancel, mode, data_dir)
                     }
                 }
             }
@@ -203,14 +217,14 @@ pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool
                     }
                     Interface::Terminal => {
                         let display = TerminalDisplay::new(mode, color);
-                        let mut ended = resume_list(&dirs, queue, &display, cancel, mode);
+                        let mut ended = resume_list(&dirs, queue, &display, cancel, mode, data_dir);
                         // After a single resumed run: offer the next one.
                         while !queue && matches!(ended, Ended::AllFinished) {
                             let roots = UserConfig::load().roots();
                             let Some(next) = menu::ask_next_run(&mut prompter, &roots) else {
                                 break;
                             };
-                            ended = resume_list(&[next], false, &display, cancel, mode);
+                            ended = resume_list(&[next], false, &display, cancel, mode, data_dir);
                         }
                         ended
                     }

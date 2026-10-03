@@ -8,6 +8,8 @@ Source code of the `qmaws` binary.
 |---|---|
 | `controls_cmd.rs` | The hidden command `controls`: simulated (positive) and shuffled (negative) controls with Fish mtDNA as a reference point, written to `results/controls/` |
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
+| `figures_cmd.rs` | The command `figures`, and the figures drawn after every finished analysis run |
+| `figure_check_cmd.rs` | The hidden command `figure-check`: figures for the taxon names of a dataset on a random tree, to check readability |
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |

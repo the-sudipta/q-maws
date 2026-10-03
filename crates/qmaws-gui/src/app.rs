@@ -235,7 +235,8 @@ impl App {
     }
 
     fn start(&mut self, jobs: Vec<Job>, queue: bool, resumed_single: bool) {
-        let controller = Controller::spawn(jobs, queue, Arc::clone(&self.wake));
+        let controller =
+            Controller::spawn(jobs, queue, self.data_dir.clone(), Arc::clone(&self.wake));
         self.run = Some(RunView {
             controller,
             queue,
@@ -345,7 +346,8 @@ fn on_event(run: &mut RunView, event: Event) {
     }
 }
 
-/// The final tree and halo values of a finished analysis run.
+/// The final tree and halo values of a finished analysis run (the figures
+/// in `figures/` are drawn by the controller when the run finishes).
 fn final_tree(dir: &Path) -> Option<ShownTree> {
     let newick = std::fs::read_to_string(dir.join("report").join("tree.nwk")).ok()?;
     let layout = TreeLayout::from_newick(&newick).ok()?;
@@ -402,6 +404,7 @@ fn check_folder(path: &str) -> FolderCheck {
     }
 }
 
+/// Opens a folder or a file with the program the system uses for it.
 fn open_folder(p: &Path) {
     let cmd = if cfg!(windows) {
         "explorer"
@@ -1329,6 +1332,15 @@ fn tree_panel(ui: &mut egui::Ui, run: &mut RunView, _action: &mut Option<RunActi
             }
             if ui.button("Open the run folder").clicked() {
                 open_folder(d);
+            }
+            for (file, label) in [
+                ("halo_tree.png", "Open the Halo Tree"),
+                ("interactive_tree.html", "Open the interactive tree"),
+            ] {
+                let path = figures.join(file);
+                if run.done && path.exists() && ui.button(label).clicked() {
+                    open_folder(&path);
+                }
             }
         }
         if ui

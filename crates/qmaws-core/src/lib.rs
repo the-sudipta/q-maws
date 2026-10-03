@@ -10,6 +10,7 @@ pub mod control;
 pub mod input;
 pub mod matrix;
 pub mod maw;
+pub mod metrics;
 pub mod newick;
 pub mod quartet;
 pub mod sim;

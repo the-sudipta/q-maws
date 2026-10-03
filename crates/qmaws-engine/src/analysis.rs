@@ -1148,6 +1148,7 @@ impl<'a> Session<'a> {
             ],
             watermark: Some(format!("PROVISIONAL \u{2014} {percent:.0}% of quartets")),
             size: 800.0,
+            ..Default::default()
         };
         let svg = qmaws_viz::tree::halo_tree_svg(&layout, &halo.iter().cloned().collect(), &style);
         let render = |r: Result<Vec<u8>, String>| r.map_err(EngineError::Invalid);
@@ -2507,6 +2508,81 @@ mod tests {
         let plain = RunDir::new(tmp.path().join("plain"));
         assert!(!provisional::latest_file(&plain, "svg").exists());
         assert!(!plain.report().join("convergence.csv").exists());
+    }
+
+    #[test]
+    fn figures_of_a_finished_run_leave_the_root_unchanged() {
+        use crate::figures::{self, FigureOptions, ReferenceTree, SupportChoice};
+        let tmp = TempDir::new("analysis_figures");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 600, 5);
+        std::fs::write(
+            input.join("groups.tsv"),
+            "taxon\tgroup\nT0\tFirst\nT1\tFirst\nT2\tSecond\nT9\tNone\n",
+        )
+        .unwrap();
+        let run = tmp.path().join("run");
+        let mut opts = options(&input, 5);
+        opts.live_tree = true;
+        opts.config.bootstrap = 2;
+        let root = finish(&run, &opts);
+        let auto = figures::auto_options(&run, tmp.path());
+        assert_eq!(auto.groups_file, Some(input.join("groups.tsv")));
+        assert!(auto.reference.is_none(), "not a benchmark dataset");
+        let reference =
+            qmaws_core::newick::Tree::parse("((T0,T1),(T2,T3),((T4,T5),(T6,T7)));").unwrap();
+        let fo = FigureOptions {
+            reference: Some(ReferenceTree {
+                label: "test tree".into(),
+                tree: reference,
+            }),
+            support: SupportChoice::S2,
+            ..auto
+        };
+        let mut lines = Vec::new();
+        let written = figures::render(&run, &fo, &mut |l| lines.push(l.to_string())).unwrap();
+        let fig = run.join("figures");
+        for f in [
+            "halo_tree.svg",
+            "halo_tree.pdf",
+            "halo_tree.png",
+            "rectangular_tree.svg",
+            "tanglegram.png",
+            "interactive_tree.html",
+            "convergence.svg",
+            "halo_tree_growth.gif",
+            "groups.tsv",
+            "README.md",
+        ] {
+            assert!(fig.join(f).exists(), "{f}");
+        }
+        assert!(run.join("report").join("reference_comparison.tsv").exists());
+        let groups = std::fs::read_to_string(fig.join("groups.tsv")).unwrap();
+        assert!(groups.starts_with("# source: groups.tsv"));
+        assert!(groups.contains("T2\tSecond"));
+        // The unknown taxon T9 is reported.
+        assert!(
+            written.notes.iter().any(|n| n.contains("T9")),
+            "{:?}",
+            written.notes
+        );
+        let svg = std::fs::read_to_string(fig.join("halo_tree.svg")).unwrap();
+        assert!(svg.contains("S2 support") && !svg.contains("PROVISIONAL"));
+        let readme = std::fs::read_to_string(fig.join("README.md")).unwrap();
+        assert!(readme.contains("halo_tree_growth.gif"));
+        // PNG at 300 dots per inch of the SVG width.
+        let png = std::fs::read(fig.join("halo_tree.png")).unwrap();
+        let width = u32::from_be_bytes(png[16..20].try_into().unwrap());
+        assert_eq!(width, (800.0f64 * 300.0 / 96.0).round() as u32);
+        assert_eq!(
+            std::fs::read_to_string(run.join("audit").join("root.txt"))
+                .unwrap()
+                .trim(),
+            root
+        );
+        assert!(lines.iter().any(|l| l.contains("tanglegram")));
+        // An unfinished run has no figures.
+        assert!(figures::render(&tmp.path().join("none"), &fo, &mut |_| {}).is_err());
     }
 
     #[test]

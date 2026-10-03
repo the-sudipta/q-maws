@@ -85,7 +85,12 @@ impl Controller {
     /// Starts the jobs. With `queue`, every finished run is removed from the
     /// resume queue of the user configuration. `wake` is called after every
     /// message (the window uses it to redraw).
-    pub fn spawn(jobs: Vec<Job>, queue: bool, wake: Arc<dyn Fn() + Send + Sync>) -> Self {
+    pub fn spawn(
+        jobs: Vec<Job>,
+        queue: bool,
+        data_dir: PathBuf,
+        wake: Arc<dyn Fn() + Send + Sync>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
         let pause = Arc::new(AtomicBool::new(false));
         let cancel = Arc::new(AtomicBool::new(false));
@@ -93,7 +98,7 @@ impl Controller {
         let (p, c) = (Arc::clone(&pause), Arc::clone(&cancel));
         let handle = std::thread::Builder::new()
             .name("qmaws-engine".into())
-            .spawn(move || work(jobs, queue, tx, p, c, wake))
+            .spawn(move || work(jobs, queue, &data_dir, tx, p, c, wake))
             .expect("the worker thread starts");
         Self {
             rx,
@@ -156,6 +161,7 @@ impl Drop for Controller {
 fn work(
     jobs: Vec<Job>,
     queue: bool,
+    data_dir: &std::path::Path,
     tx: Sender<Message>,
     pause: Arc<AtomicBool>,
     cancel: Arc<AtomicBool>,
@@ -178,6 +184,9 @@ fn work(
         }
         .map_err(|e| e.to_string());
         let go_on = matches!(result, Ok(Outcome::Finished { .. }));
+        if go_on {
+            figures_after(j.dir(), data_dir, &sink);
+        }
         if go_on && queue {
             let mut config = UserConfig::load();
             if config.dequeue(j.dir()) {
@@ -196,6 +205,26 @@ fn work(
     }
     let _ = tx.send(Message::AllDone);
     wake();
+}
+
+/// Draws the figures of a finished analysis run; problems go to the log.
+fn figures_after(dir: &std::path::Path, data_dir: &std::path::Path, sink: &ChannelSink) {
+    let analysis = qmaws_engine::state::RunState::load(&dir.join("run.json"))
+        .is_ok_and(|s| s.kind == analysis::KIND);
+    if !analysis {
+        return;
+    }
+    let say = |message: String| sink.event(&Event::Log { message });
+    let opts = qmaws_engine::figures::auto_options(dir, data_dir);
+    let mut log = |line: &str| say(line.to_string());
+    match qmaws_engine::figures::render(dir, &opts, &mut log) {
+        Ok(w) => {
+            for n in w.notes {
+                say(format!("Note: {n}"));
+            }
+        }
+        Err(e) => say(format!("The figures could not be drawn: {e}")),
+    }
 }
 
 /// Reads every message until the worker is done; returns each job's result.
@@ -264,6 +293,7 @@ mod tests {
                 },
             ],
             false,
+            PathBuf::from("data"),
             quiet(),
         );
         let mut started = 0;
@@ -298,6 +328,7 @@ mod tests {
                 },
             ],
             false,
+            PathBuf::from("data"),
             quiet(),
         );
         c.set_paused(true);
@@ -320,6 +351,7 @@ mod tests {
                 dir: root.join("nothing"),
             }],
             false,
+            PathBuf::from("data"),
             quiet(),
         );
         let results = run_to_end(&c, |_, _, _| {});

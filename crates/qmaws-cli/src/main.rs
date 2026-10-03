@@ -169,8 +169,8 @@ enum Command {
         #[arg(long)]
         terminal: bool,
 
-        /// Data folder, for downloads from the window [default: data]
-        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR, hide = true)]
+        /// Data folder: benchmark reference trees for the figures [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
 
@@ -203,6 +203,33 @@ enum Command {
         /// Input folder or file, if the data are no longer where the run read them
         #[arg(long)]
         input: Option<PathBuf>,
+    },
+
+    /// Draw the figures of a finished run again (Halo Tree, rectangular tree, tanglegram, HTML, animation)
+    Figures {
+        /// Run folder
+        #[arg(long)]
+        output: PathBuf,
+
+        /// Reference tree (Newick) for the tanglegram [default: the benchmark dataset's reference, if any]
+        #[arg(long)]
+        reference: Option<PathBuf>,
+
+        /// Group file for the group bands: one "taxon<TAB>group" per line [default: groups.tsv in the input folder]
+        #[arg(long)]
+        groups: Option<PathBuf>,
+
+        /// Take the groups from the Open Tree of Life taxonomy (needs the internet)
+        #[arg(long)]
+        otl: bool,
+
+        /// Colour the branches by S2 instead of S1
+        #[arg(long)]
+        s2: bool,
+
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
     },
 
     /// List the benchmark datasets and whether they are downloaded
@@ -353,6 +380,23 @@ enum Command {
         seed: u64,
     },
 
+    /// Development: draw the figures for the taxon names of a dataset on a random tree (readability check)
+    #[command(hide = true)]
+    FigureCheck {
+        /// Downloaded dataset id
+        #[arg(long)]
+        dataset: String,
+        /// Output folder
+        #[arg(long)]
+        output: PathBuf,
+        /// Seed of the random tree and values
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+        /// Data folder [default: data]
+        #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
+        data_dir: PathBuf,
+    },
+
     /// Development: time S2 bootstrap replicates of a finished run (decision D7)
     #[command(hide = true)]
     S2Cost {
@@ -400,6 +444,8 @@ enum Command {
 
 mod controls_cmd;
 mod data_cmd;
+mod figure_check_cmd;
+mod figures_cmd;
 mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
@@ -529,6 +575,30 @@ fn main() -> ExitCode {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
         Command::Gui { data_dir } => return menu_cmd::gui(Vec::new(), false, &data_dir),
+        Command::FigureCheck {
+            dataset,
+            output,
+            seed,
+            data_dir,
+        } => return figure_check_cmd::run(&dataset, &data_dir, &output, seed),
+        Command::Figures {
+            output,
+            reference,
+            groups,
+            otl,
+            s2,
+            data_dir,
+        } => {
+            return figures_cmd::run(figures_cmd::FiguresArgs {
+                output: &output,
+                reference: reference.as_deref(),
+                groups: groups.as_deref(),
+                otl,
+                s2,
+                data_dir: &data_dir,
+                quiet: mode != DisplayMode::Normal,
+            })
+        }
         // The menu makes its own progress display for each run, so that no
         // empty bars are drawn above the menu.
         Command::Menu { data_dir } => {
@@ -591,6 +661,8 @@ fn main() -> ExitCode {
         other => other,
     };
 
+    // The data folder, for the figures after an analysis run.
+    let mut figures_data: Option<PathBuf> = None;
     let (run_dir, result) = match command {
         Command::Run {
             input,
@@ -680,6 +752,7 @@ fn main() -> ExitCode {
             }
             let result =
                 qmaws_engine::analysis::start(&run_dir, &options, "terminal", &display, &cancel);
+            figures_data = Some(data_dir);
             (run_dir, result)
         }
         Command::ToyRun {
@@ -734,7 +807,7 @@ fn main() -> ExitCode {
                     .collect();
                 return menu_cmd::gui(jobs, queue, &data_dir);
             }
-            return menu_cmd::resume_terminal(&dirs, queue, &display, &cancel, mode);
+            return menu_cmd::resume_terminal(&dirs, queue, &display, &cancel, mode, &data_dir);
         }
         Command::Datasets { .. }
         | Command::Download { .. }
@@ -750,13 +823,22 @@ fn main() -> ExitCode {
         | Command::Controls { .. }
         | Command::Menu { .. }
         | Command::Gui { .. }
+        | Command::Figures { .. }
+        | Command::FigureCheck { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
     };
 
     match result {
-        Ok(outcome) => report(outcome, &run_dir, mode),
+        Ok(outcome) => {
+            let finished = matches!(outcome, Outcome::Finished { .. });
+            let code = report(outcome, &run_dir, mode);
+            if let (true, Some(data_dir)) = (finished, figures_data) {
+                figures_cmd::after_run(&run_dir, &data_dir, mode != DisplayMode::Normal);
+            }
+            code
+        }
         Err(e) => {
             eprintln!("Error: {e}");
             ExitCode::from(EXIT_ERROR)
