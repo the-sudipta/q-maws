@@ -26,5 +26,5 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 ## Run status
 | Run | Status |
 |---|---|
-| `ecoli_shigella_hgt_seed1` | running (started 2026-10-04 17:29 UTC) |
-| `sim_hgt_250_seed1` | interrupted, queued for resume |
+| `ecoli_shigella_hgt_seed1` | done, committed (5,026 s) |
+| `sim_hgt_250_seed1` | resumed 2026-10-04 18:53 UTC (S2 from replicate 52) |

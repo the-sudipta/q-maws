@@ -7,6 +7,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | Item | Description |
 |---|---|
 | `ecoli_2026-10-03_080534/` | E. coli/Shigella (29 genomes), default settings, with its figures (M10) |
+| `ecoli_shigella_hgt_seed1/` | E. coli/Shigella HGT (27), seed 1, primary configuration, S2 100 replicates (M11) |
 | `fish_mito_2026-10-03_092551/` | Fish mtDNA (25), default settings, with its figures and Open Tree of Life group bands (M10) |
 | `sim_hgt_0_seed1/` | Simulated HGT = 0 (33), seed 1, primary configuration, S2 100 replicates (M11) |
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
