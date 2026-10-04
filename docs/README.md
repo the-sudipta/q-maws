@@ -10,6 +10,7 @@ Project documentation for readers, users and reviewers: the method, design decis
 | `DESIGN.md` | Software design decisions and their justification |
 | `EXTERNAL_TOOLS.md` | External tools, services and repositories, with what was verified about each |
 | `METHOD.md` | Mathematical specification of the method for readers |
+| `M11_RESUME_NOTES.md` | Working notes for resuming milestone M11 while its runs are going (removed when M11 is complete) |
 | `milestones/` | One report per completed milestone ([README](milestones/README.md)) |
 | `OPEN_ISSUES.md` | Problems, ambiguities and discrepancies found, with options |
 | `PREREGISTRATION.md` | Hypotheses, tests and success criteria, fixed before any experiment |
