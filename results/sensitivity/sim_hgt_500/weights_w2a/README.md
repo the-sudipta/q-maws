@@ -11,7 +11,11 @@ Exploratory sensitivity variant (milestone M12, docs/PREREGISTRATION.md Amendmen
 | `support.tsv` | S1 of every internal edge with its weights, number of quartets and clade |
 | `halo.tsv` | Halo value of every taxon |
 | `variant.json` | The run used (path and root fingerprint), the weights, the number of weighted quartets, the tree and the comparison with the reference tree |
-| `*.sha256` | SHA-256 of the file of the same name, written after it |
+| `tree.nwk.sha256` | SHA-256 of `tree.nwk`, written after it |
+| `tree_s1.nwk.sha256` | SHA-256 of `tree_s1.nwk`, written after it |
+| `support.tsv.sha256` | SHA-256 of `support.tsv`, written after it |
+| `halo.tsv.sha256` | SHA-256 of `halo.tsv`, written after it |
+| `variant.json.sha256` | SHA-256 of `variant.json`, written after it |
 
 ## Relationships
 Written by `qmaws variant --run <run> --weights w2a --output <this folder>` from the run folder in `results/runs/` named in `variant.json` (its `work/` folder is needed). Summarised in `../../weights.tsv`.
