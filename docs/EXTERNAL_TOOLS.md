@@ -108,6 +108,12 @@ External tools, services and repositories used during development or by the prog
 - **License:** GNU General Public License v2.0. The program is only run; no code is used or distributed.
 - **Seed:** ML-MAWS passes no `-seed`; IQ-TREE then chooses one and writes it to its log (`Seed:`), which is recorded so that a run can be repeated.
 
+### ML-MAWS built natively on the development laptop (for H2)
+
+- **Tools (in `D:_external	ools`, outside the repository; owner's approval 2026-10-06):** w64devkit 2.10.0 (`w64devkit-x64-2.10.0.7z.exe`, 67,127,496 bytes, SHA-256 `18d0a4c71a166f8401ab6305781bec5882b40b5e06ba9807c61cb5f3b3c6325e`, equal to the digest GitHub lists; a portable GCC 16.2.0 toolchain, self-extracting, nothing installed) and IQ-TREE 2.4.0 for Windows (`iqtree-2.4.0-Windows.zip`, 10,274,929 bytes, SHA-256 `93f488a6cfef96ef664b23fefe5be97c2c80ebcae9cd2031c0cac92b467278be`, computed on download; GitHub lists no digest).
+- **Build:** in the ML-MAWS clone at commit `0c38db1`: `g++ -O2 -std=c++17 -fopenmp -include cstdint -o ml-maws.exe ./*.cpp -lpsapi` (sources unchanged; ML-MAWS has Windows code for its memory measurement, which needs `psapi`). Runs with `D:_external	oolsw64devkitin` and `D:_external	oolsiqtree-2.4.0-Windowsin` on `PATH`.
+- **Checked on 2026-10-06:** Fish mtDNA with `--strand --no-raxml` gives selected lengths {7, 8, 9} and the same 25 × 36,217 PHYLIP matrix as Q-MAWS's `M_ml`, apart from Windows line endings. With `--strand --iqtree --threads 4`: Fish mtDNA in 20 s, nRF 0.409091 (reported 0.409), nQD 0.152253 (reported 0.185; IQ-TREE chose seed 893327 by itself, and ML-MAWS passes none, so its tree search differs between runs); Yersinia HGT in 62 s, nRF 1.000000 and nQD 0.671429 (reported 1.000 and 0.671). Comparisons made with `qmaws tree-compare`.
+
 ### wQFM (https://github.com/Mahim1997/wQFM-2020)
 
 - **Used for:** the development-only comparison of `wQFM-rs` with the original program (plan 2.8, milestone M7), run by `.github/workflows/wqfm.yml` and `scripts/wqfm_check.sh` on a GitHub Linux runner with the runner's Java (the owner chose GitHub Actions on 2026-10-02). Java and the jar are not part of Q-MAWS or its releases.

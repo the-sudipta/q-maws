@@ -200,3 +200,28 @@ fn run_answers_input_warnings_from_its_options() {
     let (code, text) = run(&["verify", "--quick", "--seed", "1", "--output", &second_text]);
     assert_eq!(code, 0, "{text}");
 }
+
+#[test]
+fn tree_compare_reads_trees_with_support_and_lengths() {
+    let tmp = TempDir::new("treecmp");
+    let a = tmp.0.join("a.nwk");
+    let b = tmp.0.join("b.nwk");
+    std::fs::write(
+        &a,
+        "((A:0.1,B:0.2)95:0.05,(C:0.1,E:0.3)40:0.02,(D:0.1,F:0.1)100:0.01);",
+    )
+    .unwrap();
+    std::fs::write(&b, "((A,B),(C,D),(E,F));").unwrap();
+    let (code, text) = run(&[
+        "tree-compare",
+        "--tree",
+        &a.display().to_string(),
+        "--reference",
+        &b.display().to_string(),
+    ]);
+    assert_eq!(code, 0, "{text}");
+    assert!(
+        text.contains("nRF\t0.666667\t4 of 6 splits differ"),
+        "{text}"
+    );
+}

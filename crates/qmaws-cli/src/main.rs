@@ -421,6 +421,17 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development: nRF, nQD and MSD of a tree file against a reference tree file
+    #[command(hide = true)]
+    TreeCompare {
+        /// Tree to compare (Newick; support labels and branch lengths are allowed)
+        #[arg(long)]
+        tree: PathBuf,
+        /// Reference tree (Newick)
+        #[arg(long)]
+        reference: PathBuf,
+    },
+
     /// Development: golden test G9, the tree metrics against independent oracles (nRF values for DendroPy)
     #[command(hide = true)]
     MetricsCheck {
@@ -503,6 +514,7 @@ enum Command {
     },
 }
 
+mod compare_cmd;
 mod controls_cmd;
 mod data_cmd;
 mod figure_check_cmd;
@@ -659,6 +671,7 @@ fn main() -> ExitCode {
             pairs,
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
+        Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
         Command::FigureCheck {
             dataset,
             output,
@@ -1008,6 +1021,7 @@ fn main() -> ExitCode {
         | Command::Figures { .. }
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
+        | Command::TreeCompare { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }

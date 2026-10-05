@@ -6,6 +6,7 @@ Source code of the `qmaws` binary.
 ## Contents
 | Item | Description |
 |---|---|
+| `compare_cmd.rs` | Hidden `tree-compare`: nRF, nQD and MSD of any Newick tree (support labels and branch lengths allowed) against a reference tree, for the ML-MAWS runs of H2 and H4 |
 | `controls_cmd.rs` | The hidden command `controls`: simulated (positive) and shuffled (negative) controls with Fish mtDNA as a reference point, written to `results/controls/` |
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
 | `figures_cmd.rs` | The command `figures`, and the figures drawn after every finished analysis run |
