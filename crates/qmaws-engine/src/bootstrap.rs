@@ -176,6 +176,8 @@ mod tests {
                 replicates: 5,
                 bootstrap: 0,
                 input_choices: Default::default(),
+                top_lengths: qmaws_core::matrix::TOP_K,
+                matrix: "full".into(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(4),

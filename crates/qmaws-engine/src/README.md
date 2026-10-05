@@ -26,6 +26,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `testutil.rs` | Temporary folders for unit tests (test builds only) |
 | `toy.rs` | The toy computation (SplitMix64 block sums) used to exercise the engine |
 | `verify.rs` | Verification of a finished run: input check, quick check of 20 chunks per chunked stage, full recomputation, single quartet with its worksheet; rebuilds the full matrix from the inputs when the work folder is absent; writes `report/verify_<time>.txt` |
+| `variant.rs` | Weight variants of a finished run (M12): the tree made again from the stored quartet results with W1, W2a, W2b or W2c, with S1, halo values and the comparison with the run's reference tree; the run folder is not changed |
 
 ## Relationships
 `runner.rs` uses all other modules. `qmaws-tui` consumes the events defined in `progress.rs`; `qmaws-cli` calls `runner.rs` and `rundir.rs`.

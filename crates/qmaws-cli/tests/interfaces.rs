@@ -107,6 +107,8 @@ fn gui_options(size: Size, chunk: Option<u64>) -> AnalysisOptions {
             replicates: size.replicates,
             bootstrap: size.bootstrap,
             input_choices: Default::default(),
+            top_lengths: qmaws_core::matrix::TOP_K,
+            matrix: "full".into(),
         },
         chunk_seconds: 3.0,
         chunk_quartets: chunk,

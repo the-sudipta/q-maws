@@ -6,6 +6,7 @@
 
 pub mod amalgamate;
 pub mod bootstrap;
+pub mod calibration;
 pub mod control;
 pub mod input;
 pub mod matrix;

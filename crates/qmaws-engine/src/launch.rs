@@ -213,6 +213,8 @@ impl NewRun {
             replicates: self.settings.replicates,
             bootstrap: self.settings.bootstrap,
             input_choices: self.input_choices.clone(),
+            top_lengths: qmaws_core::matrix::TOP_K,
+            matrix: "full".into(),
         }
     }
 

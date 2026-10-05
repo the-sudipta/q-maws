@@ -99,6 +99,14 @@ enum Command {
         #[arg(long)]
         memory_limit: Option<f64>,
 
+        /// Number of MAW lengths kept by the entropy selection (sensitivity analysis)
+        #[arg(long, default_value_t = qmaws_core::matrix::TOP_K)]
+        top_lengths: usize,
+
+        /// Matrix the quartets are counted on (sensitivity analysis)
+        #[arg(long, value_enum, default_value_t = MatrixChoice::Full)]
+        matrix: MatrixChoice,
+
         /// Do not apply the strand filter
         #[arg(long)]
         no_strand: bool,
@@ -421,6 +429,37 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development (M12): the tree of a finished run made again with other quartet weights
+    #[command(hide = true)]
+    Variant {
+        /// Finished run folder (with its work folder)
+        #[arg(long)]
+        run: PathBuf,
+        /// Weights for the tree
+        #[arg(long, value_enum)]
+        weights: sensitivity_cmd::WeightChoice,
+        /// Output folder
+        #[arg(long)]
+        output: PathBuf,
+    },
+
+    /// Development (H4): reliability table and ECE of support values against true trees
+    #[command(hide = true)]
+    Calibration {
+        /// ESTIMATE=TRUTH tree files (repeat; the edges are pooled)
+        #[arg(long = "pair", required = true)]
+        pairs: Vec<String>,
+        /// Divisor of the support labels (1 for S1 and S2, 100 for UFBoot)
+        #[arg(long, default_value_t = 1.0)]
+        scale: f64,
+        /// Number of equal-width bins
+        #[arg(long, default_value_t = 10)]
+        bins: usize,
+        /// Also write the table to this file (with its SHA-256)
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+
     /// Development: nRF, nQD and MSD of a tree file against a reference tree file
     #[command(hide = true)]
     TreeCompare {
@@ -525,6 +564,7 @@ mod matrix_cmd;
 mod menu_cmd;
 mod metrics_check_cmd;
 mod s2_cmd;
+mod sensitivity_cmd;
 mod summary_cmd;
 mod teach_cmd;
 mod verify_cmd;
@@ -672,6 +712,17 @@ fn main() -> ExitCode {
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
         Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
+        Command::Variant {
+            run,
+            weights,
+            output,
+        } => return sensitivity_cmd::variant(&run, weights, &output),
+        Command::Calibration {
+            pairs,
+            scale,
+            bins,
+            output,
+        } => return sensitivity_cmd::calibration(&pairs, scale, bins.max(1), output.as_ref()),
         Command::FigureCheck {
             dataset,
             output,
@@ -784,6 +835,8 @@ fn main() -> ExitCode {
             keep,
             cores,
             memory_limit,
+            top_lengths,
+            matrix,
         } => {
             let input_choices = qmaws_engine::analysis::InputChoices {
                 rename_duplicates,
@@ -806,6 +859,10 @@ fn main() -> ExitCode {
             if dataset.as_deref() == Some("all") {
                 if output.is_some() || reference.is_some() {
                     eprintln!("Error: with --dataset all, every dataset gets its own folder and its own reference tree; --output and --reference cannot be used");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if top_lengths != qmaws_core::matrix::TOP_K || matrix != MatrixChoice::Full {
+                    eprintln!("Error: --top-lengths and --matrix are for single sensitivity runs, not --dataset all");
                     return ExitCode::from(EXIT_USAGE);
                 }
                 let mut runs = Vec::new();
@@ -926,6 +983,8 @@ fn main() -> ExitCode {
                     replicates,
                     bootstrap,
                     input_choices: input_choices.clone(),
+                    top_lengths,
+                    matrix: matrix.config_name().into(),
                 },
                 chunk_seconds,
                 chunk_quartets,
@@ -1022,6 +1081,8 @@ fn main() -> ExitCode {
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
         | Command::TreeCompare { .. }
+        | Command::Variant { .. }
+        | Command::Calibration { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
@@ -1135,6 +1196,24 @@ mod tests {
     #[test]
     fn unknown_commands_are_rejected() {
         assert!(Cli::try_parse_from(["qmaws", "frobnicate"]).is_err());
+    }
+}
+
+/// Matrix of the quartets in `qmaws run` (sensitivity analysis, M12).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum MatrixChoice {
+    /// M_full: every MAW column (primary)
+    Full,
+    /// M_ml: constant columns removed, capped at 50,000 (as ML-MAWS)
+    Ml,
+}
+
+impl MatrixChoice {
+    fn config_name(self) -> &'static str {
+        match self {
+            Self::Full => qmaws_engine::analysis::MATRIX_FULL,
+            Self::Ml => qmaws_engine::analysis::MATRIX_ML,
+        }
     }
 }
 

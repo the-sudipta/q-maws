@@ -17,6 +17,7 @@ Source code of the `qmaws` binary.
 | `metrics_check_cmd.rs` | Hidden `metrics-check`: golden test G9, random tree pairs with nQD and MSD checked against independent oracles and `pairs.tsv` for the DendroPy nRF check |
 | `menu_cmd.rs` | The commands `menu` (carries out the terminal menu's choice in the chosen interface, offers the next unfinished run) and `gui`; resuming a list or queue of runs in the terminal; the runs of `resume --all` |
 | `s2_cmd.rs` | The hidden development command `s2-cost`: times S2 bootstrap replicates of a finished run and writes `report/s2_cost.txt` |
+| `sensitivity_cmd.rs` | Hidden `variant` (a finished run's tree with other quartet weights) and `calibration` (reliability table and ECE of support values against true trees, pooled; H4) |
 | `wqfm_cmd.rs` | The hidden development commands `wqfm-export` and `wqfm-compare` of the wQFM jar comparison |
 | `summary_cmd.rs` | The hidden development command `summary`: comparison tables of milestone M11 in `results/summary/` from finished runs and published values, the H1 test (`--h1-pairs`, `--h1-zeros`), and the AFproject upload files (`--afproject`) |
 | `teach_cmd.rs` | The command `teach` |

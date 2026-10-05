@@ -10,6 +10,7 @@ Source code of the science crate. Each module receives data and returns data; no
 | `maw.rs` | Suffix automaton, MAW enumeration with lengths and strand filter, compact word codes, the brute-force oracle |
 | `amalgamate.rs` | Quartet amalgamation `wQFM-rs` (wQFM v1.4 reimplemented), the weighted quartet consistency score, the exhaustive tree enumeration (G8 oracle), wQFM's input format |
 | `bootstrap.rs` | S2 column bootstrap: Poisson(1) column weights from a seeded generator, replicate seeds, weighted pattern counts per weight class with the inclusion–exclusion kernel |
+| `calibration.rs` | Calibration of support values (plan 2.10.5, H4): the support of every split read from internal labels (any scale), the pairs (support, split in the true tree), the reliability table and the expected calibration error |
 | `control.rs` | Data for the controls: Jukes–Cantor sequences evolved along a random tree, Fisher–Yates shuffles that keep the letter composition, nRF of random trees to a reference |
 | `input.rs` | Input reading and cleaning: FASTA or raw text, cleaning rules, record modes, Newick-safe names, validation findings with their choices, renaming of duplicates |
 | `lib.rs` | Crate root: module list |

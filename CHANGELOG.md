@@ -15,6 +15,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - `qmaws run --dataset all` (every dataset in turn) and the download of a missing benchmark dataset before a run; `--cores` and `--memory-limit` on `qmaws run`.
 - Golden test G9: `qmaws metrics-check` (nQD against enumeration over splits and MSD against brute-force matching on 500 random tree pairs with 5 to 60 leaves) and the workflow `metrics.yml` (nRF against DendroPy 5.1.0).
 - H1 statistics and the hidden `qmaws summary` command (milestone M11).
+- Sensitivity analysis tools (M12): `qmaws run --top-lengths` and `--matrix ml`; the hidden `qmaws variant` (a finished run's tree with W1, W2a, W2b or W2c weights from its stored quartet results) and `qmaws calibration` (reliability table and ECE, H4); the hidden `qmaws tree-compare`.
+- Decision D8 and Amendment 3 of the pre-registration; the ML-MAWS runs for H4 as a workflow (`mlmaws_h4.yml`); ML-MAWS built natively on Windows for H2.
 
 ### Fixed
 
