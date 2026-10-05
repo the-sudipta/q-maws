@@ -101,6 +101,13 @@ External tools, services and repositories used during development or by the prog
   - **Of the 14 rows, 12 were shown:** 11 are fits of a topology that is not the best for its quartet; the other is quartet 4, W2-emp, ac|bd, which is 0.000196 lower.
   - Since then the script writes one notice per quartet.
 
+### IQ-TREE 2.4.0, the program ML-MAWS calls (https://github.com/iqtree/iqtree2)
+
+- **Used for:** running ML-MAWS for hypotheses H4 and H2 (decision D8, docs/PREREGISTRATION.md Amendment 3). ML-MAWS (commit `0c38db1`, `main.cpp`) runs `iqtree2 -s <matrix> -st BIN -m MFP+ASC -bb 1000 -nt <threads> --prefix <out>/ml_maws_iqtree -redo` when given `--iqtree`; its default thread count is 4 (`--threads`). The version 2 program is used because that is the command name ML-MAWS calls; the ML-MAWS README names IQ-TREE without a version.
+- **Version:** 2.4.0, the latest release of the iqtree2 repository (read on 2026-10-06): assets `iqtree-2.4.0-Linux-intel.tar.gz` (4,766,818 bytes, for H4 on GitHub runners) and `iqtree-2.4.0-Windows.zip` (10,274,929 bytes, for H2 on the development laptop). The GitHub releases API lists no digest for these assets, so their SHA-256 is computed on first download, recorded with the outputs (`provenance.txt`) and pinned in the scripts afterwards.
+- **License:** GNU General Public License v2.0. The program is only run; no code is used or distributed.
+- **Seed:** ML-MAWS passes no `-seed`; IQ-TREE then chooses one and writes it to its log (`Seed:`), which is recorded so that a run can be repeated.
+
 ### wQFM (https://github.com/Mahim1997/wQFM-2020)
 
 - **Used for:** the development-only comparison of `wQFM-rs` with the original program (plan 2.8, milestone M7), run by `.github/workflows/wqfm.yml` and `scripts/wqfm_check.sh` on a GitHub Linux runner with the runner's Java (the owner chose GitHub Actions on 2026-10-02). Java and the jar are not part of Q-MAWS or its releases.

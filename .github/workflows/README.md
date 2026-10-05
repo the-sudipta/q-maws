@@ -10,6 +10,7 @@ Continuous integration and release workflows run by GitHub Actions.
 | `iqtree.yml` | Development check on Linux, when the weighting code changes: downloads Fish mtDNA and the official IQ-TREE 3.1.4 release on the runner and runs `scripts/iqtree_check.sh`; the comparison is shown as annotations |
 | `wqfm.yml` | Development check on Linux, when the amalgamation code changes: downloads Fish mtDNA, checks out the wQFM jar on the runner and runs `scripts/wqfm_check.sh` with the runner's Java; the comparison is shown as annotations |
 | `metrics.yml` | Development check on Linux, when the tree metric code changes: golden test G9. Runs `qmaws metrics-check` on 500 random tree pairs (nQD against enumeration over splits, MSD against brute-force matching), then `scripts/metrics_check.py` with DendroPy 5.1.0 (nRF); the comparison is shown as annotations |
+| `mlmaws_h4.yml` | Development experiment for H4, run when its script changes: `scripts/mlmaws_h4.sh` on the five simulated HGT datasets in parallel jobs, then the outputs are committed to a new branch `h4-mlmaws-results-<run id>` (fetched with git and reviewed before they are copied into `results/h4/`) |
 | `ci.yml` | On every push and pull request: formatting, lints, tests in release mode, the guard self-test and the README check on Windows, macOS and Linux; dependency licenses, bans and sources with `cargo deny` on Linux |
 
 ## Relationships
