@@ -429,6 +429,29 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development (H5): gene trees with horizontal transfer for AliSim partitions
+    #[command(hide = true)]
+    HgtTrees {
+        /// Species tree (Newick with branch lengths)
+        #[arg(long)]
+        species: PathBuf,
+        /// Number of genes
+        #[arg(long, default_value_t = 1000)]
+        genes: usize,
+        /// Sites per gene
+        #[arg(long, default_value_t = 1000)]
+        gene_length: usize,
+        /// Fraction of genes with one transfer
+        #[arg(long)]
+        fraction: f64,
+        /// Seed of the gene choice and the transfers
+        #[arg(long)]
+        seed: u64,
+        /// Output folder
+        #[arg(long)]
+        output: PathBuf,
+    },
+
     /// Development (M12): the tree of a finished run made again with other quartet weights
     #[command(hide = true)]
     Variant {
@@ -559,6 +582,7 @@ mod data_cmd;
 mod figure_check_cmd;
 mod figures_cmd;
 mod h3_cmd;
+mod hgt_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod menu_cmd;
@@ -712,6 +736,23 @@ fn main() -> ExitCode {
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
         Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
+        Command::HgtTrees {
+            species,
+            genes,
+            gene_length,
+            fraction,
+            seed,
+            output,
+        } => {
+            return hgt_cmd::run(hgt_cmd::HgtArgs {
+                species: &species,
+                genes,
+                gene_length,
+                fraction,
+                seed,
+                output: &output,
+            })
+        }
         Command::Variant {
             run,
             weights,
@@ -1081,6 +1122,7 @@ fn main() -> ExitCode {
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
         | Command::TreeCompare { .. }
+        | Command::HgtTrees { .. }
         | Command::Variant { .. }
         | Command::Calibration { .. }
         | Command::Verify { .. } => {

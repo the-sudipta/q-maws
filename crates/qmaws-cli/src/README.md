@@ -12,6 +12,7 @@ Source code of the `qmaws` binary.
 | `figures_cmd.rs` | The command `figures`, and the figures drawn after every finished analysis run |
 | `figure_check_cmd.rs` | The hidden command `figure-check`: figures for the taxon names of a dataset on a random tree, to check readability |
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
+| `hgt_cmd.rs` | Hidden `hgt-trees`: the gene trees of one simulated genome with transfers, the AliSim partition file and the transfer table (H5) |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
 | `metrics_check_cmd.rs` | Hidden `metrics-check`: golden test G9, random tree pairs with nQD and MSD checked against independent oracles and `pairs.tsv` for the DendroPy nRF check |

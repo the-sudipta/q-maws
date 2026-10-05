@@ -8,6 +8,7 @@ pub mod amalgamate;
 pub mod bootstrap;
 pub mod calibration;
 pub mod control;
+pub mod hgt;
 pub mod input;
 pub mod matrix;
 pub mod maw;
