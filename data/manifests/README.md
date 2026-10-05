@@ -9,6 +9,7 @@ Committed records that make every dataset reproducible: the benchmark registry, 
 | `accessions/` | Accession lists of the NCBI datasets, with pinned record versions ([README](accessions/README.md)) |
 | `benchmarks.toml` | Benchmark registry: NCBI settings, one `[[download]]` per file or record set fetched from the internet, one `[[dataset]]` per benchmark dataset |
 | `download_log.json` | One entry per download made with `qmaws download`: URL, date, size, published and computed checksums, result |
+| `simulated/` | Recipes, seeds, checksums and true trees of the simulated scaling datasets of H2 ([README](simulated/README.md)) |
 
 ## Relationships
 Read by `crates/qmaws-data` (registry and accession lists compiled in with `include_str!`; log appended by `qmaws download`). Describes the files downloaded into `data/raw/`. Reference trees named by datasets are in `data/references/`.

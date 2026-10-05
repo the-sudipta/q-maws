@@ -12,6 +12,7 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `wqfm_check.sh` | Development check (needs Java): checks out wQFM v1.4 at a fixed commit, writes 23 weighted-quartet inputs with `qmaws wqfm-export` (worksheet, simulated, Fish mtDNA), runs the jar on each and compares with `qmaws wqfm-compare` |
 | `metrics_check.py` | Development check, golden test G9 (needs Python and DendroPy): reads `pairs.tsv` from `qmaws metrics-check` and recomputes every pair's Robinson–Foulds distance with DendroPy, reading the trees as unrooted and dividing by 2(n − 3) as ML-MAWS does |
 | `mlmaws_h4.sh` | Development experiment for H4 (Linux; needs g++, git, curl): builds ML-MAWS at the inspected commit and IQ-TREE 2.4.0 outside the repository, runs `ml-maws --strand --iqtree` (1,000 UFBoot) on one simulated HGT dataset, and writes the tree with support, the IQ-TREE log (seed), the reports and `provenance.txt` (docs/PREREGISTRATION.md, Amendment 3) |
+| `simulate_scaling.sh` | The simulated scaling datasets of H2 (plan 6.5): AliSim (IQ-TREE 2.4.0) genomes of 1,000,000 letters on random Yule–Harding trees, 25/50/100 taxa × 3 replicates and 200 taxa × 1, fixed seeds; writes the manifest and true trees to `data/manifests/simulated/` |
 | `install-hooks.bat` | Installs the guard as the `pre-commit` and `commit-msg` hooks (Windows) |
 | `install-hooks.sh` | Installs the guard as the `pre-commit` and `commit-msg` hooks (macOS, Linux, Git Bash) |
 | `pre-commit` | The guard: blocks unsafe commits (see Notes) |
