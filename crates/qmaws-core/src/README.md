@@ -21,10 +21,11 @@ Source code of the science crate. Each module receives data and returns data; no
 | `weight.rs` | Quartet weighting: W1 votes; the two-state model and its pattern probabilities; the conditioned log-likelihood; the branch-length optimiser; W2a, W2b and W2c with per-quartet seeds, SplitMix64 and exact binomial draws |
 | `worksheet.rs` | The worksheet of one quartet: co-occurrence counts, pattern counts by inclusion–exclusion written out, W1 votes, W2 fits with branch lengths, W2a, W2b and W2c (audit samples and `qmaws verify --quartet`) |
 | `metrics.rs` | Tree comparison: normalised quartet distance (every quartet, four-point condition, unresolved quartets of the reference counted apart) and the matching split distance with the Hungarian algorithm |
+| `metrics_check.rs` | Golden test G9: random tree pairs (5 to 60 leaves, some references with polytomies), nQD by enumeration over splits and MSD by brute-force matching as independent oracles |
 | `newick.rs` | Newick parsing and writing; comparison of leaf names with taxon names; splits and normalised Robinson–Foulds distance |
 
 ## Relationships
 Used by `qmaws-data` (reading folders and datasets, reference trees), by `qmaws-engine` for every stage, and by `qmaws-cli` (teaching worksheet, IQ-TREE cross-check).
 
 ## Notes
-Evaluation metrics are added in a later milestone.
+Tree metrics (nRF in `newick.rs`, nQD and MSD in `metrics.rs`) are checked by golden test G9 (`metrics_check.rs`, `qmaws metrics-check`, `scripts/metrics_check.py`).

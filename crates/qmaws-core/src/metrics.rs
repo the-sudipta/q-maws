@@ -137,6 +137,16 @@ pub fn nqd(estimate: &Tree, reference: &Tree) -> Result<QuartetDistance, String>
 
 /// Matching split distance (raw) between two trees on the same leaves.
 pub fn msd(a: &Tree, b: &Tree) -> Result<u64, String> {
+    let matrix = msd_costs(a, b)?;
+    if matrix.is_empty() {
+        return Ok(0);
+    }
+    Ok(hungarian(&matrix) as u64)
+}
+
+/// The square cost matrix of the MSD matching: one row per split of `a`,
+/// one column per split of `b`, the smaller tree padded with empty splits.
+pub fn msd_costs(a: &Tree, b: &Tree) -> Result<Vec<Vec<i64>>, String> {
     let names = same_leaves(a, b)?;
     let index: BTreeMap<&str, usize> = names
         .iter()
@@ -153,9 +163,6 @@ pub fn msd(a: &Tree, b: &Tree) -> Result<u64, String> {
     let sa: Vec<Vec<bool>> = a.splits().iter().map(to_bits).collect();
     let sb: Vec<Vec<bool>> = b.splits().iter().map(to_bits).collect();
     let n = sa.len().max(sb.len());
-    if n == 0 {
-        return Ok(0);
-    }
     let cost = |x: Option<&Vec<bool>>, y: Option<&Vec<bool>>| -> i64 {
         match (x, y) {
             (Some(x), Some(y)) => {
@@ -170,10 +177,9 @@ pub fn msd(a: &Tree, b: &Tree) -> Result<u64, String> {
             (None, None) => 0,
         }
     };
-    let matrix: Vec<Vec<i64>> = (0..n)
+    Ok((0..n)
         .map(|i| (0..n).map(|j| cost(sa.get(i), sb.get(j))).collect())
-        .collect();
-    Ok(hungarian(&matrix) as u64)
+        .collect())
 }
 
 /// Minimum total cost of a perfect matching in a square cost matrix

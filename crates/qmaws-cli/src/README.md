@@ -13,6 +13,7 @@ Source code of the `qmaws` binary.
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
+| `metrics_check_cmd.rs` | Hidden `metrics-check`: golden test G9, random tree pairs with nQD and MSD checked against independent oracles and `pairs.tsv` for the DendroPy nRF check |
 | `menu_cmd.rs` | The commands `menu` (carries out the terminal menu's choice in the chosen interface, offers the next unfinished run) and `gui`; resuming a list or queue of runs in the terminal; the runs of `resume --all` |
 | `s2_cmd.rs` | The hidden development command `s2-cost`: times S2 bootstrap replicates of a finished run and writes `report/s2_cost.txt` |
 | `wqfm_cmd.rs` | The hidden development commands `wqfm-export` and `wqfm-compare` of the wQFM jar comparison |

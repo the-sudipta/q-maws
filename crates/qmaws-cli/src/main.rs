@@ -397,6 +397,20 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development: golden test G9, the tree metrics against independent oracles (nRF values for DendroPy)
+    #[command(hide = true)]
+    MetricsCheck {
+        /// Folder for pairs.tsv
+        #[arg(long)]
+        output: PathBuf,
+        /// Number of tree pairs
+        #[arg(long, default_value_t = 500)]
+        pairs: usize,
+        /// Seed of the random trees
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+    },
+
     /// Development: comparison tables of the benchmark (milestone M11)
     #[command(hide = true)]
     Summary {
@@ -473,6 +487,7 @@ mod h3_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod menu_cmd;
+mod metrics_check_cmd;
 mod s2_cmd;
 mod summary_cmd;
 mod teach_cmd;
@@ -615,6 +630,11 @@ fn main() -> ExitCode {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
         Command::Gui { data_dir } => return menu_cmd::gui(Vec::new(), false, &data_dir),
+        Command::MetricsCheck {
+            output,
+            pairs,
+            seed,
+        } => return metrics_check_cmd::run(&output, pairs, seed),
         Command::FigureCheck {
             dataset,
             output,
@@ -866,6 +886,7 @@ fn main() -> ExitCode {
         | Command::Gui { .. }
         | Command::Figures { .. }
         | Command::FigureCheck { .. }
+        | Command::MetricsCheck { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
