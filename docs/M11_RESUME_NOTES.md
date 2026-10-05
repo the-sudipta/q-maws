@@ -13,7 +13,7 @@ Working notes for resuming milestone M11 (full benchmark) after an interruption.
 - `sim_hgt_250_seed1` was interrupted on 2026-10-04 at S2 replicate 52 of 100; the queue resumes it.
 
 ## Next command
-Restart the queue if it stopped (the queue script lives in the local scratchpad, not in the repository):
+Restart the queue if it stopped (the queue script lives in the local scratchpad, not in the repository). Start it through WMI (`Invoke-CimMethod Win32_Process Create`) so that it is not stopped when the launching shell ends:
 
 ```
 bash queue.sh   # runs: qmaws --quiet run --dataset <id> --seed <n> --bootstrap <100|0> --output results/runs/<id>_seed<n>
@@ -27,4 +27,4 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 | Run | Status |
 |---|---|
 | `ecoli_shigella_hgt_seed1` | done, committed (5,026 s) |
-| `sim_hgt_250_seed1` | resumed 2026-10-04 18:53 UTC (S2 from replicate 52) |
+| `sim_hgt_250_seed1` | stopped again 2026-10-04 19:56 UTC at S2 replicate 88; resumed 2026-10-05 03:10 UTC |
