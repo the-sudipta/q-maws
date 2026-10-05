@@ -11,6 +11,7 @@ Sensitivity of the results to settings (milestone M12; plan Part 8, item 6; docs
 | `ecoli/` | Variants of E. coli–Shigella (29 genomes) |
 | `sim_hgt_0/` | Variants of simulated HGT 0 |
 | `sim_hgt_500/` | Variants of simulated HGT 500 |
+| `hgt_w1/` | Exploratory: W1 on the other HGT datasets with finished seed-1 runs ([README](hgt_w1/README.md)) |
 
 ## Relationships
 The weight variants are made from the seed-1 primary runs in `results/runs/` with `qmaws variant` (their stored quartet results are reused). The variants that change the matrix are runs of `qmaws run` with `--top-lengths`, `--no-strand`, `--matrix ml` or `--weighting w2-emp`, added when they are made.

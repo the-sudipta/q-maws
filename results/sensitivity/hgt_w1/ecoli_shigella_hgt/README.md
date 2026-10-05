@@ -1,0 +1,24 @@
+# ecoli_shigella_hgt
+
+## Purpose
+Exploratory: the tree of the seed-1 primary run of `ecoli_shigella_hgt` made again with W1 quartet weights (votes of the split patterns) from its stored quartet results, with S1 support and halo values, compared with the run's reference tree.
+
+## Contents
+| Item | Description |
+|---|---|
+| `tree.nwk` | The tree of wQFM-rs with W1 weights (Newick, unrooted) |
+| `tree.nwk.sha256` | SHA-256 of `tree.nwk`, written after it |
+| `tree_s1.nwk` | The tree with S1 support (on W1 weights) as internal labels |
+| `tree_s1.nwk.sha256` | SHA-256 of `tree_s1.nwk`, written after it |
+| `support.tsv` | S1 of every internal edge with its weights, number of quartets and clade |
+| `support.tsv.sha256` | SHA-256 of `support.tsv`, written after it |
+| `halo.tsv` | Halo value of every taxon |
+| `halo.tsv.sha256` | SHA-256 of `halo.tsv`, written after it |
+| `variant.json` | The run used (path and root fingerprint), the weights, the number of weighted quartets, the tree and the comparison with the reference tree |
+| `variant.json.sha256` | SHA-256 of `variant.json`, written after it |
+
+## Relationships
+Written by `qmaws variant --run results/runs/ecoli_shigella_hgt_seed1 --weights w1 --output <this folder>`. Summarised in `../w1_hgt.tsv`.
+
+## Notes
+Exploratory, outside the four datasets of Amendment 3; not a pre-registered test. W1 has no random element, so its tree does not depend on the seed.
