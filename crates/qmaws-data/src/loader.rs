@@ -137,6 +137,27 @@ pub fn load(path: &Path, mode: RecordMode) -> Result<LoadedInput, LoadError> {
     })
 }
 
+/// Applies the user's answers to the warnings (plan 2.2; see
+/// [`input::apply_choices`]) and checks the taxa again. Returns the
+/// renamings and the names left out.
+pub fn apply_choices(
+    input: &mut LoadedInput,
+    rename_duplicates: bool,
+    skip: &[String],
+) -> (Vec<(String, String)>, Vec<String>) {
+    if !rename_duplicates && skip.is_empty() {
+        return (Vec::new(), Vec::new());
+    }
+    let result = input::apply_choices(&mut input.taxa, rename_duplicates, skip);
+    input.cleaned_sha256 = input
+        .taxa
+        .iter()
+        .map(|t| hex(&Sha256::digest(&t.cleaned.sequence)))
+        .collect();
+    input.findings = input::validate(&input.taxa);
+    result
+}
+
 /// Folder summary in the format shown before a run:
 ///
 /// ```text

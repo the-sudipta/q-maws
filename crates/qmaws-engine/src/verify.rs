@@ -172,6 +172,9 @@ pub fn verify(
             Mode::Full => full(&run, &root, &mut w, cancel)?,
             Mode::Quartet(names) => single_quartet(&run, names, &mut w, cancel)?,
         }
+        if matches!(mode, Mode::Quick(_) | Mode::Full) {
+            check_evaluation(&run, &mut w);
+        }
     } else {
         w.line("The input check failed; the other checks need the same inputs and were not run.");
     }
@@ -196,6 +199,21 @@ pub fn verify(
         failures: w.failures,
         path,
     })
+}
+
+/// The comparison with the reference tree (`audit/evaluation.json`),
+/// recomputed from `report/tree.nwk` and `audit/reference.nwk`.
+fn check_evaluation(run: &Run, w: &mut Writer) {
+    let checks = crate::evaluation::check(run.dir.root(), TOLERANCE);
+    w.line(String::new());
+    if checks.is_empty() {
+        w.line("Reference tree: none stored with this run; nothing to compare.");
+        return;
+    }
+    w.line("Comparison with the reference tree");
+    for (ok, what) in checks {
+        w.check(ok, what);
+    }
 }
 
 /// Raw input files and cleaned sequences.
@@ -225,8 +243,7 @@ fn check_inputs(run: &Run, original: &Path, w: &mut Writer) -> Result<(), Engine
     if w.failures > 0 {
         return Ok(());
     }
-    let loaded = qmaws_data::loader::load(new_root, run.config.mode())
-        .map_err(|e| EngineError::Invalid(e.to_string()))?;
+    let (loaded, _) = run.config.load_input(new_root)?;
     w.check(
         loaded.taxa.len() == run.inputs.taxa.len(),
         format!(
@@ -619,6 +636,7 @@ mod tests {
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 4,
                 bootstrap: 3,
+                input_choices: Default::default(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(3),

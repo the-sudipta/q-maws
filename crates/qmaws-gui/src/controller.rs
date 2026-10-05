@@ -14,6 +14,8 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 /// One run for the controller.
+// A few jobs are made per session, so the size of `Start` does not matter.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum Job {
     /// A new analysis run in this folder.

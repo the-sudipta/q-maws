@@ -129,6 +129,19 @@ pub fn measured_memory_limit() -> u64 {
     (sys.available_memory() as f64 * DEFAULT_MEMORY_SHARE) as u64
 }
 
+/// Free bytes on the disk that holds `path` (the mounted disk whose mount
+/// point is the longest prefix of the absolute path); `None` if unknown.
+pub fn free_disk_bytes(path: &std::path::Path) -> Option<u64> {
+    let absolute = std::path::absolute(path).ok()?;
+    let disks = sysinfo::Disks::new_with_refreshed_list();
+    disks
+        .list()
+        .iter()
+        .filter(|d| absolute.starts_with(d.mount_point()))
+        .max_by_key(|d| d.mount_point().as_os_str().len())
+        .map(|d| d.available_space())
+}
+
 /// Peak memory of extracting one sequence of `n` letters (suffix automaton
 /// of at most 2n states of 24 bytes, built twice in turn with the strand
 /// filter, plus MAW lists); a deliberately generous bound.
@@ -285,6 +298,12 @@ pub fn entropy_tsv(rows: &[EntropyRow]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn free_disk_space_is_found_for_a_folder() {
+        let free = free_disk_bytes(&std::env::temp_dir()).expect("the temp folder is on a disk");
+        assert!(free > 0);
+    }
 
     fn owned(seqs: &[&str]) -> Vec<Vec<u8>> {
         seqs.iter().map(|s| s.as_bytes().to_vec()).collect()

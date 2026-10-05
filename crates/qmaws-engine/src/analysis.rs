@@ -1,6 +1,7 @@
 //! The analysis run: from sequence files to a tree, as a
-//! resumable sequence of stages. (Evaluation and figures are added in
-//! later milestones.)
+//! resumable sequence of stages. The comparison with a reference tree
+//! (`evaluation.rs`) and the figures (`figures.rs`) are made after the run
+//! and are not part of the root fingerprint (docs/OPEN_ISSUES.md, OI-19).
 //!
 //! | Stage | Unit of work | Output |
 //! |---|---|---|
@@ -121,6 +122,35 @@ pub struct AnalysisConfig {
     /// a run without S2 reads and hashes as before.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub bootstrap: u32,
+    /// The answers to the input warnings (plan 2.2). Left out of `run.json`
+    /// when empty, so the configuration of a run without warnings reads and
+    /// hashes as before.
+    #[serde(default, skip_serializing_if = "InputChoices::is_empty")]
+    pub input_choices: InputChoices,
+}
+
+/// Answers to the input warnings (plan 2.2), applied in this order: rename
+/// duplicate names, leave out the taxa in `skip`; warnings about taxa in
+/// `keep` (identical or short sequences) are accepted.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InputChoices {
+    /// Rename duplicate names by appending `_2`, `_3`, ...
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub rename_duplicates: bool,
+    /// Taxa left out (names after renaming): empty files, the second of two
+    /// identical sequences ("keep one"), short sequences ("skip").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skip: Vec<String>,
+    /// Taxa kept despite a warning: the second of two identical sequences
+    /// ("keep both"), short sequences ("keep").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keep: Vec<String>,
+}
+
+impl InputChoices {
+    pub fn is_empty(&self) -> bool {
+        !self.rename_duplicates && self.skip.is_empty() && self.keep.is_empty()
+    }
 }
 
 fn is_zero(v: &u32) -> bool {
@@ -171,6 +201,20 @@ impl AnalysisConfig {
             RecordMode::ConcatenatePerFile
         }
     }
+
+    /// Reads the input at `path` (normally `self.input`) and applies the
+    /// answers to its warnings. Returns the input and the names left out.
+    pub(crate) fn load_input(
+        &self,
+        path: &Path,
+    ) -> Result<(qmaws_data::loader::LoadedInput, Vec<String>), EngineError> {
+        let mut loaded = qmaws_data::loader::load(path, self.mode())
+            .map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let c = &self.input_choices;
+        let (_, skipped) =
+            qmaws_data::loader::apply_choices(&mut loaded, c.rename_duplicates, &c.skip);
+        Ok((loaded, skipped))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,12 +235,20 @@ pub(crate) struct InputsRecord {
     pub lmin: usize,
     pub lmax: usize,
     pub average_length: u64,
+    /// Taxa left out on request (plan 2.2); left out of the file when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skipped: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Selection {
     entropies: Vec<EntropyRow>,
     selected: Vec<usize>,
+}
+
+/// True when `run_dir` already holds a run (its `run.json` exists).
+pub fn run_exists(run_dir: &Path) -> bool {
+    RunDir::new(run_dir).run_json().exists()
 }
 
 /// SHA-256 of a configuration as stored in `run.json` (`config_sha256`):
@@ -727,20 +779,38 @@ impl<'a> Session<'a> {
 
     fn ingest(&mut self) -> Result<(), EngineError> {
         self.set_running(INGEST)?;
-        let cfg = &self.options.config;
-        let loaded = qmaws_data::loader::load(Path::new(&cfg.input), cfg.mode())
-            .map_err(|e| EngineError::Invalid(e.to_string()))?;
-        let problems: Vec<String> = loaded
+        let cfg = self.options.config.clone();
+        let (loaded, skipped) = cfg.load_input(Path::new(&cfg.input))?;
+        let mut problems: Vec<String> = loaded
             .findings
             .iter()
-            .filter(|f| f.is_error() || f.is_warning())
+            .filter(|f| f.is_error())
             .map(|f| f.message())
             .collect();
+        problems.extend(
+            qmaws_core::input::unresolved(&loaded.findings, &cfg.input_choices.keep)
+                .iter()
+                .map(|f| f.message()),
+        );
         if !problems.is_empty() {
             return Err(EngineError::Invalid(format!(
-                "the input has problems that must be resolved first (see qmaws inspect): {}",
+                "the input has problems that must be resolved first (see qmaws inspect; answer warnings with --rename-duplicates, --skip or --keep): {}",
                 problems.join(" ")
             )));
+        }
+        for t in &loaded.taxa {
+            if t.name != t.original_name {
+                self.log(&format!(
+                    "Ingest: {} is used as {}.",
+                    t.original_name, t.name
+                ))?;
+            }
+        }
+        if !skipped.is_empty() {
+            self.log(&format!(
+                "Ingest: left out on request: {}.",
+                skipped.join(", ")
+            ))?;
         }
         let total: u64 = loaded.taxa.iter().map(|t| t.cleaned.cleaned_length()).sum();
         let m = loaded.taxa.len() as u64;
@@ -777,6 +847,7 @@ impl<'a> Session<'a> {
             lmin,
             lmax,
             average_length,
+            skipped,
         };
         let text = serde_json::to_string_pretty(&record).expect("inputs serialise") + "\n";
         let hash = self.write("audit/inputs.json", text.as_bytes())?;
@@ -815,8 +886,10 @@ impl<'a> Session<'a> {
         self.reset_from(MAW_EXTRACT);
         self.set_running(MAW_EXTRACT)?;
         let cfg = self.options.config.clone();
-        let loaded = qmaws_data::loader::load(Path::new(&cfg.input), cfg.mode())
-            .map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let (loaded, _) = cfg.load_input(Path::new(&cfg.input))?;
+        if loaded.taxa.len() != inputs.taxa.len() {
+            return Err(EngineError::InputChanged(cfg.input.clone()));
+        }
         for (t, rec) in loaded.taxa.iter().zip(&inputs.taxa) {
             if t.name != rec.name || sha256_hex(&t.cleaned.sequence) != rec.cleaned_sha256 {
                 return Err(EngineError::InputChanged(rec.source_file.clone()));
@@ -989,8 +1062,58 @@ impl<'a> Session<'a> {
             .map_err(|e| EngineError::Invalid(e.to_string()))
     }
 
+    /// Plan 4.12: the quartet results in `work/chunks/` need
+    /// `COUNT_RECORD` (+ `WEIGHT_RECORD` when weighted) bytes per quartet.
+    /// Prints the estimate and stops before the stage if the disk lacks the
+    /// space still needed.
+    fn check_disk_space(&mut self, q: u64) -> Result<(), EngineError> {
+        let per_quartet = store::COUNT_RECORD as u64
+            + if self.weighted() {
+                store::WEIGHT_RECORD as u64
+            } else {
+                0
+            };
+        let needed = q * per_quartet;
+        let present: u64 = std::fs::read_dir(self.dir.chunks())
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok()?.metadata().ok())
+                    .map(|m| m.len())
+                    .sum()
+            })
+            .unwrap_or(0);
+        let still = needed.saturating_sub(present);
+        let mb = |b: u64| (b as f64 / 1e6).ceil() as u64;
+        match crate::matrix_pipeline::free_disk_bytes(self.dir.root()) {
+            Some(free) => {
+                self.log(&format!(
+                    "Quartet results: {q} quartets x {per_quartet} bytes = about {} MB on disk ({} MB still to write); {} MB free.",
+                    mb(needed),
+                    mb(still),
+                    mb(free)
+                ))?;
+                if still > free {
+                    return Err(EngineError::Invalid(format!(
+                        "not enough free disk space for the quartet results: {} MB needed, {} MB free on the disk of {}; free some space and resume the run",
+                        mb(still),
+                        mb(free),
+                        self.dir.root().display()
+                    )));
+                }
+            }
+            None => self.log(&format!(
+                "Quartet results: {q} quartets x {per_quartet} bytes = about {} MB on disk (free space unknown).",
+                mb(needed)
+            ))?,
+        }
+        Ok(())
+    }
+
     fn quartet_count(&mut self, m: usize) -> Result<Option<Outcome>, EngineError> {
         let q = quartet::quartet_count(m);
+        if self.status(QUARTET_COUNT) != StageStatus::Done {
+            self.check_disk_space(q)?;
+        }
         let full = self.load_full()?;
         let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
         let path = PopcountPath::detect();
@@ -2339,6 +2462,7 @@ mod tests {
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 3,
                 bootstrap: 0,
+                input_choices: Default::default(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(chunk),
@@ -2534,6 +2658,8 @@ mod tests {
         let fo = FigureOptions {
             reference: Some(ReferenceTree {
                 label: "test tree".into(),
+                source: "test".into(),
+                newick: reference.to_newick(false),
                 tree: reference,
             }),
             support: SupportChoice::S2,
@@ -2557,6 +2683,12 @@ mod tests {
             assert!(fig.join(f).exists(), "{f}");
         }
         assert!(run.join("report").join("reference_comparison.tsv").exists());
+        // The reference and the comparison are stored for qmaws verify.
+        let stored = crate::evaluation::stored_reference(&run).unwrap().unwrap();
+        assert_eq!(stored.info.label, "test tree");
+        let checks = crate::evaluation::check(&run, 1e-6);
+        assert_eq!(checks.len(), 5);
+        assert!(checks.iter().all(|(ok, _)| *ok), "{checks:?}");
         let groups = std::fs::read_to_string(fig.join("groups.tsv")).unwrap();
         assert!(groups.starts_with("# source: groups.tsv"));
         assert!(groups.contains("T2\tSecond"));

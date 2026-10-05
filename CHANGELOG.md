@@ -6,6 +6,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Added
+
+- The comparison with the reference tree is part of the verification record (OI-19): `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json`, each with its SHA-256; `qmaws verify` (quick and full) recomputes nRF, nQD and MSD and compares them.
+- Your own reference tree: `qmaws run --reference`, and the reference step of the menu and the GUI now keep the tree, store it with the run and compare the result with it (before, it was only checked).
+- A reference tree from the Open Tree of Life in the menu and the GUI: exact name matching with a report (matched, not found, ambiguous, same taxon), an optional search by genus and species only, and the synthetic tree induced on the taxa, with every query recorded.
+- Answers to input warnings (plan 2.2) in the menu, the GUI (two rounds) and `qmaws run` (`--rename-duplicates`, `--skip`, `--keep`); stored in the run's settings and in `audit/inputs.json`. Before, any warning stopped the run.
+- `qmaws run --dataset all` (every dataset in turn) and the download of a missing benchmark dataset before a run; `--cores` and `--memory-limit` on `qmaws run`.
+- Golden test G9: `qmaws metrics-check` (nQD against enumeration over splits and MSD against brute-force matching on 500 random tree pairs with 5 to 60 leaves) and the workflow `metrics.yml` (nRF against DendroPy 5.1.0).
+- H1 statistics and the hidden `qmaws summary` command (milestone M11).
+
+### Fixed
+
+- CI failed on every platform since the M9 commits: the interface test expected a live provisional tree, but on a fast computer the calibrated chunk held every quartet, so no update was due. The test now uses a fixed chunk size.
+- `docs/DESIGN.md` said a run has 11 stages; it has 10 (OI-19). `docs/EXTERNAL_TOOLS.md` had no entry for wQFM; it now has one, and one for DendroPy.
+
+### Known limitations
+
+- PDF figures are not byte-reproducible: `svg2pdf` writes the entries of a page's resource dictionary in a changing order. The pages are the same; SVG and PNG files are byte-identical when drawn again.
+
 ## [v0.10-m10-figures] - 2026-10-03
 
 ### Added

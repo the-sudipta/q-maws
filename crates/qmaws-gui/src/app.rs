@@ -5,13 +5,14 @@
 
 use crate::controller::{Controller, Job, Message};
 use eframe::egui::{self, Color32, Pos2, Rect, Stroke, Vec2};
-use qmaws_core::input::RecordMode;
+use qmaws_core::input::{Finding, RecordMode};
 use qmaws_core::newick::{match_names, Tree};
 use qmaws_data::loader;
+use qmaws_data::otl;
 use qmaws_data::registry::{Layout, Registry};
 use qmaws_data::DataDir;
-use qmaws_engine::analysis::{self, AnalysisConfig};
-use qmaws_engine::launch::{self, NewRun, RunSummary, Settings, UserConfig};
+use qmaws_engine::analysis::{self, AnalysisConfig, InputChoices};
+use qmaws_engine::launch::{self, NewRun, RunReference, RunSummary, Settings, UserConfig};
 use qmaws_engine::progress::{LiveQuartet, Snapshot};
 use qmaws_engine::rundir::DEFAULT_RUNS_ROOT;
 use qmaws_engine::verify::{self, Mode};
@@ -69,18 +70,100 @@ const STEPS: [(Step, &str); 6] = [
     (Step::Run, "Run"),
 ];
 
-/// The result of checking a sequence folder.
+/// The result of checking a sequence folder, with the answers to its
+/// warnings (plan 2.2), one round at a time as in the terminal menu: empty
+/// files and duplicate names first, then identical and short sequences.
 struct FolderCheck {
     summary: String,
     errors: Vec<String>,
-    warnings: Vec<String>,
     notes: Vec<String>,
+    /// Taxon names after the answers given so far.
     taxa: Vec<String>,
+    /// The input after the answers given so far.
+    loaded: Option<loader::LoadedInput>,
+    choices: InputChoices,
+    /// Warnings waiting for an answer, and the option chosen for each.
+    pending: Vec<Finding>,
+    answers: Vec<usize>,
+    /// The user chose "abort" for a warning.
+    aborted: bool,
+    /// Renamings and taxa left out.
+    messages: Vec<String>,
 }
 
 impl FolderCheck {
     fn usable(&self) -> bool {
-        !self.taxa.is_empty() && self.errors.is_empty() && self.warnings.is_empty()
+        !self.taxa.is_empty() && self.errors.is_empty() && self.pending.is_empty() && !self.aborted
+    }
+
+    /// The warnings of the current round.
+    fn refresh(&mut self) {
+        let Some(l) = &self.loaded else {
+            return;
+        };
+        self.errors = l
+            .findings
+            .iter()
+            .filter(|f| f.is_error())
+            .map(|f| f.message())
+            .collect();
+        self.taxa = l.taxa.iter().map(|t| t.name.clone()).collect();
+        let open: Vec<Finding> = qmaws_core::input::unresolved(&l.findings, &self.choices.keep)
+            .into_iter()
+            .cloned()
+            .collect();
+        let first_round: Vec<Finding> = open
+            .iter()
+            .filter(|f| {
+                matches!(
+                    f,
+                    Finding::EmptyAfterCleaning { .. } | Finding::DuplicateName { .. }
+                )
+            })
+            .cloned()
+            .collect();
+        self.pending = if first_round.is_empty() {
+            open
+        } else {
+            first_round
+        };
+        self.answers = vec![0; self.pending.len()];
+    }
+
+    /// Applies the chosen options to the pending warnings.
+    fn apply_answers(&mut self) {
+        for (f, &a) in self.pending.iter().zip(&self.answers) {
+            let c = &mut self.choices;
+            match (f, a) {
+                (Finding::EmptyAfterCleaning { taxon, .. }, 0) => c.skip.push(taxon.clone()),
+                (Finding::DuplicateName { .. }, 0) => c.rename_duplicates = true,
+                (Finding::IdenticalSequences { second, .. }, 0) => c.keep.push(second.clone()),
+                (Finding::IdenticalSequences { second, .. }, 1) => c.skip.push(second.clone()),
+                (Finding::ShortSequence { taxon, .. }, 0) => c.keep.push(taxon.clone()),
+                (Finding::ShortSequence { taxon, .. }, 1) => c.skip.push(taxon.clone()),
+                _ => self.aborted = true,
+            }
+        }
+        if self.aborted {
+            self.pending.clear();
+            return;
+        }
+        if let Some(l) = &mut self.loaded {
+            let (renamed, _) =
+                loader::apply_choices(l, self.choices.rename_duplicates, &self.choices.skip);
+            for (old, new) in renamed {
+                self.messages
+                    .push(format!("Renamed: a second {old} is used as {new}."));
+            }
+        }
+        self.refresh();
+        if self.pending.is_empty() && !self.choices.skip.is_empty() {
+            self.messages.push(format!(
+                "Left out: {}. {} taxa remain.",
+                self.choices.skip.join(", "),
+                self.taxa.len()
+            ));
+        }
     }
 }
 
@@ -91,6 +174,17 @@ struct Source {
     records: String,
     name: String,
     taxa: usize,
+    reference: Option<RunReference>,
+    choices: InputChoices,
+}
+
+/// Getting a reference tree from the Open Tree of Life (plan 6.7).
+enum OtlStep {
+    Matching(Receiver<Result<otl::ReferenceMatch, String>>, bool),
+    /// The report, and whether the search used genus and species only.
+    Matched(otl::ReferenceMatch, bool),
+    Downloading(Receiver<Result<RunReference, String>>),
+    Failed(String),
 }
 
 struct Wizard {
@@ -105,6 +199,12 @@ struct Wizard {
     reference: String,
     reference_lines: Vec<String>,
     reference_done: bool,
+    /// The reference tree chosen (a checked file or a downloaded tree).
+    reference_tree: Option<RunReference>,
+    otl: Option<OtlStep>,
+    /// A problem when starting the runs (the reference tree could not be
+    /// stored).
+    start_error: Option<String>,
     output: String,
     custom: bool,
     settings: Settings,
@@ -129,6 +229,9 @@ impl Wizard {
             reference: String::new(),
             reference_lines: Vec::new(),
             reference_done: false,
+            reference_tree: None,
+            otl: None,
+            start_error: None,
             output: String::new(),
             custom: false,
             settings: Settings::default(),
@@ -165,6 +268,9 @@ struct RunView {
     done: bool,
     next: Option<RunSummary>,
     scene: Rect,
+    /// Folder to copy the final figures to, and the result of the copy.
+    export_to: String,
+    export_message: Option<String>,
 }
 
 struct VerifyPage {
@@ -251,6 +357,8 @@ impl App {
             done: false,
             next: None,
             scene: Rect::ZERO,
+            export_to: String::new(),
+            export_message: None,
         });
         self.page = Page::Run;
         self.wizard.step = Step::Run;
@@ -371,37 +479,33 @@ fn final_tree(dir: &Path) -> Option<ShownTree> {
 }
 
 fn check_folder(path: &str) -> FolderCheck {
+    let mut c = FolderCheck {
+        summary: String::new(),
+        errors: Vec::new(),
+        notes: Vec::new(),
+        taxa: Vec::new(),
+        loaded: None,
+        choices: InputChoices::default(),
+        pending: Vec::new(),
+        answers: Vec::new(),
+        aborted: false,
+        messages: Vec::new(),
+    };
     match loader::load(Path::new(path), RecordMode::ConcatenatePerFile) {
-        Err(e) => FolderCheck {
-            summary: format!("This folder cannot be used: {e}"),
-            errors: Vec::new(),
-            warnings: Vec::new(),
-            notes: Vec::new(),
-            taxa: Vec::new(),
-        },
-        Ok(l) => FolderCheck {
-            summary: loader::summary(&l),
-            errors: l
-                .findings
-                .iter()
-                .filter(|f| f.is_error())
-                .map(|f| f.message())
-                .collect(),
-            warnings: l
-                .findings
-                .iter()
-                .filter(|f| f.is_warning())
-                .map(|f| f.message())
-                .collect(),
-            notes: l
+        Err(e) => c.summary = format!("This folder cannot be used: {e}"),
+        Ok(l) => {
+            c.summary = loader::summary(&l);
+            c.notes = l
                 .findings
                 .iter()
                 .filter(|f| !f.is_error() && !f.is_warning())
                 .map(|f| f.message())
-                .collect(),
-            taxa: l.taxa.iter().map(|t| t.name.clone()).collect(),
-        },
+                .collect();
+            c.loaded = Some(l);
+            c.refresh();
+        }
     }
+    c
 }
 
 /// Opens a folder or a file with the program the system uses for it.
@@ -589,25 +693,36 @@ impl App {
                     w.check = Some(check_folder(w.folder.trim()));
                     w.reference_done = false;
                     w.reference_lines.clear();
+                    w.reference_tree = None;
+                    w.otl = None;
                 }
             });
-            if let Some(c) = &w.check {
+            if let Some(c) = &mut w.check {
                 ui.add_space(6.0);
                 ui.monospace(&c.summary);
                 for e in &c.errors {
                     ui.colored_label(ui.visuals().error_fg_color, format!("Problem: {e}"));
                 }
-                if !c.errors.is_empty() {
-                    ui.label("Please fix the files or choose another folder.");
-                }
                 for n in &c.notes {
                     ui.label(format!("Note: {n}"));
                 }
-                for x in &c.warnings {
-                    ui.colored_label(ui.visuals().warn_fg_color, format!("Warning: {x}"));
+                for m in &c.messages {
+                    ui.label(m);
                 }
-                if !c.warnings.is_empty() {
-                    ui.label("This version analyses only inputs without warnings; fix the files and check the folder again.");
+                let warn = ui.visuals().warn_fg_color;
+                for (i, f) in c.pending.iter().enumerate() {
+                    ui.colored_label(warn, format!("Warning: {}", f.message()));
+                    ui.horizontal(|ui| {
+                        for (k, choice) in f.choices().iter().enumerate() {
+                            ui.radio_value(&mut c.answers[i], k, capitalised(choice));
+                        }
+                    });
+                }
+                if !c.pending.is_empty() && ui.button("Apply answers").clicked() {
+                    c.apply_answers();
+                }
+                if c.aborted || !c.errors.is_empty() {
+                    ui.label("Please fix the files or choose another folder.");
                 }
                 if c.usable() && ui.button("Next").clicked() {
                     w.step = Step::Reference;
@@ -687,17 +802,19 @@ impl App {
     }
 
     fn reference_step(&mut self, ui: &mut egui::Ui) {
+        let wake = Arc::clone(&self.wake);
         let w = &mut self.wizard;
+        let taxa = w.check.as_ref().map(|c| c.taxa.clone()).unwrap_or_default();
         ui.heading("Reference tree");
         ui.label("Enter the path to a Newick file, or skip:");
         ui.horizontal(|ui| {
             ui.add(egui::TextEdit::singleline(&mut w.reference).desired_width(480.0));
             if ui.button("Check").clicked() {
-                w.reference_lines = check_reference(&w.reference, w.check.as_ref());
-                w.reference_done = w
-                    .reference_lines
-                    .first()
-                    .is_some_and(|l| l.starts_with("All "));
+                let (lines, tree) = check_reference(&w.reference, &taxa);
+                w.reference_lines = lines;
+                w.reference_done = tree.is_some();
+                w.reference_tree = tree;
+                w.otl = None;
             }
         });
         for l in &w.reference_lines {
@@ -713,14 +830,112 @@ impl App {
             .button("1. Continue without a reference (tree, support and Halo Tree only)")
             .clicked()
         {
+            w.reference_tree = None;
+            w.reference_done = false;
+            w.reference_lines.clear();
+            w.otl = None;
             w.step = Step::Output;
             w.output.clear();
         }
-        ui.add_enabled(
-            false,
-            egui::Button::new("2. Download a reference tree from the internet (Open Tree of Life)"),
-        )
-        .on_disabled_hover_text("Not available in this version.");
+        let busy = matches!(
+            w.otl,
+            Some(OtlStep::Matching(..)) | Some(OtlStep::Downloading(_))
+        );
+        if ui
+            .add_enabled(
+                !busy,
+                egui::Button::new(
+                    "2. Download a reference tree from the internet (Open Tree of Life)",
+                ),
+            )
+            .clicked()
+        {
+            w.reference_tree = None;
+            w.reference_done = false;
+            w.reference_lines.clear();
+            w.otl = Some(start_otl_match(&taxa, false, &wake));
+        }
+        self.otl_panel(ui, &taxa);
+    }
+
+    /// The Open Tree of Life steps: name matching report, then the
+    /// download of the induced tree (plan 6.7). Network work runs on a
+    /// worker thread so that the window never waits.
+    fn otl_panel(&mut self, ui: &mut egui::Ui, taxa: &[String]) {
+        let wake = Arc::clone(&self.wake);
+        let w = &mut self.wizard;
+        let Some(step) = w.otl.take() else {
+            return;
+        };
+        ui.add_space(6.0);
+        w.otl = Some(match step {
+            OtlStep::Matching(rx, species_only) => match rx.try_recv() {
+                Ok(Ok(m)) => OtlStep::Matched(m, species_only),
+                Ok(Err(e)) => {
+                    OtlStep::Failed(format!("The Open Tree of Life could not be reached: {e}"))
+                }
+                Err(_) => {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label("Searching the Open Tree of Life (api.opentreeoflife.org) for the taxon names...");
+                    });
+                    OtlStep::Matching(rx, species_only)
+                }
+            },
+            OtlStep::Matched(m, species_only) => {
+                for line in m.report() {
+                    ui.label(line);
+                }
+                let mut next = None;
+                if m.is_complete(taxa.len()) {
+                    if ui.button("Continue with this reference").clicked() {
+                        next = Some(start_otl_download(
+                            m.clone(),
+                            taxa.len(),
+                            species_only,
+                            &wake,
+                        ));
+                    }
+                } else {
+                    ui.label("A comparison needs every taxon matched to its own Open Tree of Life taxon.");
+                    let unresolved = !m.names.unmatched.is_empty() || !m.names.ambiguous.is_empty();
+                    if unresolved
+                        && !species_only
+                        && ui
+                            .button("Search again with genus and species only (strain or isolate names removed)")
+                            .clicked()
+                    {
+                        next = Some(start_otl_match(taxa, true, &wake));
+                    }
+                }
+                next.unwrap_or(OtlStep::Matched(m, species_only))
+            }
+            OtlStep::Downloading(rx) => match rx.try_recv() {
+                Ok(Ok(r)) => {
+                    w.reference_lines = vec![format!(
+                        "Reference: the {}, induced on the {} taxa (it may have unresolved nodes). Results will say \"compared against the Open Tree of Life synthetic tree\".",
+                        r.label,
+                        taxa.len()
+                    )];
+                    w.reference_tree = Some(r);
+                    w.reference_done = true;
+                    w.otl = None;
+                    return;
+                }
+                Ok(Err(e)) => OtlStep::Failed(format!("The tree could not be downloaded: {e}")),
+                Err(_) => {
+                    ui.horizontal(|ui| {
+                        ui.spinner();
+                        ui.label("Downloading the tree from the Open Tree of Life...");
+                    });
+                    OtlStep::Downloading(rx)
+                }
+            },
+            OtlStep::Failed(e) => {
+                ui.colored_label(ui.visuals().error_fg_color, &e);
+                OtlStep::Failed(e)
+            }
+        });
     }
 
     fn sources(&self) -> Vec<Source> {
@@ -736,6 +951,12 @@ impl App {
                 records: "per_file".into(),
                 name,
                 taxa: w.check.as_ref().map_or(0, |c| c.taxa.len()),
+                reference: w.reference_tree.clone(),
+                choices: w
+                    .check
+                    .as_ref()
+                    .map(|c| c.choices.clone())
+                    .unwrap_or_default(),
             }]
         } else {
             let reg = &self.registry;
@@ -756,6 +977,8 @@ impl App {
                     .into(),
                     name: ds.id.clone(),
                     taxa: ds.taxa,
+                    reference: None,
+                    choices: InputChoices::default(),
                 })
                 .collect()
         }
@@ -870,6 +1093,8 @@ impl App {
                 input: s.input,
                 records: s.records,
                 settings: self.wizard.settings.clone(),
+                reference: s.reference,
+                input_choices: s.choices,
             })
             .collect();
         (runs, taxa)
@@ -900,7 +1125,15 @@ impl App {
         }
         ui.label(launch::ESTIMATE_NOTE);
         ui.add_space(8.0);
+        if let Some(e) = &self.wizard.start_error {
+            ui.colored_label(ui.visuals().error_fg_color, e);
+        }
         if ui.button("Start now").clicked() {
+            if let Err(e) = runs.iter().try_for_each(NewRun::store_reference) {
+                self.wizard.start_error = Some(format!("The run cannot start: {e}"));
+                return;
+            }
+            self.wizard.start_error = None;
             let mut changed = false;
             for r in &runs {
                 changed |= self.config.remember_run(&r.output);
@@ -1317,7 +1550,53 @@ fn cell(ui: &mut egui::Ui, value: Option<f64>, digits: usize) {
     };
 }
 
+/// Copies the final figures of a run (the files directly in `figures/`,
+/// not the live folder) into `<to>/<run name>_figures/`. Returns that
+/// folder and the number of files copied.
+fn export_figures(run_dir: &Path, to: &Path) -> Result<(PathBuf, usize), String> {
+    let name = run_dir
+        .file_name()
+        .map_or("run".into(), |n| n.to_string_lossy().into_owned());
+    let dest = to.join(format!("{name}_figures"));
+    std::fs::create_dir_all(&dest).map_err(|e| format!("{}: {e}", dest.display()))?;
+    let source = run_dir.join("figures");
+    let mut copied = 0;
+    for entry in std::fs::read_dir(&source).map_err(|e| format!("{}: {e}", source.display()))? {
+        let path = entry.map_err(|e| e.to_string())?.path();
+        if path.is_file() && path.file_name().is_some_and(|n| n != "README.md") {
+            let target = dest.join(path.file_name().expect("a file has a name"));
+            std::fs::copy(&path, &target).map_err(|e| format!("{}: {e}", target.display()))?;
+            copied += 1;
+        }
+    }
+    Ok((dest, copied))
+}
+
 fn tree_panel(ui: &mut egui::Ui, run: &mut RunView, _action: &mut Option<RunAction>) {
+    if run.done {
+        if let Some(d) = run.run_dir.clone() {
+            ui.horizontal(|ui| {
+                ui.label("Export the figures to:");
+                ui.add(egui::TextEdit::singleline(&mut run.export_to).desired_width(320.0));
+                if ui
+                    .add_enabled(
+                        !run.export_to.trim().is_empty(),
+                        egui::Button::new("Export"),
+                    )
+                    .clicked()
+                {
+                    run.export_message =
+                        Some(match export_figures(&d, Path::new(run.export_to.trim())) {
+                            Ok((dest, n)) => format!("{n} files copied to {}.", dest.display()),
+                            Err(e) => format!("The figures could not be copied: {e}"),
+                        });
+                }
+            });
+            if let Some(m) = &run.export_message {
+                ui.label(m);
+            }
+        }
+    }
     ui.horizontal(|ui| {
         if let Some(d) = &run.run_dir {
             let figures = d.join("figures");
@@ -1501,26 +1780,35 @@ fn paint_tree(ui: &mut egui::Ui, t: &ShownTree) {
     );
 }
 
-fn check_reference(path: &str, check: Option<&FolderCheck>) -> Vec<String> {
+/// Checks a reference tree file against the taxa (plan 5.4): the lines to
+/// show, and the tree when its leaves are exactly the taxa.
+fn check_reference(path: &str, taxa: &[String]) -> (Vec<String>, Option<RunReference>) {
     let path = path.trim();
     if path.is_empty() {
-        return vec!["Enter a path, or continue without a reference.".into()];
+        return (
+            vec!["Enter a path, or continue without a reference.".into()],
+            None,
+        );
     }
-    let text = match std::fs::read_to_string(path) {
-        Ok(t) => t,
-        Err(e) => return vec![format!("The file cannot be read: {e}")],
+    let r = match RunReference::from_file(Path::new(path)) {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                vec![format!("The file cannot be used as a Newick tree: {e}")],
+                None,
+            )
+        }
     };
-    let tree = match Tree::parse(text.trim()) {
-        Ok(t) => t,
-        Err(e) => return vec![format!("The file is not a valid Newick tree: {e}")],
-    };
-    let taxa = check.map(|c| c.taxa.clone()).unwrap_or_default();
-    let m = match_names(&tree, &taxa);
+    let tree = Tree::parse(r.newick.trim()).expect("checked when read");
+    let m = match_names(&tree, taxa);
     if m.is_exact() {
-        return vec![format!(
-            "All {} taxa match the reference tree. Comparison with a reference tree comes in a later version; this run does not use it yet.",
-            taxa.len()
-        )];
+        return (
+            vec![format!(
+                "All {} taxa match the reference tree; the result will be compared with it (nRF, nQD, MSD).",
+                taxa.len()
+            )],
+            Some(r),
+        );
     }
     let mut out = vec![
         "The names do not match. Enter another path, or continue without a reference.".to_string(),
@@ -1534,7 +1822,65 @@ fn check_reference(path: &str, check: Option<&FolderCheck>) -> Vec<String> {
             out.push(format!("{label}: {}", list.join(", ")));
         }
     }
-    out
+    (out, None)
+}
+
+fn capitalised(s: &str) -> String {
+    let mut c = s.chars();
+    c.next()
+        .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+        .unwrap_or_default()
+}
+
+/// Starts matching the taxon names in the Open Tree of Life on a worker
+/// thread; with `species_only`, by genus and species only.
+fn start_otl_match(
+    taxa: &[String],
+    species_only: bool,
+    wake: &Arc<dyn Fn() + Send + Sync>,
+) -> OtlStep {
+    let search: Vec<(String, String)> = taxa
+        .iter()
+        .map(|t| {
+            let s = otl::search_name(t);
+            (
+                t.clone(),
+                if species_only {
+                    otl::species_name(&s)
+                } else {
+                    s
+                },
+            )
+        })
+        .collect();
+    let (tx, rx) = mpsc::channel();
+    let wake = Arc::clone(wake);
+    std::thread::spawn(move || {
+        let fetcher = qmaws_data::download::HttpFetcher::new();
+        let _ = tx.send(otl::reference_match(&fetcher, &search));
+        wake();
+    });
+    OtlStep::Matching(rx, species_only)
+}
+
+/// Starts the download of the induced tree on a worker thread.
+fn start_otl_download(
+    m: otl::ReferenceMatch,
+    taxa: usize,
+    species_only: bool,
+    wake: &Arc<dyn Fn() + Send + Sync>,
+) -> OtlStep {
+    let (tx, rx) = mpsc::channel();
+    let wake = Arc::clone(wake);
+    std::thread::spawn(move || {
+        let fetcher = qmaws_data::download::HttpFetcher::new();
+        let date = qmaws_engine::clock::UtcDateTime::now().iso8601();
+        let r = otl::induced_reference(&fetcher, &m, &date)
+            .map(|r| RunReference::from_otl(r, taxa, &date, species_only));
+        let _ = tx.send(r);
+        wake();
+    });
+    OtlStep::Downloading(rx)
 }
 
 fn read_settings(w: &Wizard) -> Result<Settings, String> {
@@ -1616,8 +1962,93 @@ mod tests {
 
     #[test]
     fn a_missing_reference_file_is_explained() {
-        assert!(check_reference("no/such.nwk", None)[0].starts_with("The file cannot be read"));
-        assert!(check_reference("", None)[0].starts_with("Enter a path"));
+        let (lines, tree) = check_reference("no/such.nwk", &[]);
+        assert!(lines[0].starts_with("The file cannot be used as a Newick tree"));
+        assert!(tree.is_none());
+        assert!(check_reference("", &[]).0[0].starts_with("Enter a path"));
+    }
+
+    #[test]
+    fn figures_are_exported_without_the_live_folder() {
+        let dir = std::env::temp_dir().join(format!("qmaws_gui_export_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let run = dir.join("my_run");
+        std::fs::create_dir_all(run.join("figures/live")).unwrap();
+        for f in [
+            "halo_tree.svg",
+            "halo_tree.png",
+            "README.md",
+            "live/halo_tree_latest.svg",
+        ] {
+            std::fs::write(run.join("figures").join(f), f).unwrap();
+        }
+        let (dest, n) = export_figures(&run, &dir.join("out")).unwrap();
+        assert_eq!(dest, dir.join("out").join("my_run_figures"));
+        assert_eq!(n, 2);
+        assert!(dest.join("halo_tree.png").exists() && !dest.join("live").exists());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_matching_reference_file_is_kept() {
+        let dir = std::env::temp_dir().join(format!("qmaws_gui_ref_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("ref.nwk");
+        std::fs::write(&p, "((A,B),C,(D,E));").unwrap();
+        let taxa: Vec<String> = ["A", "B", "C", "D", "E"].map(String::from).to_vec();
+        let (lines, tree) = check_reference(&p.display().to_string(), &taxa);
+        assert!(lines[0].starts_with("All 5 taxa match"));
+        assert_eq!(tree.unwrap().label, "reference tree ref.nwk");
+        let (lines, tree) = check_reference(&p.display().to_string(), &taxa[..4]);
+        assert!(tree.is_none());
+        assert!(lines.iter().any(|l| l == "Leaves without a taxon: E"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn warnings_are_answered_in_two_rounds() {
+        let dir = std::env::temp_dir().join(format!("qmaws_gui_warn_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let long = "ACGT".repeat(40);
+        for (file, text) in [
+            ("A.fa", format!(">A\n{long}A\n")),
+            ("B.fa", format!(">B\n{long}C\n")),
+            ("C.fa", format!(">C\n{long}G\n")),
+            ("D.fa", format!(">D\n{long}T\n")),
+            ("X.fa", format!(">A\n{long}AA\n")), // a second "A"
+            ("Short.fa", ">Short\nACGTAC\n".to_string()),
+            ("Empty.fa", ">Empty\nNNNN\n".to_string()),
+        ] {
+            std::fs::write(dir.join(file), text).unwrap();
+        }
+        let mut c = check_folder(&dir.display().to_string());
+        // Round 1: the empty file and the duplicate name.
+        assert_eq!(c.pending.len(), 2);
+        assert!(!c.usable());
+        c.apply_answers(); // skip the empty file; rename the duplicate
+        assert!(c
+            .messages
+            .iter()
+            .any(|m| m == "Renamed: a second A is used as A_2."));
+        // Round 2: the short sequence.
+        assert_eq!(c.pending.len(), 1);
+        assert!(matches!(c.pending[0], Finding::ShortSequence { .. }));
+        c.answers[0] = 1; // skip
+        c.apply_answers();
+        assert!(c.usable());
+        assert_eq!(c.taxa.len(), 5);
+        assert!(c.choices.rename_duplicates);
+        assert_eq!(
+            c.choices.skip,
+            vec!["Empty".to_string(), "Short".to_string()]
+        );
+        // Abort.
+        let mut c = check_folder(&dir.display().to_string());
+        c.answers[0] = 1;
+        c.apply_answers();
+        assert!(c.aborted && !c.usable());
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

@@ -1,4 +1,5 @@
-//! Tests of the data commands that need no network: `inspect` and `datasets`.
+//! Tests of commands that need no network: `inspect`, `datasets`, and the
+//! checks and input-warning answers of `run`.
 
 use std::path::PathBuf;
 use std::process::Command;
@@ -114,4 +115,88 @@ fn unknown_datasets_are_usage_errors() {
     ]);
     assert_eq!(code, 2);
     assert!(text.contains("unknown dataset nope"), "{text}");
+}
+
+#[test]
+fn run_options_are_checked_before_anything_is_written() {
+    let tmp = TempDir::new("runopts");
+    let out = tmp.0.join("out").display().to_string();
+    let (code, text) = run(&["run", "--dataset", "all", "--output", &out]);
+    assert_eq!(code, 2, "{text}");
+    assert!(
+        text.contains("--output and --reference cannot be used"),
+        "{text}"
+    );
+    let (code, text) = run(&["run", "--dataset", "no_such_set"]);
+    assert_eq!(code, 2, "{text}");
+    assert!(text.contains("or use --dataset all"), "{text}");
+    let (code, text) = run(&["run", "--input", "x", "--cores", "0"]);
+    assert_eq!(code, 2, "{text}");
+    let (code, text) = run(&["run", "--input", "x", "--memory-limit", "-1"]);
+    assert_eq!(code, 2, "{text}");
+    assert!(!tmp.0.join("out").exists());
+}
+
+#[test]
+fn run_answers_input_warnings_from_its_options() {
+    let tmp = TempDir::new("answers");
+    let seqs = tmp.0.join("seqs");
+    std::fs::create_dir_all(&seqs).unwrap();
+    for (i, name) in ["A", "B", "C", "D", "E"].iter().enumerate() {
+        let mut x = 0x9e37_79b9_7f4a_7c15u64 ^ i as u64;
+        let seq: String = (0..400)
+            .map(|_| {
+                x = x
+                    .wrapping_mul(6_364_136_223_846_793_005)
+                    .wrapping_add(1_442_695_040_888_963_407);
+                b"ACGT"[(x >> 62) as usize] as char
+            })
+            .collect();
+        std::fs::write(
+            seqs.join(format!("{name}.fasta")),
+            format!(">{name}\n{seq}\n"),
+        )
+        .unwrap();
+    }
+    std::fs::write(seqs.join("Tiny.fasta"), ">Tiny\nACGTACGTAC\n").unwrap();
+    let input = seqs.display().to_string();
+    let first = tmp.0.join("first").display().to_string();
+    let quick = ["--replicates", "2", "--bootstrap", "0", "--no-live-tree"];
+    // Without an answer the run stops and names the warning.
+    let mut args = vec!["--quiet", "run", "--input", &input, "--output", &first];
+    args.extend(quick);
+    let (code, text) = run(&args);
+    assert_eq!(code, 1, "{text}");
+    assert!(
+        text.contains("Tiny is only 10 letters long") && text.contains("--skip"),
+        "{text}"
+    );
+    // With --skip Tiny it runs on the five other taxa and records it.
+    let second = tmp.0.join("second");
+    let second_text = second.display().to_string();
+    let mut args = vec![
+        "--quiet",
+        "run",
+        "--input",
+        &input,
+        "--output",
+        &second_text,
+        "--skip",
+        "Tiny",
+    ];
+    args.extend(quick);
+    let (code, text) = run(&args);
+    assert_eq!(code, 0, "{text}");
+    let inputs: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(second.join("audit/inputs.json")).unwrap()).unwrap();
+    assert_eq!(inputs["taxa"].as_array().unwrap().len(), 5);
+    assert_eq!(inputs["skipped"], serde_json::json!(["Tiny"]));
+    let state: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(second.join("run.json")).unwrap()).unwrap();
+    assert_eq!(
+        state["config"]["input_choices"]["skip"],
+        serde_json::json!(["Tiny"])
+    );
+    let (code, text) = run(&["verify", "--quick", "--seed", "1", "--output", &second_text]);
+    assert_eq!(code, 0, "{text}");
 }

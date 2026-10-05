@@ -31,12 +31,28 @@ pub enum SupportChoice {
     S2,
 }
 
-/// A reference tree for the tanglegram.
+/// A reference tree for the tanglegram and the comparison of the run.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ReferenceTree {
     /// For example `AFproject reference tree (fish_mito)`.
     pub label: String,
+    /// Where it came from (a file path or a dataset).
+    pub source: String,
+    /// The Newick text as given; stored in `audit/reference.nwk`.
+    pub newick: String,
     pub tree: Tree,
+}
+
+impl ReferenceTree {
+    /// Reads a Newick text; the label and source describe it.
+    pub fn parse(newick: &str, label: &str, source: &str) -> Result<Self, String> {
+        Ok(Self {
+            label: label.to_string(),
+            source: source.to_string(),
+            newick: newick.to_string(),
+            tree: Tree::parse(newick.trim()).map_err(|e| e.to_string())?,
+        })
+    }
 }
 
 /// What the figures use besides the run itself.
@@ -96,6 +112,11 @@ pub fn auto_options(run_dir: &Path, data_dir: &Path) -> FigureOptions {
             if let Ok(tree) = r.tree() {
                 o.reference = Some(ReferenceTree {
                     label: format!("AFproject reference tree ({})", r.id),
+                    source: format!(
+                        "data/references/{}.nwk (AFproject tree of {}, leaves as sequence ids)",
+                        r.id, ds.id
+                    ),
+                    newick: r.newick.to_string(),
                     tree,
                 });
             }
@@ -106,6 +127,16 @@ pub fn auto_options(run_dir: &Path, data_dir: &Path) -> FigureOptions {
                 }
             }
         }
+    }
+    // A reference stored in the run (given when the run started, or by an
+    // earlier `qmaws figures --reference`) comes first.
+    if let Ok(Some(r)) = crate::evaluation::stored_reference(run_dir) {
+        o.reference = Some(ReferenceTree {
+            label: r.info.label,
+            source: r.info.source,
+            newick: String::from_utf8_lossy(&r.newick).into_owned(),
+            tree: r.tree,
+        });
     }
     o
 }
@@ -429,15 +460,33 @@ pub fn render(
                     c.msd,
                     reference.label
                 );
-                write_file(
-                    &dir.report().join("reference_comparison.tsv"),
-                    tsv.as_bytes(),
-                    &mut out,
-                )?;
+                let path = dir.report().join("reference_comparison.tsv");
+                crate::atomic::write_verified(&path, tsv.as_bytes()).map_err(io_err(&path))?;
+                out.files.push(path);
                 log(&format!(
                     "Figure: tanglegram against the {}: {header}.",
                     reference.label
                 ));
+                // The reference and the comparison, for `qmaws verify`.
+                let stored = match crate::evaluation::stored_reference(run_dir) {
+                    Ok(Some(s)) if s.newick == reference.newick.as_bytes() => s,
+                    _ => {
+                        let s = crate::evaluation::store_reference(
+                            run_dir,
+                            reference.newick.as_bytes(),
+                            &reference.label,
+                            &reference.source,
+                            None,
+                        )?;
+                        log(&format!(
+                            "Reference tree stored in audit/reference.nwk ({}).",
+                            reference.source
+                        ));
+                        s
+                    }
+                };
+                let evaluation = crate::evaluation::evaluate(run_dir, &stored)?;
+                crate::evaluation::write(run_dir, &evaluation)?;
             }
             Err(e) => out.notes.push(format!("No tanglegram: {e}")),
         }

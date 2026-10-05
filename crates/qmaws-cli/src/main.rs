@@ -61,19 +61,43 @@ enum Command {
         data_dir: PathBuf,
     },
 
-    /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 and S2 support and halo values)
+    /// Analyse a folder or a benchmark dataset: tree, S1 and S2 support, halo values, comparison with a reference tree, figures
     Run {
         /// Folder of sequence files, or one multi-FASTA file
         #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
         input: Option<PathBuf>,
 
-        /// Downloaded benchmark dataset id
+        /// Benchmark dataset id, or "all" (one run per dataset, one after another); missing datasets are downloaded
         #[arg(long)]
         dataset: Option<String>,
 
-        /// Run folder [default: results/runs/<name>_<date>_<time>]
+        /// Run folder [default: results/runs/<name>_<date>_<time>; with --dataset all, one such folder per dataset]
         #[arg(long)]
         output: Option<PathBuf>,
+
+        /// Reference tree (Newick) to compare the result with [default: the benchmark dataset's reference, if any]
+        #[arg(long)]
+        reference: Option<PathBuf>,
+
+        /// Input warning "same name": rename duplicate names by appending _2, _3, ...
+        #[arg(long)]
+        rename_duplicates: bool,
+
+        /// Input warnings: leave out these taxa (empty file, the second of two identical sequences, short sequence)
+        #[arg(long, value_delimiter = ',')]
+        skip: Vec<String>,
+
+        /// Input warnings: keep these taxa (the second of two identical sequences, short sequence)
+        #[arg(long, value_delimiter = ',')]
+        keep: Vec<String>,
+
+        /// Number of CPU cores to use [default: all]
+        #[arg(long)]
+        cores: Option<usize>,
+
+        /// Memory limit in GB [default: 70% of the available memory]
+        #[arg(long)]
+        memory_limit: Option<f64>,
 
         /// Do not apply the strand filter
         #[arg(long)]
@@ -741,7 +765,71 @@ fn main() -> ExitCode {
             terminal: _,
             records,
             data_dir,
+            reference,
+            rename_duplicates,
+            skip,
+            keep,
+            cores,
+            memory_limit,
         } => {
+            let input_choices = qmaws_engine::analysis::InputChoices {
+                rename_duplicates,
+                skip,
+                keep,
+            };
+            let memory_limit = match memory_limit {
+                Some(gb) if gb.is_finite() && gb > 0.0 => Some((gb * 1e9) as u64),
+                Some(gb) => {
+                    eprintln!("Error: --memory-limit must be a positive number of GB, not {gb}");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                None => None,
+            };
+            if cores == Some(0) {
+                eprintln!("Error: --cores must be at least 1");
+                return ExitCode::from(EXIT_USAGE);
+            }
+            let reg = qmaws_data::registry::Registry::builtin();
+            if dataset.as_deref() == Some("all") {
+                if output.is_some() || reference.is_some() {
+                    eprintln!("Error: with --dataset all, every dataset gets its own folder and its own reference tree; --output and --reference cannot be used");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                let mut runs = Vec::new();
+                for ds in &reg.datasets {
+                    if let Err(code) = data_cmd::ensure_downloaded(&ds.id, &data_dir, mode) {
+                        return code;
+                    }
+                    runs.push(qmaws_engine::launch::NewRun {
+                        input: qmaws_data::DataDir::new(&data_dir).dataset_path(&reg, ds),
+                        records: data_cmd::records_name(ds).to_string(),
+                        output: new_run_dir(
+                            Path::new(DEFAULT_RUNS_ROOT),
+                            &run_id(&ds.id, UtcDateTime::now()),
+                        ),
+                        settings: qmaws_engine::launch::Settings {
+                            weighting: weighting.config_name().to_string(),
+                            lengths: lengths.clone(),
+                            strand: !no_strand,
+                            live_tree: !no_live_tree,
+                            seed,
+                            cores,
+                            memory_limit,
+                            replicates,
+                            bootstrap,
+                        },
+                        reference: None,
+                        input_choices: input_choices.clone(),
+                    });
+                }
+                if mode != DisplayMode::Json {
+                    println!(
+                        "Queue: {} datasets, one after another (resume an interrupted queue with: qmaws resume --all).",
+                        runs.len()
+                    );
+                }
+                return menu_cmd::run_new(&runs, gui, &display, &cancel, mode, &data_dir);
+            }
             let (path, records, name) = match (input, dataset) {
                 (Some(p), _) => {
                     let name = p
@@ -755,20 +843,18 @@ fn main() -> ExitCode {
                     (p, r, name)
                 }
                 (None, Some(id)) => {
-                    let reg = qmaws_data::registry::Registry::builtin();
                     let Some(ds) = reg.dataset(&id) else {
                         eprintln!(
-                            "Error: unknown dataset {id}; run 'qmaws datasets' to see the list"
+                            "Error: unknown dataset {id}; run 'qmaws datasets' to see the list (or use --dataset all)"
                         );
                         return ExitCode::from(EXIT_USAGE);
                     };
-                    let r = match ds.layout {
-                        qmaws_data::registry::Layout::FilePerTaxon => "per_file",
-                        qmaws_data::registry::Layout::RecordPerTaxon => "per_record",
-                    };
+                    if let Err(code) = data_cmd::ensure_downloaded(&ds.id, &data_dir, mode) {
+                        return code;
+                    }
                     (
                         qmaws_data::DataDir::new(&data_dir).dataset_path(&reg, ds),
-                        r,
+                        data_cmd::records_name(ds),
                         id,
                     )
                 }
@@ -781,6 +867,40 @@ fn main() -> ExitCode {
                     &run_id(&name, UtcDateTime::now()),
                 )
             });
+            // A reference tree of the user: checked against the taxa, then
+            // stored in the run folder (plan 5.4).
+            if let Some(path) = &reference {
+                let r = match qmaws_engine::launch::RunReference::from_file(path) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!(
+                            "Error: the reference tree {} cannot be used: {e}",
+                            path.display()
+                        );
+                        return ExitCode::from(EXIT_USAGE);
+                    }
+                };
+                if let Err(e) =
+                    data_cmd::check_reference_names(&absolute, records, &input_choices, &r)
+                {
+                    eprintln!("Error: {e}");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if qmaws_engine::analysis::run_exists(&run_dir) {
+                    eprintln!("Error: {} already holds a run; resume it with qmaws resume, or choose another --output", run_dir.display());
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if let Err(e) = qmaws_engine::evaluation::store_reference(
+                    &run_dir,
+                    r.newick.as_bytes(),
+                    &r.label,
+                    &r.source,
+                    None,
+                ) {
+                    eprintln!("Error: {e}");
+                    return ExitCode::from(EXIT_ERROR);
+                }
+            }
             let options = qmaws_engine::analysis::AnalysisOptions {
                 config: qmaws_engine::analysis::AnalysisConfig {
                     input: absolute.display().to_string(),
@@ -792,12 +912,13 @@ fn main() -> ExitCode {
                     weighting: weighting.config_name().to_string(),
                     replicates,
                     bootstrap,
+                    input_choices: input_choices.clone(),
                 },
                 chunk_seconds,
                 chunk_quartets,
-                memory_limit: None,
+                memory_limit,
                 live_tree: !no_live_tree,
-                cores: None,
+                cores,
             };
             let mut config = UserConfig::load();
             if config.remember_run(&run_dir) {

@@ -2,7 +2,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: early development (milestone M10, figures).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, can be verified, and ends with its figures; the benchmark comparison and the releases come in later milestones. This README is a draft and is completed as features are added.
+> **Status: early development (milestone M11, the full benchmark, in progress).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, is compared with a reference tree (your own, a benchmark dataset's, or one from the Open Tree of Life), can be verified, and ends with its figures; the benchmark results and the releases come in later milestones. This README is a draft and is completed as features are added.
 
 License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
 

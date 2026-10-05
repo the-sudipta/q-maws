@@ -10,6 +10,7 @@ pub mod analysis;
 pub mod atomic;
 pub mod bootstrap;
 pub mod clock;
+pub mod evaluation;
 pub mod figures;
 pub mod hash;
 pub mod launch;

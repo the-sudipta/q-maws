@@ -15,6 +15,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `lib.rs` | Crate root: module list and main re-exports |
 | `matrix_pipeline.rs` | From cleaned sequences to `M_full` and `M_ml`: parallel MAW extraction within a memory limit, entropy selection, matrix building, entropy table |
 | `readme.rs` | README files of a run folder and its committed subfolders, listing their items (written at the end of a run and after verification) |
+| `evaluation.rs` | The reference tree of a run and the comparison of its tree with it (OI-19): stored as `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json` with their SHA-256; the checks that `qmaws verify` makes by recomputing nRF, nQD and MSD |
 | `figures.rs` | Figures of a finished run (plan 4.7, 4.8): the options found from the run (reference tree, name table, group file), group sources, and every figure file with its formats; the comparison with a reference tree |
 | `progress.rs` | Progress events (including the live quartet and provisional tree events for the GUI), the `ProgressSink` trait with its pause request, the cost model and moving-average time estimator, duration formatting |
 | `provisional.rs` | The live provisional Halo Tree (plan 4.7): when an update is due (every 5% of quartets or 3 minutes), the overhead budget that doubles the intervals, the saved state for resume, frame and figure paths, `report/convergence.csv` |

@@ -175,6 +175,7 @@ mod tests {
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 5,
                 bootstrap: 0,
+                input_choices: Default::default(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(4),

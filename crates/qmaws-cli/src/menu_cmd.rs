@@ -121,6 +121,45 @@ fn after_finished(dir: &Path, data_dir: &Path, mode: DisplayMode) {
     }
 }
 
+/// `qmaws run` with several runs (`--dataset all`): starts them one after
+/// another in the terminal, or in the window with `gui`.
+pub fn run_new(
+    runs: &[launch::NewRun],
+    gui_window: bool,
+    display: &TerminalDisplay,
+    cancel: &AtomicBool,
+    mode: DisplayMode,
+    data_dir: &Path,
+) -> ExitCode {
+    let mut config = UserConfig::load();
+    let mut changed = false;
+    for r in runs {
+        changed |= config.remember_run(&r.output);
+    }
+    if changed {
+        let _ = config.save();
+    }
+    if gui_window {
+        let mut jobs = Vec::new();
+        for r in runs {
+            if let Err(e) = r.store_reference() {
+                eprintln!("Error: {e}");
+                return ExitCode::from(EXIT_ERROR);
+            }
+            jobs.push(qmaws_gui::Job::Start {
+                dir: r.output.clone(),
+                options: r.options(),
+            });
+        }
+        return gui(jobs, false, data_dir);
+    }
+    match start_terminal(runs, display, cancel, mode, data_dir) {
+        Ended::AllFinished => ExitCode::SUCCESS,
+        Ended::Stopped(code) => code,
+        Ended::Failed => ExitCode::from(EXIT_ERROR),
+    }
+}
+
 /// Starts new runs one after another in the terminal.
 fn start_terminal(
     runs: &[launch::NewRun],
@@ -130,6 +169,10 @@ fn start_terminal(
     data_dir: &Path,
 ) -> Ended {
     for run in runs {
+        if let Err(e) = run.store_reference() {
+            eprintln!("Error: {e}");
+            return Ended::Failed;
+        }
         match qmaws_engine::analysis::start(
             &run.output,
             &run.options(),
@@ -157,6 +200,7 @@ fn start_terminal(
 /// with Ctrl+C).
 pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool) -> ExitCode {
     let mut prompter = TerminalPrompter::new();
+    let otl = qmaws_data::download::HttpFetcher::new();
     loop {
         let dir = data_dir.to_path_buf();
         let mut download =
@@ -165,6 +209,7 @@ pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool
             data_dir: data_dir.to_path_buf(),
             config: UserConfig::load(),
             download: &mut download,
+            otl: &otl,
         };
         let action = menu::main_menu(&mut prompter, &mut ctx);
         let ended = match action {
@@ -180,15 +225,22 @@ pub fn menu(data_dir: &Path, cancel: &AtomicBool, mode: DisplayMode, color: bool
                 }
                 match interface {
                     Interface::Gui => {
-                        let jobs = runs
-                            .iter()
-                            .map(|r| qmaws_gui::Job::Start {
-                                dir: r.output.clone(),
-                                options: r.options(),
-                            })
-                            .collect();
-                        let _ = gui(jobs, false, data_dir);
-                        Ended::AllFinished
+                        let stored: Result<(), _> =
+                            runs.iter().try_for_each(launch::NewRun::store_reference);
+                        if let Err(e) = stored {
+                            eprintln!("Error: {e}");
+                            Ended::Failed
+                        } else {
+                            let jobs = runs
+                                .iter()
+                                .map(|r| qmaws_gui::Job::Start {
+                                    dir: r.output.clone(),
+                                    options: r.options(),
+                                })
+                                .collect();
+                            let _ = gui(jobs, false, data_dir);
+                            Ended::AllFinished
+                        }
                     }
                     Interface::Terminal => {
                         let display = TerminalDisplay::new(mode, color);

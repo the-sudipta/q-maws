@@ -223,6 +223,7 @@ pub fn run(output: &Path, data_dir: &Path, seed: u64, cancel: &AtomicBool) -> Ex
                 weighting: WEIGHTING_SYM.into(),
                 replicates: qmaws_core::weight::REPLICATES,
                 bootstrap: qmaws_engine::analysis::BOOTSTRAP_REPLICATES,
+                input_choices: Default::default(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: None,

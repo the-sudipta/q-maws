@@ -106,6 +106,7 @@ fn gui_options(size: Size, chunk: Option<u64>) -> AnalysisOptions {
             weighting: qmaws_engine::analysis::WEIGHTING_SYM.into(),
             replicates: size.replicates,
             bootstrap: size.bootstrap,
+            input_choices: Default::default(),
         },
         chunk_seconds: 3.0,
         chunk_quartets: chunk,

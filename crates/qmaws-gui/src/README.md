@@ -7,7 +7,7 @@ Source code of the GUI.
 | Item | Description |
 |---|---|
 | `lib.rs` | Crate root and `run`, which opens the window with a `Launch` (runs to start at once, or the main menu) |
-| `app.rs` | The window: menu tabs, the steps Data → Reference → Output → Settings → Review → Run, the resume list, the verify screen, and the run view (live Halo Tree with changed branches highlighted, final tree, live worksheet, stage log, progress, Pause, Stop, resume and next-run offers) |
+| `app.rs` | The window: menu tabs, the steps Data → Reference → Output → Settings → Review → Run (with the answers to input warnings and the Open Tree of Life download on worker threads), the resume list, the verify screen, and the run view (live Halo Tree with changed branches highlighted, final tree, live worksheet, stage log, progress, Pause, Stop, resume and next-run offers, export of the final figures) |
 | `controller.rs` | Runs the engine in a worker thread without any drawing: events through a channel, pause and stop flags, a list of runs one after another, the resume queue; used by the window and by the tests (G10) |
 | `fonts.rs` | Loads a sans-serif and a monospace font installed on the computer into egui |
 

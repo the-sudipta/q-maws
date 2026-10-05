@@ -135,6 +135,68 @@ pub struct NewRun {
     /// Run folder.
     pub output: PathBuf,
     pub settings: Settings,
+    /// Reference tree to compare the result with (plan 5.4); stored in the
+    /// run folder when the run starts.
+    pub reference: Option<RunReference>,
+    /// Answers to the input warnings (plan 2.2).
+    pub input_choices: analysis::InputChoices,
+}
+
+/// A reference tree chosen for a new run: a Newick file of the user, or a
+/// tree downloaded from the Open Tree of Life.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RunReference {
+    /// The Newick text, stored byte for byte in `audit/reference.nwk`.
+    pub newick: String,
+    /// For example `reference tree my_tree.nwk`.
+    pub label: String,
+    /// Where it came from: the file path, or the Open Tree of Life query.
+    pub source: String,
+    /// For a downloaded tree: the record of the queries.
+    pub query: Option<serde_json::Value>,
+}
+
+impl RunReference {
+    /// A tree from the Open Tree of Life (plan 6.7), labelled as a
+    /// comparison against the synthetic tree, never as a true tree.
+    pub fn from_otl(
+        r: qmaws_data::otl::OtlReference,
+        taxa: usize,
+        date: &str,
+        species_only: bool,
+    ) -> Self {
+        Self {
+            newick: r.newick,
+            label: format!("Open Tree of Life synthetic tree ({})", r.synth_id),
+            source: format!(
+                "Open Tree of Life API v3, tree induced on {taxa} taxa, {date}{}",
+                if species_only {
+                    "; searched by genus and species only"
+                } else {
+                    ""
+                }
+            ),
+            query: Some(r.record),
+        }
+    }
+
+    /// Reads a Newick file; fails if it cannot be read or parsed.
+    pub fn from_file(path: &Path) -> Result<Self, String> {
+        let newick = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+        qmaws_core::newick::Tree::parse(newick.trim()).map_err(|e| e.to_string())?;
+        let name = path
+            .file_name()
+            .map_or(String::new(), |n| n.to_string_lossy().into_owned());
+        Ok(Self {
+            newick,
+            label: format!("reference tree {name}"),
+            source: std::path::absolute(path)
+                .unwrap_or_else(|_| path.to_path_buf())
+                .display()
+                .to_string(),
+            query: None,
+        })
+    }
 }
 
 impl NewRun {
@@ -150,7 +212,23 @@ impl NewRun {
             weighting: self.settings.weighting.clone(),
             replicates: self.settings.replicates,
             bootstrap: self.settings.bootstrap,
+            input_choices: self.input_choices.clone(),
         }
+    }
+
+    /// Stores the reference tree, if any, in the run folder. Called when
+    /// the run starts; the comparison is made after the run (plan 2.10).
+    pub fn store_reference(&self) -> Result<(), crate::runner::EngineError> {
+        if let Some(r) = &self.reference {
+            crate::evaluation::store_reference(
+                &self.output,
+                r.newick.as_bytes(),
+                &r.label,
+                &r.source,
+                r.query.as_ref(),
+            )?;
+        }
+        Ok(())
     }
 
     pub fn options(&self) -> AnalysisOptions {
@@ -465,6 +543,8 @@ mod tests {
                 replicates: 5,
                 bootstrap: 0,
             },
+            reference: None,
+            input_choices: Default::default(),
         };
         let o = run.options();
         assert!(Path::new(&o.config.input).is_absolute());
