@@ -14,12 +14,17 @@ Tables and reports of the run.
 | `m_ml.phy` | M_ml in PHYLIP format |
 | `m_ml.phy.sha256` | SHA-256 of `m_ml.phy`, written after it (validity check) |
 | `reference_comparison.tsv` | nRF, nQD and MSD of the tree against the reference tree |
+| `reference_comparison.tsv.sha256` | SHA-256 of `reference_comparison.tsv`, written after it (validity check) |
 | `support.tsv` | S1 of every internal edge with its weights, number of quartets and clade |
 | `support.tsv.sha256` | SHA-256 of `support.tsv`, written after it (validity check) |
 | `tree.nwk` | The tree of wQFM-rs (Newick, unrooted) |
 | `tree.nwk.sha256` | SHA-256 of `tree.nwk`, written after it (validity check) |
 | `verify_2026-10-04_191533.txt` | Report of `qmaws verify`: every comparison and the verdict |
 | `verify_2026-10-04_191533.txt.sha256` | SHA-256 of `verify_2026-10-04_191533.txt`, written after it (validity check) |
+| `verify_2026-10-05_145721.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-05_145721.txt.sha256` | SHA-256 of `verify_2026-10-05_145721.txt`, written after it (validity check) |
+| `verify_2026-10-05_155129.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-05_155129.txt.sha256` | SHA-256 of `verify_2026-10-05_155129.txt`, written after it (validity check) |
 
 ## Relationships
 Written by `crates/qmaws-engine` (analysis run and `qmaws verify`).
