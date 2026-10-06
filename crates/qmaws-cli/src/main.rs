@@ -429,6 +429,17 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development (H5): the confirmatory test of Amendment 4 on results/h5
+    #[command(hide = true)]
+    H5 {
+        /// Folder with one subfolder per dataset (qmaws, v2, ml_maws)
+        #[arg(long, default_value = "results/h5")]
+        dir: PathBuf,
+        /// Folder of the species trees
+        #[arg(long, default_value = "data/manifests/simulated/trees")]
+        trees: PathBuf,
+    },
+
     /// Development (H5): gene trees with horizontal transfer for AliSim partitions
     #[command(hide = true)]
     HgtTrees {
@@ -582,6 +593,7 @@ mod data_cmd;
 mod figure_check_cmd;
 mod figures_cmd;
 mod h3_cmd;
+mod h5_cmd;
 mod hgt_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
@@ -736,6 +748,7 @@ fn main() -> ExitCode {
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
         Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
+        Command::H5 { dir, trees } => return h5_cmd::run(&dir, &trees),
         Command::HgtTrees {
             species,
             genes,
@@ -1122,6 +1135,7 @@ fn main() -> ExitCode {
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
         | Command::TreeCompare { .. }
+        | Command::H5 { .. }
         | Command::HgtTrees { .. }
         | Command::Variant { .. }
         | Command::Calibration { .. }
