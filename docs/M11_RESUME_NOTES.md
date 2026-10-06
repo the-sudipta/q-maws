@@ -38,4 +38,5 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 | `sim_hgt_0_seed2` | done, committed (2,635 s, on battery in Silent mode) |
 | `sim_hgt_250_seed2` | done, committed (2,693 s, on battery in Silent mode) |
 | `sim_hgt_500_seed2` | done, committed (resumed 10:38 UTC after a restart of the laptop; finished 11:14 UTC) |
-| `sim_hgt_750_seed2` | running (started 2026-10-06 11:14 UTC, on charger) |
+| `sim_hgt_750_seed2` | done, committed (stopped by a shutdown of the laptop at about 11:20 UTC; resumed 12:35 UTC; finished 12:44 UTC) |
+| `sim_hgt_1000_seed2` | running (started 2026-10-06 12:44 UTC) |
