@@ -8,7 +8,10 @@
 
 pub mod app;
 pub mod controller;
+pub mod figure_view;
 pub mod fonts;
+pub mod theme;
+pub mod widgets;
 
 pub use app::{DownloadFn, Launch};
 pub use controller::{Controller, Job, Message};
@@ -29,8 +32,9 @@ pub fn run(launch: Launch) -> Result<(), String> {
             let v = egui::ViewportBuilder::default()
                 .with_title("Q-MAWS")
                 .with_app_id("q-maws")
-                .with_inner_size([1440.0, 900.0])
-                .with_min_inner_size([1100.0, 700.0]);
+                .with_inner_size([1280.0, 800.0])
+                .with_min_inner_size([1000.0, 640.0])
+                .with_maximized(true);
             match qmaws_viz::icon::rgba(256) {
                 Ok(rgba) => v.with_icon(egui::IconData {
                     rgba,
@@ -48,6 +52,13 @@ pub fn run(launch: Launch) -> Result<(), String> {
         options,
         Box::new(|cc| {
             fonts_found = fonts::install(&cc.egui_ctx);
+            theme::install(&cc.egui_ctx);
+            // Development and documentation screenshots: a fixed theme.
+            match std::env::var("QMAWS_GUI_THEME").as_deref() {
+                Ok("light") => cc.egui_ctx.set_theme(egui::ThemePreference::Light),
+                Ok("dark") => cc.egui_ctx.set_theme(egui::ThemePreference::Dark),
+                _ => {}
+            }
             Ok(Box::new(app::App::new(&cc.egui_ctx, launch)))
         }),
     );

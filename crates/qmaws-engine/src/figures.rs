@@ -394,6 +394,7 @@ pub fn render(
         size,
         support: Some(shown.clone()),
         groups: Some(groups.clone()),
+        highlight: None,
     };
     let svg = qmaws_viz::tree::halo_tree_svg(&layout, &halo, &halo_style);
     write_formats(&figures, "halo_tree", &svg, &mut out)?;

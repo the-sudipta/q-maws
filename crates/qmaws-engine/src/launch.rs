@@ -6,6 +6,7 @@
 
 use crate::analysis::{self, AnalysisConfig, AnalysisOptions};
 use crate::clock::UtcDateTime;
+pub use crate::lock::in_use;
 use crate::rundir::{new_run_dir, run_id, RunDir, DEFAULT_RUNS_ROOT};
 use crate::state::RunState;
 use serde::{Deserialize, Serialize};

@@ -13,6 +13,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |
 | `launch.rs` | What the terminal menu and the GUI share (plan 5.2, 5.5): run settings, a new run request, the runs on this computer with their percentage done and last interface, the unfinished run with the same data and settings, and the review text, and the user configuration file (extra results folders, the resume queue with its updates) |
 | `lib.rs` | Crate root: module list and main re-exports |
+| `lock.rs` | The run lock `work/run.lock`: one process at a time works on a run (heartbeat while open, `closed` at the end, dead or stale holders ignored; runs of versions without a lock count as in use while their `run.json` changes) |
 | `matrix_pipeline.rs` | From cleaned sequences to `M_full` and `M_ml`: parallel MAW extraction within a memory limit, entropy selection, matrix building, entropy table |
 | `readme.rs` | README files of a run folder and its committed subfolders, listing their items (written at the end of a run and after verification) |
 | `evaluation.rs` | The reference tree of a run and the comparison of its tree with it (OI-19): stored as `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json` with their SHA-256; the checks that `qmaws verify` makes by recomputing nRF, nQD and MSD |

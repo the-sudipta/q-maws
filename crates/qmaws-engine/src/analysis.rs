@@ -436,6 +436,8 @@ fn start_session(
         ));
     }
     dir.create_layout().map_err(io_err(run_dir))?;
+    // Held until the session ends: no other process opens the run meanwhile.
+    let _lock = crate::lock::RunLock::acquire(run_dir).map_err(EngineError::Invalid)?;
     let created = UtcDateTime::now();
     let config_value = serde_json::to_value(&options.config).expect("configuration serialises");
     let state = RunState {
@@ -490,6 +492,8 @@ pub(crate) fn resume(
         live_tree: true,
         cores: None,
     };
+    // Held until the session ends: no other process opens the run meanwhile.
+    let _lock = crate::lock::RunLock::acquire(run_dir).map_err(EngineError::Invalid)?;
     let mut s = Session::new(RunDir::new(run_dir), state, options, sink, cancel);
     s.emit(Event::Started {
         run_id: s.state.run_id.clone(),

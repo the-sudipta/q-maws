@@ -356,6 +356,10 @@ pub struct HaloTreeStyle {
     pub support: Option<EdgeSupport>,
     /// Group bands outside the halo ring.
     pub groups: Option<Groups>,
+    /// Per node: draw the edge above it in blue, thicker (branches changed
+    /// since the previous provisional tree, in the live view of the GUI).
+    /// `None` for figure files.
+    pub highlight: Option<Vec<bool>>,
 }
 
 impl Default for HaloTreeStyle {
@@ -366,6 +370,7 @@ impl Default for HaloTreeStyle {
             size: 800.0,
             support: None,
             groups: None,
+            highlight: None,
         }
     }
 }
@@ -484,6 +489,13 @@ pub fn halo_tree_svg(
     // parent's angle to the child's, then a radial line; both coloured by
     // the support of the child's edge.
     let edge_style = |child: usize| -> (String, f64) {
+        if style
+            .highlight
+            .as_ref()
+            .is_some_and(|h| h.get(child).copied().unwrap_or(false))
+        {
+            return ("#0072B2".to_string(), 3.4);
+        }
         match &style.support {
             Some(sup) => {
                 let v = node_support(layout, child, &all, sup);
