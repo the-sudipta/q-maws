@@ -25,6 +25,9 @@ After each finished run: `qmaws verify --quick results/runs/<id>_seed<n>`, add a
 After the 9 AFproject seed-1 runs: `qmaws summary --afproject baselines/afproject_submission`.
 After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill `docs/milestones/M11.md`, README results section, CHANGELOG.
 
+## Second worker
+From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a second worker (`m11b_queue.sh`, same binary) runs the NCBI seeds 2–5 and rhinovirus seeds 1–5 (`--bootstrap 0`) in the reverse of the main order, at the same time as the main queue. It never runs the four NCBI seed-1 runs and starts nothing once the main queue has reached the NCBI runs, so the two never work on the same run. Results do not depend on this; the working times of runs made while both workers run are not comparable with single runs (no timing claim is made from M11).
+
 ## Run status
 | Run | Status |
 |---|---|
@@ -40,4 +43,6 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 | `sim_hgt_500_seed2` | done, committed (resumed 10:38 UTC after a restart of the laptop; finished 11:14 UTC) |
 | `sim_hgt_750_seed2` | done, committed (stopped by a shutdown of the laptop at about 11:20 UTC; resumed 12:35 UTC; finished 12:44 UTC) |
 | `sim_hgt_1000_seed2` | done, committed (on charger; seed 2 of all 7 HGT datasets done) |
-| `yersinia_hgt_seed3` | next in the queue |
+| `yersinia_hgt_seed3` | done, committed (22 s) |
+| `ecoli_shigella_hgt_seed3` | running (started 2026-10-06 16:06 UTC) |
+| `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
