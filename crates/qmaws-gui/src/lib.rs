@@ -25,10 +25,21 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// the window closes is stopped cleanly and can be resumed.
 pub fn run(launch: Launch) -> Result<(), String> {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title(format!("Q-MAWS {VERSION}"))
-            .with_inner_size([1240.0, 700.0])
-            .with_min_inner_size([900.0, 600.0]),
+        viewport: {
+            let v = egui::ViewportBuilder::default()
+                .with_title("Q-MAWS")
+                .with_app_id("q-maws")
+                .with_inner_size([1440.0, 900.0])
+                .with_min_inner_size([1100.0, 700.0]);
+            match qmaws_viz::icon::rgba(256) {
+                Ok(rgba) => v.with_icon(egui::IconData {
+                    rgba,
+                    width: 256,
+                    height: 256,
+                }),
+                Err(_) => v,
+            }
+        },
         ..Default::default()
     };
     let mut fonts_found = true;

@@ -10,6 +10,7 @@ pub mod chart;
 pub mod colour;
 pub mod groups;
 pub mod html;
+pub mod icon;
 pub mod rect;
 pub mod render;
 pub mod tree;

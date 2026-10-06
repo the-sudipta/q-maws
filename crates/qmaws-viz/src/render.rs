@@ -60,6 +60,29 @@ pub fn png(svg: &str, width: u32) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("encoding the PNG: {e}"))
 }
 
+/// The SVG as straight (not premultiplied) RGBA pixels, `width` pixels wide
+/// (height in proportion), for showing it in the window or as an icon.
+/// Returns width, height and the pixels, row by row.
+pub fn rgba(svg: &str, width: u32) -> Result<(u32, u32, Vec<u8>), String> {
+    let tree = parse(svg)?;
+    let size = tree.size();
+    let scale = width as f32 / size.width();
+    let height = (size.height() * scale).round().max(1.0) as u32;
+    let mut pixmap = resvg::tiny_skia::Pixmap::new(width.max(1), height)
+        .ok_or_else(|| "the image size is not valid".to_string())?;
+    resvg::render(
+        &tree,
+        resvg::tiny_skia::Transform::from_scale(scale, scale),
+        &mut pixmap.as_mut(),
+    );
+    let mut out = Vec::with_capacity(pixmap.pixels().len() * 4);
+    for p in pixmap.pixels() {
+        let c = p.demultiply();
+        out.extend_from_slice(&[c.red(), c.green(), c.blue(), c.alpha()]);
+    }
+    Ok((pixmap.width(), pixmap.height(), out))
+}
+
 /// The SVG as a one-page PDF.
 pub fn pdf(svg: &str) -> Result<Vec<u8>, String> {
     let tree = parse(svg)?;

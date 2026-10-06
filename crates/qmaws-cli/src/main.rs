@@ -494,6 +494,14 @@ enum Command {
         output: Option<PathBuf>,
     },
 
+    /// Development: write the icon files (PNG, .ico, .icns) from the logo
+    #[command(hide = true)]
+    Icons {
+        /// Folder for the icon files
+        #[arg(long, default_value = "assets/icon")]
+        output: PathBuf,
+    },
+
     /// Development: nRF, nQD and MSD of a tree file against a reference tree file
     #[command(hide = true)]
     TreeCompare {
@@ -595,6 +603,7 @@ mod figures_cmd;
 mod h3_cmd;
 mod h5_cmd;
 mod hgt_cmd;
+mod icons_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod menu_cmd;
@@ -647,6 +656,54 @@ pub(crate) fn report(outcome: Outcome, run_dir: &Path, mode: DisplayMode) -> Exi
     }
 }
 
+/// True when the program was started by a double-click rather than from a
+/// terminal. On Windows a double-clicked console program gets a console of
+/// its own, so it is the only process attached to it; elsewhere a
+/// double-clicked program has no terminal on standard input.
+fn started_by_double_click() -> bool {
+    #[cfg(windows)]
+    {
+        windows_console::only_process()
+    }
+    #[cfg(not(windows))]
+    {
+        use std::io::IsTerminal;
+        !std::io::stdin().is_terminal()
+    }
+}
+
+/// Closes the console window Windows opened for a double-clicked program,
+/// so only the Q-MAWS window stays on screen. Nothing to do elsewhere.
+fn release_console() {
+    #[cfg(windows)]
+    windows_console::release();
+}
+
+#[cfg(windows)]
+mod windows_console {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
+        fn FreeConsole() -> i32;
+    }
+
+    /// True when this process is the only one attached to its console.
+    pub fn only_process() -> bool {
+        let mut ids = [0u32; 4];
+        // SAFETY: the buffer holds `ids.len()` entries, as passed.
+        let n = unsafe { GetConsoleProcessList(ids.as_mut_ptr(), ids.len() as u32) };
+        n == 1
+    }
+
+    /// Detaches from the console (its window closes when no process uses it).
+    pub fn release() {
+        // SAFETY: no arguments; failure only means there was no console.
+        unsafe {
+            FreeConsole();
+        }
+    }
+}
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
     let mode = if cli.json_progress {
@@ -658,6 +715,16 @@ fn main() -> ExitCode {
     };
 
     let Some(command) = cli.command else {
+        // Started without a command by a double-click (Explorer, Finder or a
+        // file manager): open the window. Typed in a terminal: show the help.
+        if started_by_double_click() {
+            release_console();
+            return menu_cmd::gui(
+                Vec::new(),
+                false,
+                std::path::Path::new(qmaws_data::DEFAULT_DATA_DIR),
+            );
+        }
         use clap::CommandFactory;
         let _ = Cli::command().print_help();
         println!();
@@ -747,6 +814,7 @@ fn main() -> ExitCode {
             pairs,
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
+        Command::Icons { output } => return icons_cmd::run(&output),
         Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
         Command::H5 { dir, trees } => return h5_cmd::run(&dir, &trees),
         Command::HgtTrees {
@@ -1134,6 +1202,7 @@ fn main() -> ExitCode {
         | Command::Figures { .. }
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
+        | Command::Icons { .. }
         | Command::TreeCompare { .. }
         | Command::H5 { .. }
         | Command::HgtTrees { .. }

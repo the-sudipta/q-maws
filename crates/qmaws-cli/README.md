@@ -7,6 +7,7 @@ The `qmaws` binary (`qmaws.exe` on Windows): parses command-line arguments and d
 | Item | Description |
 |---|---|
 | `Cargo.toml` | Crate manifest; shared fields come from the workspace manifest |
+| `build.rs` | Build script: puts the Q-MAWS icon into the Windows executable (MSVC), from `assets/icon/` |
 | `src/` | Source code ([README](src/README.md)) |
 | `tests/` | Tests that run the built binary ([README](tests/README.md)) |
 

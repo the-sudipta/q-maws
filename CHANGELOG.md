@@ -17,6 +17,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - H1 statistics and the hidden `qmaws summary` command (milestone M11).
 - Sensitivity analysis tools (M12): `qmaws run --top-lengths` and `--matrix ml`; the hidden `qmaws variant` (a finished run's tree with W1, W2a, W2b or W2c weights from its stored quartet results) and `qmaws calibration` (reliability table and ECE, H4); the hidden `qmaws tree-compare`.
 - Decision D8 and Amendment 3 of the pre-registration; the ML-MAWS runs for H4 as a workflow (`mlmaws_h4.yml`); ML-MAWS built natively on Windows for H2.
+- The Q-MAWS logo and program icon (`assets/icon/`): a quartet tree whose central split is orange. The Windows executable carries the icon (`crates/qmaws-cli/build.rs`, no extra tool or crate), the window shows it in its title bar and taskbar, and the hidden `qmaws icons` command makes the PNG, `.ico` and `.icns` files from the SVG.
+- Started by a double-click (Explorer, Finder, a file manager), `qmaws` opens the window directly; `run.bat` and `run.sh` still open the terminal menu, and typed without a command in a terminal it still prints the help.
 
 ### Fixed
 

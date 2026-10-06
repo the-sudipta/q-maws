@@ -87,6 +87,7 @@ To be written (milestones M11 to M13).
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files, no conversion in run folders and control inputs (they are checked byte for byte) |
 | `.github/` | GitHub configuration: continuous integration workflows ([ABOUT](.github/ABOUT.md)) |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
+| `assets/` | The Q-MAWS logo and program icon ([README](assets/README.md)) |
 | `baselines/` | Published results of other methods, with exact sources ([README](baselines/README.md)) |
 | `Cargo.lock` | Exact dependency versions of the Rust workspace |
 | `Cargo.toml` | Rust workspace manifest listing the seven crates |
