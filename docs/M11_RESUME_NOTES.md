@@ -33,4 +33,6 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 | `sim_hgt_500_seed1` | done, committed (15,202 s; finished 2026-10-05 08:05 UTC) |
 | `sim_hgt_750_seed1` | done, committed (stopped twice, at 09:33 UTC when the launching session ended and at 18:40 UTC when its console window closed; resumed from its checkpoints each time; finished 2026-10-05 20:32 UTC) |
 | `sim_hgt_1000_seed1` | done, committed (stopped when the laptop slept and when it restarted; resumed from its checkpoints at 2026-10-06 03:31 and 03:40 UTC; finished 2026-10-06 04:44 UTC; nRF 0.567, nQD 0.423) |
-| `yersinia_hgt_seed2` | running (started 2026-10-06 04:45 UTC; seeds 2–5 use `--bootstrap 0`) |
+| `yersinia_hgt_seed2` | done, committed (51 s; seeds 2–5 use `--bootstrap 0`) |
+| `ecoli_shigella_hgt_seed2` | done, committed (14,329 s: laptop on battery in its "Silent" power mode, throughput 2.6–7 times lower than seed 1; results unaffected) |
+| `sim_hgt_0_seed2` | running (started 2026-10-06 08:44 UTC) |
