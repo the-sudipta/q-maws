@@ -11,7 +11,10 @@ Hypothesis H4 (docs/PREREGISTRATION.md, Amendment 3): are Q-MAWS support values 
 | `calibration_ufboot.tsv` | Reliability table and ECE of ML-MAWS UFBoot on its reported tree `ML_MAWS_tree.newick` (comparison of H4) |
 | `calibration_ufboot_consensus.tsv` | The same for the IQ-TREE UFBoot consensus tree `ml_maws_iqtree.contree` (descriptive only) |
 | `mlmaws/` | ML-MAWS outputs of the five datasets (GitHub runner, IQ-TREE 2.4.0) |
-| `*.sha256` | SHA-256 of each table |
+| `calibration_s1.tsv.sha256` | SHA-256 of `calibration_s1.tsv` |
+| `calibration_s2.tsv.sha256` | SHA-256 of `calibration_s2.tsv` |
+| `calibration_ufboot.tsv.sha256` | SHA-256 of `calibration_ufboot.tsv` |
+| `calibration_ufboot_consensus.tsv.sha256` | SHA-256 of `calibration_ufboot_consensus.tsv` |
 
 ## Relationships
 Q-MAWS trees: `results/runs/sim_hgt_<level>_seed1/trees/tree_s1.nwk` and `tree_s2.nwk`; true tree: `data/references/sim_hgt.nwk`; computed with `qmaws calibration --pair TREE=TRUTH ... --scale 1` (Q-MAWS) or `--scale 100` (UFBoot).
