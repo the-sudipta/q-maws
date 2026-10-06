@@ -13,11 +13,13 @@ Working notes for resuming milestone M11 (full benchmark) after an interruption.
 - All runs use one binary, built from commit 7b1de8a (`qmaws 0.0.0`), so every run of M11 has the same code.
 
 ## Next command
-Restart the queue if it stopped (the queue script lives in the local scratchpad, not in the repository). Start it through WMI (`Invoke-CimMethod Win32_Process Create`) so that it is not stopped when the launching shell ends:
+The queues run on the owner's laptop, outside the repository, in `D:\_external\queues`: `m11_queue.sh`, then `m12_queue.sh`, `h5_queue.sh` and `m13_queue.sh`. Each one waits for "all done" in the log of the one before it. The logs (`*_queue.log`) are in the same folder. The script `start_all.ps1` starts every queue that is not already running, each in a hidden window (`launch_hidden.ps1`, WMI `Win32_Process Create`), so a queue never stops when the shell that launched it ends. The scheduled task `QMAWS-Queues` runs that script at every logon. To restart by hand after a sleep or a reboot:
 
 ```
-bash queue.sh   # runs: qmaws --quiet run --dataset <id> --seed <n> --bootstrap <100|0> --output results/runs/<id>_seed<n>
+powershell -File D:\_external\queues\start_all.ps1
 ```
+
+The M11 queue runs: `qmaws --quiet run --dataset <id> --seed <n> --bootstrap <100|0> --output results/runs/<id>_seed<n>`. Unfinished runs are resumed.
 
 After each finished run: `qmaws verify --quick results/runs/<id>_seed<n>`, add a row to `results/runs/README.md`, commit, push.
 After the 9 AFproject seed-1 runs: `qmaws summary --afproject baselines/afproject_submission`.
@@ -30,4 +32,4 @@ After all seeds: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`, then fill 
 | `sim_hgt_250_seed1` | done, committed (finished 2026-10-05 03:51 UTC after two interruptions) |
 | `sim_hgt_500_seed1` | done, committed (15,202 s; finished 2026-10-05 08:05 UTC) |
 | `sim_hgt_750_seed1` | done, committed (stopped twice, at 09:33 UTC when the launching session ended and at 18:40 UTC when its console window closed; resumed from its checkpoints each time; finished 2026-10-05 20:32 UTC) |
-| `sim_hgt_1000_seed1` | running (started 2026-10-05 20:33 UTC) |
+| `sim_hgt_1000_seed1` | running (started 2026-10-05 20:33 UTC; stopped when the laptop slept and when it restarted; resumed from its checkpoints at 2026-10-06 03:31 and 03:40 UTC) |
