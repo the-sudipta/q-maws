@@ -3173,6 +3173,19 @@ fn rail(
     }
 }
 
+/// A tree's log-likelihood minus the best one, for the worksheet: `0` for
+/// the best tree, three decimals, and small gaps (below 0.001, as in
+/// near-star quartets) in scientific notation so that they stay visible.
+fn log_l_gap(gap: f64) -> String {
+    if gap == 0.0 {
+        "0".into()
+    } else if gap.abs() < 1e-3 {
+        format!("{gap:.1e}")
+    } else {
+        format!("{gap:.3}")
+    }
+}
+
 /// The count of one word pattern (bits in the order of the four taxa).
 fn pattern_count(q: &LiveQuartet, bits: &str) -> u64 {
     (0..16)
@@ -3372,7 +3385,7 @@ fn calculation_card(ui: &mut egui::Ui, q: &LiveQuartet, inner: f32) {
                     // only in the later decimals of their log-likelihoods.
                     ui.label(num(q.log_likelihoods.map_or("\u{2013}".into(), |v| {
                         let best = v.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-                        format!("{:.4}", v[t] - best)
+                        log_l_gap(v[t] - best)
                     })));
                     ui.label(num(q
                         .weights
@@ -4187,6 +4200,14 @@ mod tests {
         c.apply_answers();
         assert!(c.aborted && !c.usable());
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn log_likelihood_gaps_stay_visible() {
+        assert_eq!(log_l_gap(0.0), "0");
+        assert_eq!(log_l_gap(-0.000021), "-2.1e-5");
+        assert_eq!(log_l_gap(-0.82379), "-0.824");
+        assert_eq!(log_l_gap(-335.461932), "-335.462");
     }
 
     #[test]

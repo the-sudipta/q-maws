@@ -1,6 +1,18 @@
 # User guide
 
-How to use Q-MAWS: menus, commands and screenshots. Completed in milestone M14; sections are added as features are implemented.
+How to use Q-MAWS: starting it, the commands, the terminal menu and the window, with screenshots of the program.
+
+## Starting Q-MAWS
+
+The ready-to-run bundles on the Releases page of the repository (and in `standalone/`) need no installation:
+
+| System | Window | Terminal |
+|---|---|---|
+| Windows | Double-click `Q-MAWS.exe` | Double-click `run.bat` for the menu, or `run.bat <command>` |
+| macOS | Double-click `Q-MAWS.app` | `./run.sh` for the menu, or `./run.sh <command>` |
+| Linux | Double-click `Q-MAWS` (or `./Q-MAWS gui`) | `./run.sh` for the menu, or `./run.sh <command>` |
+
+A double-clicked Q-MAWS writes its runs (`results/runs/`) and datasets (`data/`) into its own folder when it can write there, and otherwise into `Documents/Q-MAWS` in your home folder. The bundles are not signed: the first time, Windows may need "More info", then "Run anyway", and macOS a right-click on the app, then "Open". From the source code, `cargo build --release` makes `target/release/qmaws`, and `run.bat` / `run.sh` find it there.
 
 ## Commands available now
 
@@ -44,15 +56,41 @@ In every submenu, `0. Back` returns to the previous menu. Every input warning is
 
 ## Graphical interface
 
-`qmaws gui` opens the window; `qmaws run ... --gui` and `qmaws resume ... --gui` open it with the run already started. The window has the same menu as tabs: "Start a new run" with the steps Data, Reference, Output, Settings, Review and Run on the left, "Resume an unfinished run", "Verify a run" and "Exit". Paths can be typed, pasted, or given by dropping a folder or file onto the window. If unfinished runs exist when the window opens, it lists them and offers to resume.
+`qmaws gui` (or a double-click on the program) opens the window; `qmaws run ... --gui` and `qmaws resume ... --gui` open it with the run already started. Every screenshot below is of the program itself.
 
-During a run:
+![Home page](images/gui_home.png)
 
-- **Centre:** the live provisional Halo Tree (scroll to zoom, drag to pan, "Fit" to reset); branches that changed since the previous provisional tree are drawn thicker in blue. When the run finishes, the final tree is shown. Buttons open the figures folder and the run folder.
-- **Right:** the live worksheet with the latest weighed quartet (its four taxa, the 16 pattern counts, the W1 weights, the W2 log-likelihoods and the weights used for the tree) and the stage log.
-- **Bottom:** overall and stage progress, elapsed and remaining time, the current item, Pause (Continue) and Stop.
+The sidebar holds the main menu: **Home** (the three actions and the recent runs, with runs that another Q-MAWS process is working on marked "Running"), **New run**, **Resume**, **Verify**, the **Results** library and **About**. At the bottom: Light, Dark or Auto (follows the system) and A− / A+ for the text size. If unfinished runs are waiting when the window opens, Home says so.
 
-The theme follows the system; the buttons at the top right choose light or dark, and "A+" / "A-" change the text size. The window uses a font installed on the computer; if none is found it says so, and the terminal mode can be used instead. Closing the window stops a running analysis cleanly; it can be resumed later.
+### A new run
+
+![New run, first step](images/gui_new_run.png)
+
+A new run goes through the steps Data, Reference, Output, Settings and Review, as in the terminal menu. Folders and files are chosen with **Browse…** (the system's dialog), typed or pasted, or dropped onto the window. "Check folder" reads your sequences and lists the taxa and every problem found; warnings are answered with their choices, in two rounds (empty files and duplicate names first). The reference tree can be your own Newick file (checked against the taxa) or downloaded from the Open Tree of Life. The review shows the taxa, the quartets and the settings before the run starts.
+
+### Watching a run
+
+![A run in progress](images/gui_run.png)
+
+- **Tree (left, most of the window):** the live Halo Tree, drawn in the style of the final figure from the quartets weighed so far and marked `PROVISIONAL — x% of quartets`; branches that changed since the previous update are blue. Scroll to zoom, drag to move; **Fit** shows the whole figure with its title and legend, **Tree** fills the panel with the tree, **−** and **+** zoom out and in. During the S2 bootstrap the panel shows the species tree with its S1 support (marked as such), and at the end the final Halo Tree, the very file `figures/halo_tree.svg`.
+- **Right column:** progress of the whole run with the time left and the expected finish (this computer's local time), the current stage and its units; the **live worksheet**: the four taxa of the quartet just weighed, its 16 word patterns as 0/1 columns with their counts and the tree each split pattern supports, the three possible trees with their split words, W1, the gap of the W2 log-likelihood to the best tree, and the weight used for the species tree, the chosen tree marked. In a queue of runs, a Queue card shows the whole batch.
+- **Top:** **Menu** shows or hides the sidebar, **Details** opens the run details, **Pause** (then Continue) and **Stop** (after the current step; the run can be resumed).
+
+![Run details](images/gui_details.png)
+
+**Details** shows the stage, the units done and left, the speed measured on this computer over the last minute, the time left for the stage and for the whole run, the expected finish, every stage with its time, and the full log ("Open run.log" opens the file). Times are estimates from the speed measured during this run and settle as it goes on.
+
+When the run ends, the right column offers the figures folder, the interactive tree, the run folder, copying the figures to another folder, and the run in the Results library. A run that stops with an error shows the message there; finished parts are kept and the run can be resumed once the cause is fixed. Closing the window stops a running analysis cleanly; it can be resumed later, in the window or the terminal, with the same result.
+
+### Results
+
+![Results library](images/gui_results.png)
+
+The Results library lists the finished runs (newest first, local start times) and shows the selected run's Quartet Halo Tree with its nRF, nQD and MSD against the reference tree, with buttons for the run folder and the interactive tree. The dark theme:
+
+![Results library, dark theme](images/gui_results_dark.png)
+
+The window uses a font installed on the computer; if none is found it says so, and the terminal mode can be used instead.
 
 ## Live provisional tree
 
@@ -104,4 +142,4 @@ Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unl
 
 ## Launch scripts
 
-`run.bat` (Windows) and `run.sh` (macOS, Linux) look for the program in `bin/`, then in `target/release/`. If it is missing and Rust's `cargo` is installed, they build it; otherwise they explain where to download a release. With no arguments they start the interactive menu (`qmaws menu`); with arguments they pass them to the program unchanged. Both work when the folder path contains spaces.
+`run.bat` (Windows) and `run.sh` (macOS, Linux) look for the program next to themselves (`Q-MAWS.exe`, `Q-MAWS` or `Q-MAWS.app` in a release bundle), then in `bin/`, then in `target/release/`. If it is missing and Rust's `cargo` is installed, they build it; otherwise they explain where to download a release. With no arguments they start the interactive menu (`qmaws menu`); with arguments they pass them to the program unchanged. Both work when the folder path contains spaces.

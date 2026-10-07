@@ -26,10 +26,11 @@ What is **not** new: MAW extraction, the MAW matrix itself (ML-MAWS), quartet am
 
 ## Quick start
 
-Not available yet. When releases exist, the plan is:
+Each published release has ready-to-run bundles for Windows, macOS (Apple silicon and Intel) and Linux on the Releases page, also unpacked in `standalone/` (no release has been published yet). Unpack one and:
 
-- **Windows:** download the release, unpack it, double-click `run.bat`.
-- **macOS and Linux:** download the release, unpack it, run `./run.sh`.
+- **Windows:** double-click `Q-MAWS.exe` for the window, or `run.bat` for the terminal menu.
+- **macOS:** double-click `Q-MAWS.app`, or run `./run.sh`.
+- **Linux:** double-click `Q-MAWS`, or run `./run.sh`.
 
 Developers can build from source with a Rust toolchain (the version is pinned in `rust-toolchain.toml`):
 
@@ -40,7 +41,9 @@ cargo build --release
 
 ## GUI mode
 
-`qmaws gui` (or choosing "GUI" in the menu, or `--gui` on `run` and `resume`) opens a window with the same menu as the terminal. A new run goes through the steps Data, Reference, Output, Settings, Review and Run. While it runs, the window shows the live provisional Halo Tree (zoom and pan; branches that changed since the previous update are highlighted), the live worksheet of the latest weighed quartet (its 16 pattern counts, W1 weights, W2 log-likelihoods and weights), the stage log, progress with elapsed and remaining time, and Pause and Stop buttons; the final tree is shown at the end. A run started in the window can be resumed in the terminal and the other way round, with the same result. Details: `docs/USER_GUIDE.md`.
+![A run in the Q-MAWS window](docs/images/gui_run.png)
+
+`qmaws gui` (or a double-click on the program, or `--gui` on `run` and `resume`) opens the window: a sidebar with Home, New run, Resume, Verify, the Results library and About. A new run goes through the steps Data, Reference, Output, Settings and Review, with Browse buttons for folders and files. While it runs, most of the window shows the live Halo Tree in the style of the final figure (zoom and pan; branches that changed since the previous update in blue), beside the progress with the time left and the expected finish in local time, and the live worksheet of the quartet just weighed with the taxon names (its 16 word patterns, the three trees, W1, W2 and the weight). Details shows the stage, the speed on this computer, the times left, every stage and the full log; Pause and Stop work at any time. The final Halo Tree is shown at the end. A run started in the window can be resumed in the terminal and the other way round, with the same result. Screenshots and details: `docs/USER_GUIDE.md`.
 
 ## Terminal mode
 
@@ -86,6 +89,7 @@ To be written (milestones M11 to M13).
 |---|---|
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files, no conversion in run folders and control inputs (they are checked byte for byte) |
 | `.github/` | GitHub configuration: continuous integration workflows ([ABOUT](.github/ABOUT.md)) |
+| `.zenodo.json` | Metadata for the Zenodo archive of each release (title, author, ORCID, description, keywords); the license is set on Zenodo when the archive is made |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
 | `assets/` | The Q-MAWS logo and program icon ([README](assets/README.md)) |
 | `baselines/` | Published results of other methods, with exact sources ([README](baselines/README.md)) |
@@ -104,6 +108,7 @@ To be written (milestones M11 to M13).
 | `run.bat` | Launcher for Windows |
 | `run.sh` | Launcher for macOS and Linux |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
+| `standalone/` | Ready-to-run bundles of the latest release for Windows, macOS and Linux, written by the release workflow (from the first release on) |
 | `scripts/` | Development scripts: pre-commit guard and hook installers ([README](scripts/README.md)) |
 | `tests/` | Golden test files and small test inputs ([README](tests/README.md)) |
 | `THIRD_PARTY_NOTICES` | Licenses and notices of third-party components |
