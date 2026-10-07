@@ -6,6 +6,17 @@ use std::process::Command;
 
 const BIN: &str = env!("CARGO_BIN_EXE_qmaws");
 
+/// The binary with its own settings folder, so that tests never touch the
+/// user's Q-MAWS settings (remembered results folders, the resume queue).
+fn qmaws_cmd() -> Command {
+    let mut c = Command::new(BIN);
+    c.env(
+        "QMAWS_CONFIG_DIR",
+        std::env::temp_dir().join(format!("qmaws-test-config-{}", std::process::id())),
+    );
+    c
+}
+
 struct TempDir(PathBuf);
 
 impl TempDir {
@@ -24,7 +35,7 @@ impl Drop for TempDir {
 }
 
 fn run(args: &[&str]) -> (i32, String) {
-    let out = Command::new(BIN).args(args).output().unwrap();
+    let out = qmaws_cmd().args(args).output().unwrap();
     let text =
         String::from_utf8_lossy(&out.stdout).into_owned() + &String::from_utf8_lossy(&out.stderr);
     (out.status.code().unwrap_or(-1), text)

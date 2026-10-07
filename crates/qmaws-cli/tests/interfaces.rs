@@ -24,6 +24,17 @@ use std::sync::Arc;
 
 const BIN: &str = env!("CARGO_BIN_EXE_qmaws");
 
+/// The binary with its own settings folder, so that tests never touch the
+/// user's Q-MAWS settings (remembered results folders, the resume queue).
+fn qmaws_cmd() -> Command {
+    let mut c = Command::new(BIN);
+    c.env(
+        "QMAWS_CONFIG_DIR",
+        std::env::temp_dir().join(format!("qmaws-test-config-{}", std::process::id())),
+    );
+    c
+}
+
 /// Quartets per chunk in the interrupted runs, so that a stop lands inside
 /// the weighting stage (16 taxa: 1,820 quartets).
 const CHUNK: u64 = 100;
@@ -127,7 +138,7 @@ fn quiet() -> Arc<dyn Fn() + Send + Sync> {
 }
 
 fn run_terminal(args: &[String]) {
-    let status = Command::new(BIN)
+    let status = qmaws_cmd()
         .args(args)
         .stdout(Stdio::null())
         .status()
@@ -197,7 +208,7 @@ fn check_interfaces(size: Size) {
     // 3. Started in the terminal, stopped (hard kill inside the weighting
     // stage), resumed in the GUI.
     let t2g = tmp.0.join("terminal_to_gui");
-    let mut child = Command::new(BIN)
+    let mut child = qmaws_cmd()
         .args(terminal_args(&t2g, size, Some(CHUNK), true))
         .stdout(Stdio::piped())
         .stderr(Stdio::null())

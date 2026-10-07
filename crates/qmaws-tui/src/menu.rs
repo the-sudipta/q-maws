@@ -583,7 +583,9 @@ fn benchmark(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<Vec<Source>>
         if status != qmaws_data::Status::Ready {
             p.say(&format!(
                 "{}: {status}; downloading {} ({}) and checking its MD5.",
-                ds.id, d.file_name, d.published_size
+                ds.id,
+                d.file_name,
+                qmaws_data::registry::size_label(&d.published_size)
             ));
             if let Err(e) = (ctx.download)(&ds.id) {
                 p.say(&format!("{}: the download failed: {e}", ds.id));

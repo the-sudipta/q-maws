@@ -49,14 +49,14 @@ struct Cli {
 enum Command {
     /// Show the interactive main menu: start, resume or verify a run
     Menu {
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
 
     /// Open the graphical interface (main menu in a window)
     Gui {
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -155,7 +155,7 @@ enum Command {
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -201,7 +201,7 @@ enum Command {
         #[arg(long)]
         terminal: bool,
 
-        /// Data folder: benchmark reference trees for the figures [default: data]
+        /// Data folder: benchmark reference trees for the figures
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -259,14 +259,14 @@ enum Command {
         #[arg(long)]
         s2: bool,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
 
     /// List the benchmark datasets and whether they are downloaded
     Datasets {
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -277,7 +277,7 @@ enum Command {
         #[arg(long)]
         dataset: String,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -304,7 +304,7 @@ enum Command {
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -335,15 +335,16 @@ enum Command {
         #[arg(long, value_enum, default_value_t = data_cmd::Records::PerFile)]
         records: data_cmd::Records,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
 
     /// Print the hand-calculable teaching worksheet
+    #[command(group(clap::ArgGroup::new("source").required(true).args(["example", "input"])))]
     Teach {
         /// Use the built-in example (taxa K, L, M, N, P)
-        #[arg(long, conflicts_with = "input", required_unless_present = "input")]
+        #[arg(long)]
         example: bool,
 
         /// A small folder of your own sequences (at most 8 taxa, 200 letters each)
@@ -403,7 +404,7 @@ enum Command {
         #[arg(long, default_value = "results/controls")]
         output: PathBuf,
 
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
 
@@ -424,7 +425,7 @@ enum Command {
         /// Seed of the random tree and values
         #[arg(long, default_value_t = 1)]
         seed: u64,
-        /// Data folder [default: data]
+        /// Data folder
         #[arg(long, default_value = qmaws_data::DEFAULT_DATA_DIR)]
         data_dir: PathBuf,
     },
@@ -1053,6 +1054,12 @@ fn main() -> ExitCode {
                 (None, None) => unreachable!("clap requires --input or --dataset"),
             };
             let absolute = std::path::absolute(&path).unwrap_or(path);
+            // Checked before the run folder is made, so that a mistyped
+            // input leaves no empty run behind.
+            if !absolute.exists() {
+                eprintln!("Error: {} does not exist", absolute.display());
+                return ExitCode::from(EXIT_USAGE);
+            }
             let run_dir = output.unwrap_or_else(|| {
                 new_run_dir(
                     Path::new(DEFAULT_RUNS_ROOT),
@@ -1250,7 +1257,7 @@ fn choose_unfinished_run() -> Result<PathBuf, ExitCode> {
                 "There are several unfinished runs. Choose one with --output, or resume all with --all:"
             );
             for r in &runs {
-                eprintln!("  {}  ({})", r.dir.display(), r.line());
+                eprintln!("  {}  ({})", r.dir.display(), r.status());
             }
             Err(ExitCode::from(EXIT_USAGE))
         }

@@ -135,7 +135,7 @@ pub fn datasets(data_dir: &Path) -> ExitCode {
             "{:<20} {:>5}  {:<13}  {:<20}  {:<16}  {}",
             ds.id,
             ds.taxa,
-            d.published_size,
+            qmaws_data::registry::size_label(&d.published_size),
             reference,
             status.to_string(),
             ds.name
@@ -194,7 +194,10 @@ fn fetch_selected(
             };
             say(format!(
                 "{}: {} ({}) from {}",
-                d.id, d.file_name, d.published_size, d.source
+                d.id,
+                d.file_name,
+                qmaws_data::registry::size_label(&d.published_size),
+                d.source
             ));
             let unit = if d.kind == qmaws_data::registry::DownloadKind::Ncbi {
                 "records"

@@ -15,6 +15,17 @@ use std::time::{Duration, Instant};
 
 const BIN: &str = env!("CARGO_BIN_EXE_qmaws");
 
+/// The binary with its own settings folder, so that tests never touch the
+/// user's Q-MAWS settings (remembered results folders, the resume queue).
+fn qmaws_cmd() -> Command {
+    let mut c = Command::new(BIN);
+    c.env(
+        "QMAWS_CONFIG_DIR",
+        std::env::temp_dir().join(format!("qmaws-test-config-{}", std::process::id())),
+    );
+    c
+}
+
 /// Size of the toy run: large enough that the run lasts several seconds, so
 /// that every kill lands while it is working (release builds are faster).
 const TOY_BLOCKS: u64 = if cfg!(debug_assertions) { 240 } else { 3000 };
@@ -84,7 +95,7 @@ fn read_root(dir: &Path) -> String {
 }
 
 fn run_to_end(args: &[String]) {
-    let status = Command::new(BIN)
+    let status = qmaws_cmd()
         .args(args)
         .stdout(Stdio::null())
         .status()
@@ -120,7 +131,7 @@ fn killed_and_resumed_run_gives_the_same_root() {
     let deadline = Instant::now() + Duration::from_secs(600);
     while kills < KILLS {
         assert!(Instant::now() < deadline, "test took too long");
-        let mut child = Command::new(BIN)
+        let mut child = qmaws_cmd()
             .args(continue_args(&dir))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -159,7 +170,7 @@ fn killed_and_resumed_run_gives_the_same_root() {
 fn progress_reports_updated_time_estimates() {
     let tmp = TempDir::new("eta");
     let dir = tmp.0.join("run");
-    let output = Command::new(BIN)
+    let output = qmaws_cmd()
         .args([
             "--json-progress",
             "toy-run",
@@ -290,7 +301,7 @@ fn kill_and_compare(
     if first_until_weighting {
         // The chunk size given on the command line is not stored; let the
         // first process fix the weighting plan with it, then kill it.
-        let mut child = Command::new(BIN)
+        let mut child = qmaws_cmd()
             .args(next_args(&dir))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -311,7 +322,7 @@ fn kill_and_compare(
     }
     while kills < 6 {
         assert!(Instant::now() < deadline, "test took too long");
-        let mut child = Command::new(BIN)
+        let mut child = qmaws_cmd()
             .args(next_args(&dir))
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -388,7 +399,7 @@ fn verify_command_passes_and_reports_a_changed_input() {
     let verify = |extra: &[&str]| {
         let mut args = vec!["verify", "--output", run.to_str().unwrap()];
         args.extend_from_slice(extra);
-        let out = Command::new(BIN).args(&args).output().unwrap();
+        let out = qmaws_cmd().args(&args).output().unwrap();
         (
             out.status.code(),
             String::from_utf8_lossy(&out.stdout).into_owned(),
@@ -466,7 +477,7 @@ fn g11_fish_mtdna_killed_ten_times_gives_the_same_root() {
     let mut rng = Lcg(seed);
     let mut kills = Vec::new();
     while kills.len() < 10 {
-        let mut child = Command::new(BIN)
+        let mut child = qmaws_cmd()
             .args(args(&dir))
             .stdout(Stdio::null())
             .stderr(Stdio::null())

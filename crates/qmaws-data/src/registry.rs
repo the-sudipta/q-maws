@@ -216,8 +216,39 @@ impl Registry {
     }
 }
 
+/// A published size for display: an exact byte count ("951066 bytes") is
+/// shown in the units of the other sizes (1,024-based KB and MB, one
+/// decimal); every other text is shown as published.
+pub fn size_label(published: &str) -> String {
+    let Some(n) = published
+        .strip_suffix(" bytes")
+        .and_then(|n| n.trim().parse::<u64>().ok())
+    else {
+        return published.to_string();
+    };
+    let n = n as f64;
+    if n >= 1024.0 * 1024.0 {
+        format!("{:.1} MB", n / (1024.0 * 1024.0))
+    } else if n >= 1024.0 {
+        format!("{:.1} KB", n / 1024.0)
+    } else {
+        format!("{n} bytes")
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn byte_counts_are_shown_like_the_other_sizes() {
+        assert_eq!(super::size_label("140249 bytes"), "137.0 KB");
+        assert_eq!(super::size_label("114629704 bytes"), "109.3 MB");
+        assert_eq!(super::size_label("42.1 MB"), "42.1 MB");
+        assert_eq!(
+            super::size_label("34 records (Table S5)"),
+            "34 records (Table S5)"
+        );
+    }
+
     use super::*;
 
     #[test]

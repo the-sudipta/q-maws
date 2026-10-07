@@ -318,11 +318,16 @@ impl RunSummary {
             .file_name()
             .map(|n| n.to_string_lossy().into_owned())
             .unwrap_or_else(|| self.dir.display().to_string());
+        format!("{name}  ({})", self.status())
+    }
+
+    /// `finished, started <time>` or `<x>% done, last used in the <interface>`.
+    pub fn status(&self) -> String {
         if self.finished {
-            format!("{name}  (finished, started {})", self.state.created_utc)
+            format!("finished, started {}", self.state.created_utc)
         } else {
             format!(
-                "{name}  ({:.0}% done, last used in the {})",
+                "{:.0}% done, last used in the {}",
                 self.percent,
                 self.last_interface.map_or("terminal", |i| i.name())
             )
@@ -398,12 +403,15 @@ pub fn user_config_path() -> Option<PathBuf> {
 }
 
 impl UserConfig {
-    /// The saved configuration, or an empty one.
+    /// The saved configuration, or an empty one. Remembered results
+    /// folders that no longer exist are left out.
     pub fn load() -> Self {
-        user_config_path()
+        let mut config: Self = user_config_path()
             .and_then(|p| std::fs::read(p).ok())
             .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        config.results_folders.retain(|f| Path::new(f).is_dir());
+        config
     }
 
     pub fn save(&self) -> std::io::Result<()> {
