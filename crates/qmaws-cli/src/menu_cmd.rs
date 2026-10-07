@@ -158,7 +158,11 @@ fn resume_list(
     let several = dirs.len() > 1;
     for (i, dir) in dirs.iter().enumerate() {
         if queue && mode != DisplayMode::Json {
-            println!("Queue: run {} of {}: {}", i + 1, dirs.len(), dir.display());
+            let name = dir.file_name().map_or_else(
+                || dir.display().to_string(),
+                |n| n.to_string_lossy().into_owned(),
+            );
+            println!("Queue: run {} of {}: {name}", i + 1, dirs.len());
         }
         let sink = several.then(|| batch_view(dirs, Some(i), None, &[], display));
         let shown: &dyn ProgressSink = match &sink {

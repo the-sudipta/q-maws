@@ -28,12 +28,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - Times shown to the user are this computer's local time (finish times, start times in lists, the status page); run records and logs keep UTC.
 - Browse buttons in the window (sequence folder, reference tree, run folder, results folder, data folder of a verification, export folder) open the system's folder or file dialog (`rfd`); path fields show an example path of this system.
 - During the S2 bootstrap the window shows the species tree with its S1 support and halo values (from `report/`), in the style of the final figure and marked as such, instead of the last provisional tree.
+- Screenshots of the batch progress view (a queue of three runs in the window, the terminal and `batch_status.html`) in `docs/USER_GUIDE.md`.
 - Release bundles (`.github/workflows/release.yml`): pushing a tag `v<version>` creates the GitHub release with that version's notes from this file, then Windows (`Q-MAWS.exe`), macOS (`Q-MAWS.app`, Apple silicon and Intel) and Linux (`Q-MAWS`) bundles with `run.bat` or `run.sh`, a README, `LICENSE`, `THIRD_PARTY_NOTICES` and `CITATION.cff` are attached with their SHA-256 sums and unpacked into `standalone/`. `run.bat` and `run.sh` find `Q-MAWS(.exe)` next to them.
 - Golden test G12 in CI: on Windows, macOS and Linux, Fish mtDNA is downloaded (MD5 checked) and run with the default settings, and its root fingerprint must equal `tests/golden/fish_mito_root.txt`.
 - A double-clicked Q-MAWS works in its own folder when it can write there, and otherwise in `Documents/Q-MAWS` (an app on macOS, which Finder starts in `/`, or a read-only folder).
 
 ### Fixed
 
+- Progress estimates: until the S2 bootstrap had a measured speed, the overall progress counted work units, so a run showed about 50% (and the batch view "under 1 min" left) as soon as its quartets were counted, before the long weighing. The S2 speed is now expected from the counting and weighing speeds (a replicate recounts with column weights, measured at about 15 times the counting cost), and the overall progress shown never goes back.
+- The batch view and `batch_status.html` name the stages in plain English ("Weighing quartets" instead of `quartet_weight`), say "under 1 min left" instead of "about under 1 min left", keep the expected finish on one line, and the terminal names each queued run by its folder.
 - The folder buttons of the window opened the Documents folder on Windows: Explorer needs an absolute path with backslashes. The zoom buttons (Fit, Tree, minus, plus) now always visibly change the view.
 - The tests wrote into the user's Q-MAWS settings, so test folders appeared in the lists of runs; they now use a settings folder of their own, and remembered results folders that no longer exist are left out.
 - `qmaws run --input` with a folder that does not exist left an empty run folder behind; it now stops before making it.

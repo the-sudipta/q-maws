@@ -370,7 +370,7 @@ impl Batch {
                     e.dataset,
                     e.seed.map_or("-".into(), |x| x.to_string()),
                     if e.s2 { ", with S2" } else { "" },
-                    c.stage,
+                    crate::analysis::stage_label(&c.stage),
                     100.0 * c.stage_fraction,
                     c.remaining
                         .map(|r| format!(", {} left", long_duration(r)))
@@ -439,7 +439,7 @@ header{{display:flex;align-items:center;gap:14px;margin-bottom:22px}}
 h1{{font-size:24px;font-weight:500;margin:0}} .sub{{color:var(--soft);margin:0}}
 .cards{{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:0 0 14px}}
 .card{{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px}}
-.label{{color:var(--faint);font-size:12.5px}} .value{{font-size:26px;font-weight:500}}
+.label{{color:var(--faint);font-size:12.5px}} .value{{font-size:26px;font-weight:500}} .value.when{{font-size:21px;white-space:nowrap;padding-top:4px}}
 .bar{{height:8px;border-radius:4px;background:var(--sunken);overflow:hidden;margin-top:10px}}
 .bar>i{{display:block;height:100%;background:var(--blue);border-radius:4px}}
 table{{width:100%;border-collapse:separate;border-spacing:0 6px}}
@@ -478,7 +478,7 @@ td{{padding:0 4px}} td.name{{padding-right:14px;white-space:nowrap}}
 <div class="card"><div class="label">Batch progress</div><div class="value">{:.1}%</div><div class="bar"><i style="width:{:.2}%"></i></div></div>
 <div class="card"><div class="label">Runs finished</div><div class="value">{} of {}</div></div>
 <div class="card"><div class="label">Time left (estimate)</div><div class="value">{}</div></div>
-<div class="card"><div class="label">Estimated finish</div><div class="value" id="finish">{}</div></div>
+<div class="card"><div class="label">Estimated finish</div><div class="value when" id="finish">{}</div></div>
 </div>
 "#,
             100.0 * self.fraction(),
@@ -504,12 +504,12 @@ td{{padding:0 4px}} td.name{{padding-right:14px;white-space:nowrap}}
                     escape(&e.dataset),
                     e.seed.map_or("-".into(), |x| x.to_string()),
                     if e.s2 { " &middot; with S2" } else { "" },
-                    escape(&c.stage),
+                    escape(crate::analysis::stage_label(&c.stage)),
                     100.0 * c.stage_fraction,
                     100.0 * e.done,
                     long_duration(e.elapsed),
                     c.remaining
-                        .map(|r| format!(", about {} left", long_duration(r)))
+                        .map(|r| format!(", {} left", about_duration(r)))
                         .unwrap_or_default()
                 );
             }
@@ -705,6 +705,16 @@ pub fn long_duration(seconds: f64) -> String {
     }
 }
 
+/// [`long_duration`] as an estimate: "about 3 min", but "under 1 min".
+pub fn about_duration(seconds: f64) -> String {
+    let d = long_duration(seconds);
+    if d.starts_with("under") {
+        d
+    } else {
+        format!("about {d}")
+    }
+}
+
 /// Like [`long_duration`], shorter, for grid cells.
 fn short_duration(seconds: f64) -> String {
     let s = seconds.max(0.0).round() as u64;
@@ -727,6 +737,13 @@ fn finish_text(now: &UtcDateTime, left: f64) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn estimates_read_naturally() {
+        assert_eq!(about_duration(20.0), "under 1 min");
+        assert_eq!(about_duration(185.0), "about 3 min");
+        assert_eq!(about_duration(7500.0), "about 2 h 05 min");
+    }
 
     fn entry(
         dataset: &str,

@@ -154,6 +154,9 @@ struct StageCost {
     units_done: u64,
     /// Units per second; `None` until measured or calibrated.
     rate: Option<f64>,
+    /// Expected units per second derived from other stages, used only while
+    /// `rate` is `None` (for example S2 before its first replicate).
+    prior: Option<f64>,
 }
 
 impl Estimator {
@@ -167,6 +170,7 @@ impl Estimator {
                     units_total: *total,
                     units_done: 0,
                     rate: None,
+                    prior: None,
                 })
                 .collect(),
         }
@@ -183,6 +187,17 @@ impl Estimator {
     pub fn set_rate(&mut self, name: &str, units_per_second: f64) {
         if units_per_second.is_finite() && units_per_second > 0.0 {
             self.get(name).rate = Some(units_per_second);
+        }
+    }
+
+    /// Sets the expected throughput of a stage that has no measured one
+    /// yet; a measured or calibrated rate always takes its place. Unknown
+    /// stages are ignored.
+    pub fn set_prior(&mut self, name: &str, units_per_second: f64) {
+        if units_per_second.is_finite() && units_per_second > 0.0 {
+            if let Some(s) = self.stages.iter_mut().find(|s| s.name == name) {
+                s.prior = Some(units_per_second);
+            }
         }
     }
 
@@ -231,19 +246,20 @@ impl Estimator {
     pub fn remaining_seconds(&self) -> Option<f64> {
         self.stages
             .iter()
-            .map(|s| Self::cost(s.units_total - s.units_done, s.rate))
+            .map(|s| Self::cost(s.units_total - s.units_done, s.rate.or(s.prior)))
             .sum()
     }
 
     /// Overall completion from 0 to 1, weighting each stage by its estimated
-    /// cost. Stages without a throughput count by unit share.
+    /// cost (measured rate, or prior). Until every stage has one, stages
+    /// count by unit share.
     pub fn overall_fraction(&self) -> f64 {
         let mut done = 0.0;
         let mut total = 0.0;
-        let all_rated = self.stages.iter().all(|s| s.rate.is_some());
+        let all_rated = self.stages.iter().all(|s| s.rate.or(s.prior).is_some());
         for s in &self.stages {
             let (d, t) = if all_rated {
-                let r = s.rate.unwrap_or(1.0);
+                let r = s.rate.or(s.prior).unwrap_or(1.0);
                 (s.units_done as f64 / r, s.units_total as f64 / r)
             } else {
                 (s.units_done as f64, s.units_total as f64)
@@ -293,6 +309,23 @@ mod tests {
         assert!((e.rate("a").unwrap() - expected).abs() < 1e-12);
         assert!((e.overall_fraction() - 0.2).abs() < 1e-12);
         assert!((e.remaining_seconds().unwrap() - 80.0 / expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_prior_stands_in_until_a_rate_is_measured() {
+        let mut e = Estimator::new(&[("count", 1000), ("weigh", 1000), ("boot", 10)]);
+        e.set_rate("count", 1000.0);
+        e.set_rate("weigh", 10.0);
+        e.set_done("count", 1000);
+        // Without a cost for "boot", the unit share says half done.
+        assert!((e.overall_fraction() - 1000.0 / 2010.0).abs() < 1e-12);
+        e.set_prior("boot", 0.1);
+        // 1 s done of 1 + 100 + 100 s.
+        assert!((e.overall_fraction() - 1.0 / 201.0).abs() < 1e-12);
+        assert_eq!(e.remaining_seconds(), Some(200.0));
+        e.set_rate("boot", 1.0);
+        assert_eq!(e.remaining_seconds(), Some(110.0));
+        assert!(!e.rates().contains_key("unknown"));
     }
 
     #[test]

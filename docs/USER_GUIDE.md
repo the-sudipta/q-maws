@@ -82,6 +82,31 @@ A new run goes through the steps Data, Reference, Output, Settings and Review, a
 
 When the run ends, the right column offers the figures folder, the interactive tree, the run folder, copying the figures to another folder, and the run in the Results library. A run that stops with an error shows the message there; finished parts are kept and the run can be resumed once the cause is fixed. Closing the window stops a running analysis cleanly; it can be resumed later, in the window or the terminal, with the same result.
 
+### A queue of runs
+
+Several runs one after another (`qmaws run --dataset all`, `qmaws resume --all`, or a queue started in the window) are shown as one batch, in three places at once. The screenshots below are of one queue: three Fish mtDNA runs (seeds 1 to 3), stopped early and resumed with `qmaws resume --all`.
+
+In the window, the **Queue** card above the run's own progress shows the batch: its progress (each run weighted by its expected time), the runs finished, the time left, and a grid of datasets by seeds (green with a tick: finished; orange ring with a dot: running; empty ring: waiting; red with a cross: stopped with an error). "Open the status page" opens `batch_status.html`.
+
+![The Queue card in the window](images/gui_queue.png)
+
+In the terminal, the same summary is printed before each run (letters stand for the states: R running, Q queued; finished runs show their time):
+
+```
+Queue: run 1 of 3: fish_mito_seed1
+Batch: 19.5% | run 1 of 3 | left 4 min | finish Wed 07 Oct, 17:26
+           seed 1         seed 2         seed 3       
+fish_mito  R 21%          Q ~1 min       Q ~1 min     
+All runs: 0 of 3 runs
+Times are estimates.
+```
+
+Next to the run folders, `batch_status.html` is rewritten every 30 seconds and reloads itself, so the batch can be followed in any browser, also from another computer that sees the folder. It works offline.
+
+![The batch status page](images/batch_status.png)
+
+Every time shown is an estimate from the speeds measured during the runs (before a stage has started, from the stages measured so far), in this computer's local time.
+
 ### Results
 
 ![Results library](images/gui_results.png)

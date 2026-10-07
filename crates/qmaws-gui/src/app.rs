@@ -779,19 +779,7 @@ fn final_figure(dir: &Path) -> PathBuf {
 
 /// Plain-English names of the stages in `run.json`.
 fn stage_label(id: &str) -> &'static str {
-    match id {
-        "ingest" => "Reading the sequences",
-        "maw_extract" => "Minimal absent words",
-        "length_select" => "Choosing MAW lengths",
-        "matrix_build" => "Building the matrix",
-        "quartet_count" => "Counting quartet patterns",
-        "quartet_weight" => "Weighing quartets",
-        "amalgamate" => "Species tree",
-        "support" => "Support and halo values",
-        "bootstrap" => "S2 bootstrap",
-        "finalize" => "Figures and records",
-        _ => "Other stage",
-    }
+    analysis::stage_label(id)
 }
 
 /// Seconds since 1970 of a UTC time `YYYY-MM-DDTHH:MM:SSZ`.
@@ -3682,12 +3670,13 @@ fn batch_card(ui: &mut egui::Ui, b: &Batch, dirs: &[PathBuf], inner: f32) {
             "All runs finished".to_string()
         } else if left == 0.0 && !complete {
             "Time left: estimating".to_string()
-        } else {
+        } else if complete {
             format!(
-                "About {}{} left (estimate)",
-                if complete { "" } else { "at least " },
-                batch::long_duration(left)
+                "{} left (estimate)",
+                capitalised(&batch::about_duration(left))
             )
+        } else {
+            format!("At least {} left (estimate)", batch::long_duration(left))
         };
         ui.add_space(2.0);
         w::caption(ui, left_text);

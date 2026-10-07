@@ -98,6 +98,24 @@ pub const STAGES: [&str; 10] = [
     FINALIZE,
 ];
 
+/// The plain-English name of a stage of [`STAGES`], for the window, the
+/// batch view and the status page.
+pub fn stage_label(id: &str) -> &'static str {
+    match id {
+        INGEST => "Reading the sequences",
+        MAW_EXTRACT => "Minimal absent words",
+        "length_select" => "Choosing MAW lengths",
+        "matrix_build" => "Building the matrix",
+        QUARTET_COUNT => "Counting quartet patterns",
+        QUARTET_WEIGHT => "Weighing quartets",
+        "amalgamate" => "Species tree",
+        "support" => "Support and halo values",
+        BOOTSTRAP => "S2 bootstrap",
+        "finalize" => "Figures and records",
+        _ => "Other stage",
+    }
+}
+
 /// Settings of an analysis run; stored in `run.json` and never changed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnalysisConfig {
@@ -361,6 +379,7 @@ pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
             estimator.set_rate(stage, *rate);
         }
     }
+    bootstrap_prior(&mut estimator, q, config.replicates);
     for (stage, n) in finished {
         estimator.set_done(stage, n);
     }
@@ -515,6 +534,8 @@ struct Session<'a> {
     /// Seconds paused in this session, not counted as working time.
     paused: f64,
     estimator: Estimator,
+    /// The highest overall fraction shown in this session.
+    overall_shown: std::cell::Cell<f64>,
     /// Stop after `matrix_build` (verification).
     until_matrix: bool,
     /// Live provisional tree, while `quartet_weight` runs.
@@ -567,6 +588,7 @@ impl<'a> Session<'a> {
             elapsed_before,
             paused: 0.0,
             estimator: Estimator::new(&[]),
+            overall_shown: std::cell::Cell::new(0.0),
             until_matrix: false,
             live: None,
         }
@@ -660,6 +682,18 @@ impl<'a> Session<'a> {
         }
     }
 
+    /// The overall fraction for the interfaces: the estimate, but never less
+    /// than what was shown before in this session (estimates move when the
+    /// measured speeds change; a progress bar should not go back).
+    fn overall_shown(&self) -> f64 {
+        let shown = self
+            .overall_shown
+            .get()
+            .max(self.estimator.overall_fraction());
+        self.overall_shown.set(shown);
+        shown
+    }
+
     fn progress(&self, stage: &str, done: u64, total: u64, item: String) {
         let index = STAGES.iter().position(|s| *s == stage).unwrap_or(0) + 1;
         self.emit(Event::Progress(Snapshot {
@@ -668,7 +702,7 @@ impl<'a> Session<'a> {
             stage_name: stage.to_string(),
             stage_units_done: done,
             stage_units_total: total,
-            overall_fraction: self.estimator.overall_fraction(),
+            overall_fraction: self.overall_shown(),
             elapsed_seconds: self.elapsed(),
             remaining_seconds: self.estimator.remaining_seconds(),
             current_item: item,
@@ -777,6 +811,7 @@ impl<'a> Session<'a> {
                 self.estimator.set_rate(&stage, rate);
             }
         }
+        bootstrap_prior(&mut self.estimator, q, self.options.config.replicates);
         if let Some(outcome) = self.maw_extract(&inputs)? {
             return Ok(outcome);
         }
@@ -1443,6 +1478,8 @@ impl<'a> Session<'a> {
                 std::hint::black_box(run_range(0, sample));
                 let rate = sample as f64 / t0.elapsed().as_secs_f64().max(1e-9);
                 self.estimator.set_rate(stage, rate);
+                let resamples = self.options.config.replicates;
+                bootstrap_prior(&mut self.estimator, q, resamples);
                 // Target duration, but never more than MAX_CHUNK_BYTES of
                 // records in memory at once.
                 let max_per = (MAX_CHUNK_BYTES / spec.record) as u64;
@@ -2284,6 +2321,35 @@ fn in_pool<R: Send>(pool: Option<&rayon::ThreadPool>, f: impl FnOnce() -> R + Se
     match pool {
         Some(p) => p.install(f),
         None => f(),
+    }
+}
+
+/// How much slower a bootstrap replicate recounts a quartet's patterns than
+/// the counting stage does: the replicate weighs every column (Poisson
+/// weights), so the counts cannot use plain popcounts. Measured on finished
+/// runs of this project (S2 time per replicate against the counting and
+/// weighing rates): 14.5 to 16 for E. coli, E. coli/Shigella HGT and
+/// simulated HGT 0.
+const BOOTSTRAP_RECOUNT_FACTOR: f64 = 15.0;
+
+/// The expected speed of the S2 bootstrap before its first replicate, from
+/// the measured speeds of counting and weighing: a replicate recounts every
+/// quartet's patterns with column weights ([`BOOTSTRAP_RECOUNT_FACTOR`]
+/// times the counting cost) and fits each quartet once with W2b, while
+/// weighing fits it once and once per W2c resample. Only for the progress
+/// and time estimates; a measured rate replaces it.
+fn bootstrap_prior(estimator: &mut Estimator, q: u64, resamples: u32) {
+    let (Some(count), Some(weigh)) = (
+        estimator.rate(QUARTET_COUNT),
+        estimator.rate(QUARTET_WEIGHT),
+    ) else {
+        return;
+    };
+    let fits = f64::from(resamples) + 1.0;
+    let seconds_per_replicate =
+        BOOTSTRAP_RECOUNT_FACTOR * q as f64 / count + q as f64 / (weigh * fits);
+    if seconds_per_replicate > 0.0 {
+        estimator.set_prior(BOOTSTRAP, 1.0 / seconds_per_replicate);
     }
 }
 
