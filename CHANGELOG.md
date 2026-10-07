@@ -28,7 +28,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - Times shown to the user are this computer's local time (finish times, start times in lists, the status page); run records and logs keep UTC.
 - Browse buttons in the window (sequence folder, reference tree, run folder, results folder, data folder of a verification, export folder) open the system's folder or file dialog (`rfd`); path fields show an example path of this system.
 - During the S2 bootstrap the window shows the species tree with its S1 support and halo values (from `report/`), in the style of the final figure and marked as such, instead of the last provisional tree.
-- Release bundles (`.github/workflows/release.yml`): for every published release, Windows (`Q-MAWS.exe`), macOS (`Q-MAWS.app`, Apple silicon and Intel) and Linux (`Q-MAWS`) bundles with `run.bat` or `run.sh`, a README, `LICENSE`, `THIRD_PARTY_NOTICES` and `CITATION.cff`, attached to the release with their SHA-256 sums and unpacked into `standalone/`. `run.bat` and `run.sh` find `Q-MAWS(.exe)` next to them.
+- Release bundles (`.github/workflows/release.yml`): pushing a tag `v<version>` creates the GitHub release with that version's notes from this file, then Windows (`Q-MAWS.exe`), macOS (`Q-MAWS.app`, Apple silicon and Intel) and Linux (`Q-MAWS`) bundles with `run.bat` or `run.sh`, a README, `LICENSE`, `THIRD_PARTY_NOTICES` and `CITATION.cff` are attached with their SHA-256 sums and unpacked into `standalone/`. `run.bat` and `run.sh` find `Q-MAWS(.exe)` next to them.
+- Golden test G12 in CI: on Windows, macOS and Linux, Fish mtDNA is downloaded (MD5 checked) and run with the default settings, and its root fingerprint must equal `tests/golden/fish_mito_root.txt`.
 - A double-clicked Q-MAWS works in its own folder when it can write there, and otherwise in `Documents/Q-MAWS` (an app on macOS, which Finder starts in `/`, or a read-only folder).
 
 ### Fixed

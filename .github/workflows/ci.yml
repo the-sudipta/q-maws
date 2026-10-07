@@ -36,6 +36,42 @@ jobs:
         shell: bash
         run: sh scripts/check-readmes.sh
 
+  determinism:
+    name: Cross-platform determinism (G12, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build
+        run: cargo build --release --locked -p qmaws-cli
+
+      - name: Download Fish mtDNA (MD5 checked)
+        shell: bash
+        run: ./target/release/qmaws download --dataset fish_mito
+
+      - name: Run Fish mtDNA with the default settings
+        shell: bash
+        run: ./target/release/qmaws --quiet run --dataset fish_mito --output g12_fish
+
+      - name: Compare the root fingerprint with the golden value
+        shell: bash
+        run: |
+          got=$(tr -d '\r\n' < g12_fish/audit/root.txt)
+          want=$(tr -d '\r\n' < tests/golden/fish_mito_root.txt)
+          echo "root: $got"
+          if [ "$got" != "$want" ]; then
+            echo "::error::G12: the Fish mtDNA root on ${{ matrix.os }} is $got, the golden value is $want"
+            exit 1
+          fi
+
   dependencies:
     name: Dependency licenses and sources
     runs-on: ubuntu-latest

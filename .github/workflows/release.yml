@@ -1,13 +1,14 @@
 name: Release
 
-# Ready-to-run bundles for Windows, macOS and Linux, attached to a published
-# GitHub release, and the same bundles in standalone/ on the default branch.
-# The release tag must be v<version>, with <version> the workspace version in
-# Cargo.toml. Can also be started by hand for a tag (bundles only).
+# Pushing a tag v<version> (with <version> the workspace version in
+# Cargo.toml) creates the GitHub release with its notes from CHANGELOG.md,
+# attaches ready-to-run bundles for Windows, macOS and Linux with their
+# SHA-256 sums, and puts the same bundles in standalone/ on the default
+# branch. Can also be started by hand for an existing tag.
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:
@@ -17,9 +18,37 @@ on:
 permissions:
   contents: write
 
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+
 jobs:
+  release:
+    name: Create the release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Create the GitHub release with the notes of this version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${TAG#v}"
+          # The CHANGELOG section of this version, up to the next section.
+          awk -v v="$version" '
+            /^## \[/ { inside = index($0, "[" v "]") > 0 || index($0, "[v" v "]") > 0; next }
+            inside { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md." > notes.md
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" --title "Q-MAWS $version" --notes-file notes.md --verify-tag
+          fi
+
   bundle:
     name: Bundle (${{ matrix.name }})
+    needs: release
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -37,8 +66,6 @@ jobs:
           - name: linux-x64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - name: Check out the release tag
         uses: actions/checkout@v7
@@ -131,8 +158,6 @@ jobs:
     name: Checksums
     needs: bundle
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - name: Fetch the bundles
         uses: actions/download-artifact@v4
@@ -151,10 +176,8 @@ jobs:
   standalone:
     name: Standalone folder
     needs: bundle
-    if: github.event_name == 'release'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
-    env:
-      TAG: ${{ github.event.release.tag_name }}
     steps:
       - name: Check out the default branch
         uses: actions/checkout@v7
