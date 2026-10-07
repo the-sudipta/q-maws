@@ -311,3 +311,54 @@ mod tests {
         assert!(tree_square("<svg width=\"10\" height=\"10\"><g></g></svg>").is_none());
     }
 }
+
+#[cfg(test)]
+mod view_tests {
+    use super::*;
+
+    /// Runs one frame of a window showing `v` in a 800 × 600 area.
+    fn frame(ctx: &egui::Context, v: &mut FigureView) {
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(
+                egui::Pos2::ZERO,
+                Vec2::new(800.0, 600.0),
+            )),
+            ..Default::default()
+        };
+        let _ = ctx.run_ui(input, |ui| v.show(ui, ""));
+    }
+
+    #[test]
+    fn whole_figure_and_tree_change_the_view() {
+        let ctx = egui::Context::default();
+        let mut v = FigureView::default();
+        let image =
+            egui::ColorImage::from_rgba_unmultiplied([200, 400], &vec![255u8; 200 * 400 * 4]);
+        v.texture = Some(ctx.load_texture("t", image, egui::TextureOptions::LINEAR));
+        v.size = Vec2::new(100.0, 200.0);
+        v.focus = Some(Rect::from_min_size(
+            egui::pos2(0.0, 20.0),
+            Vec2::new(100.0, 100.0),
+        ));
+        v.scene = v.focus.unwrap();
+        frame(&ctx, &mut v);
+        frame(&ctx, &mut v);
+        let tree = v.scene;
+        v.fit();
+        frame(&ctx, &mut v);
+        frame(&ctx, &mut v);
+        let whole = v.scene;
+        assert!(
+            whole.height() > tree.height() * 1.5,
+            "tree {tree:?} whole {whole:?}"
+        );
+        v.focus_tree();
+        frame(&ctx, &mut v);
+        frame(&ctx, &mut v);
+        assert!(
+            (v.scene.height() - tree.height()).abs() < 1.0,
+            "back {:?}",
+            v.scene
+        );
+    }
+}
