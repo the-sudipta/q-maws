@@ -107,6 +107,14 @@ Next to the run folders, `batch_status.html` is rewritten every 30 seconds and r
 
 Every time shown is an estimate from the speeds measured during the runs (before a stage has started, from the stages measured so far), in this computer's local time.
 
+### The M11 progress board
+
+While runs of the benchmark (milestone M11) are being worked on — by this window or by other Q-MAWS processes, such as the benchmark queue — the sidebar shows **Benchmark → M11 progress**. The page shows every dataset and seed of the benchmark (14 datasets × 5 seeds): finished runs with their working time, running runs with how far they are and the time left from their measured speed, waiting runs with an estimate from the finished runs of the same dataset, and failed runs; point at a run for details. It reads the run folders every 20 seconds and never writes to them, so it can be open while the runs go on. The button disappears when no benchmark run is active.
+
+![The M11 progress page](images/gui_benchmark.png)
+
+The same board can be written as a page for a browser, once or every N seconds: `qmaws monitor --output <file.html> [--every <seconds>] [--runs results/runs]` (a development command); the page reloads itself.
+
 ### Results
 
 ![Results library](images/gui_results.png)

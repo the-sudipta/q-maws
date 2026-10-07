@@ -12,6 +12,7 @@ Screenshots of the Q-MAWS window for `docs/USER_GUIDE.md`.
 | `gui_details.png` | The run details of the same run: stage, units, speed, times left and the stage list |
 | `gui_queue.png` | A queue of three Fish mtDNA runs (seeds 1 to 3) in the window: the Queue card above the run's progress; the species tree during the S2 bootstrap |
 | `batch_status.png` | `batch_status.html` of the queue of `gui_queue.png`, in a browser |
+| `gui_benchmark.png` | The M11 progress page (Benchmark → M11 progress) on 2026-10-08 with the real benchmark runs: 24 of 70 finished, 2 running |
 | `gui_results.png` | The Results library with the Halo Tree of `ecoli_shigella_hgt_seed1` |
 | `gui_results_dark.png` | The Results library in the dark theme, with `sim_hgt_250_seed3` |
 

@@ -17,6 +17,7 @@ pub mod hash;
 pub mod launch;
 pub mod lock;
 pub mod matrix_pipeline;
+pub mod monitor;
 pub mod progress;
 pub mod provisional;
 pub mod readme;

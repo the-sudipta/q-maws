@@ -528,6 +528,20 @@ enum Command {
         seed: u64,
     },
 
+    /// Development: the M11 progress page (every dataset and seed of the benchmark), written once or every N seconds
+    #[command(hide = true)]
+    Monitor {
+        /// Folder of the runs
+        #[arg(long, default_value = "results/runs")]
+        runs: PathBuf,
+        /// HTML file to write
+        #[arg(long)]
+        output: PathBuf,
+        /// Rewrite the page every this many seconds until stopped [default: once]
+        #[arg(long, default_value_t = 0)]
+        every: u64,
+    },
+
     /// Development: comparison tables of the benchmark (milestone M11)
     #[command(hide = true)]
     Summary {
@@ -615,6 +629,44 @@ mod summary_cmd;
 mod teach_cmd;
 mod verify_cmd;
 mod wqfm_cmd;
+
+/// `qmaws monitor`: writes the M11 progress page from the run folders, once
+/// or every `every` seconds until stopped. Reads the runs only.
+fn monitor_cmd(runs: &Path, output: &Path, every: u64) -> ExitCode {
+    use qmaws_engine::{clock, monitor};
+    let roots = vec![runs.to_path_buf()];
+    loop {
+        let board = monitor::m11_board(&roots);
+        let page = monitor::html(
+            &board,
+            &clock::local_clock(clock::unix_now()),
+            every.clamp(30, 300),
+        );
+        if let Some(parent) = output.parent().filter(|p| !p.as_os_str().is_empty()) {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        if let Err(e) = qmaws_engine::atomic::write_atomic(output, page.as_bytes()) {
+            eprintln!("Error: {}: {e}", output.display());
+            if every == 0 {
+                return ExitCode::from(EXIT_ERROR);
+            }
+        }
+        if every == 0 {
+            let c = board.counts();
+            println!(
+                "{}: {} of {} runs finished, {} running, {} waiting, {} failed.",
+                output.display(),
+                c.done,
+                c.total(),
+                c.running,
+                c.waiting + c.stopped,
+                c.failed
+            );
+            return ExitCode::SUCCESS;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(every));
+    }
+}
 
 /// Installs the Ctrl+C handler: the first press asks the engine to stop after
 /// the current unit; the second exits immediately (safe because every output
@@ -800,6 +852,11 @@ fn main() -> ExitCode {
             replicates,
             w2b,
         } => return s2_cmd::run(&run, replicates, !w2b),
+        Command::Monitor {
+            runs,
+            output,
+            every,
+        } => return monitor_cmd(&runs, &output, every),
         Command::Summary {
             runs,
             baselines,
@@ -1244,6 +1301,7 @@ fn main() -> ExitCode {
         | Command::WqfmCompare { .. }
         | Command::S2Cost { .. }
         | Command::Summary { .. }
+        | Command::Monitor { .. }
         | Command::Controls { .. }
         | Command::Menu { .. }
         | Command::Gui { .. }

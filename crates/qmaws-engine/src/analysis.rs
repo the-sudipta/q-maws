@@ -312,23 +312,62 @@ pub fn config_sha256(config: &AnalysisConfig) -> String {
 
 /// Percentage of an unfinished analysis run that is done, from the files
 /// present and the throughput stored in `run.json` (for the list of
-/// unfinished runs). Only checks that files exist, so it is quick.
+/// unfinished runs). Only lists folders, so it is quick.
 pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
+    run_progress(run_dir, state).percent
+}
+
+/// How far an analysis run is, read from its folder.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RunProgress {
+    /// Percentage done (100 when finished; at most 99.9 before).
+    pub percent: f64,
+    /// Estimated working seconds left, from the throughput stored in
+    /// `run.json`; `None` while a stage with work left has no speed yet.
+    pub remaining_seconds: Option<f64>,
+}
+
+/// The progress of a run from the files present and the throughput stored
+/// in `run.json`, as [`percent_complete`], with the time left. The chunk,
+/// MAW and replicate folders are listed once each.
+pub fn run_progress(run_dir: &Path, state: &RunState) -> RunProgress {
+    let unknown = RunProgress {
+        percent: 0.0,
+        remaining_seconds: None,
+    };
     if state.is_finished() {
-        return 100.0;
+        return RunProgress {
+            percent: 100.0,
+            remaining_seconds: Some(0.0),
+        };
     }
     let dir = RunDir::new(run_dir);
     let Ok(config) = serde_json::from_value::<AnalysisConfig>(state.config.clone()) else {
-        return 0.0;
+        return unknown;
     };
     let m = std::fs::read(dir.audit().join("inputs.json"))
         .ok()
         .and_then(|b| serde_json::from_slice::<InputsRecord>(&b).ok())
         .map_or(0, |i| i.taxa.len());
     if m == 0 {
-        return 0.0;
+        return unknown;
     }
     let q = quartet::quartet_count(m);
+    let names = |folder: PathBuf| -> std::collections::HashSet<String> {
+        std::fs::read_dir(folder)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok()?.file_name().into_string().ok())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let chunk_names = names(dir.chunks());
+    let file_name = |p: PathBuf| {
+        p.file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default()
+    };
     let done = |stage: &str| {
         state
             .stage(stage)
@@ -340,19 +379,22 @@ pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
         }
         state.chunk_plans.get(stage).map_or(0, |plan| {
             (0..plan.chunk_count())
-                .filter(|&i| dir.chunk_file(stage, i).exists())
+                .filter(|&i| chunk_names.contains(&file_name(dir.chunk_file(stage, i))))
                 .map(|i| plan.range(i).1 - plan.range(i).0)
                 .sum()
         })
     };
     let mut units = vec![(MAW_EXTRACT, m as u64), (QUARTET_COUNT, q)];
+    let maw_names = names(maws_dir(&dir));
     let mut finished = vec![
         (
             MAW_EXTRACT,
             if done(MAW_EXTRACT) {
                 m as u64
             } else {
-                (0..m).filter(|&t| maw_file(&dir, t).exists()).count() as u64
+                (0..m)
+                    .filter(|&t| maw_names.contains(&file_name(maw_file(&dir, t))))
+                    .count() as u64
             },
         ),
         (QUARTET_COUNT, chunked(QUARTET_COUNT)),
@@ -363,12 +405,15 @@ pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
         if config.bootstrap > 0 {
             let b = config.bootstrap as u64;
             units.push((BOOTSTRAP, b));
+            let replicate_names = names(bootstrap_dir(&dir));
             finished.push((
                 BOOTSTRAP,
                 if done(BOOTSTRAP) {
                     b
                 } else {
-                    (0..b).filter(|&i| replicate_file(&dir, i).exists()).count() as u64
+                    (0..b)
+                        .filter(|&i| replicate_names.contains(&file_name(replicate_file(&dir, i))))
+                        .count() as u64
                 },
             ));
         }
@@ -383,8 +428,11 @@ pub fn percent_complete(run_dir: &Path, state: &RunState) -> f64 {
     for (stage, n) in finished {
         estimator.set_done(stage, n);
     }
-    // Whole stages are short; only finished runs reach 100%.
-    (100.0 * estimator.overall_fraction()).min(99.9)
+    RunProgress {
+        // Whole stages are short; only finished runs reach 100%.
+        percent: (100.0 * estimator.overall_fraction()).min(99.9),
+        remaining_seconds: estimator.remaining_seconds(),
+    }
 }
 
 /// Starts a new analysis run in `run_dir`.

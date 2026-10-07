@@ -22,6 +22,7 @@ use qmaws_data::DataDir;
 use qmaws_engine::analysis::{self, AnalysisConfig, InputChoices};
 use qmaws_engine::batch::{self, Batch, Phase};
 use qmaws_engine::launch::{self, NewRun, RunReference, RunSummary, Settings, UserConfig};
+use qmaws_engine::monitor::{self, Board, CellState};
 use qmaws_engine::progress::{LiveQuartet, Snapshot};
 use qmaws_engine::rundir::DEFAULT_RUNS_ROOT;
 use qmaws_engine::state::StageStatus;
@@ -79,6 +80,8 @@ enum Page {
     Results,
     Run,
     About,
+    /// The M11 benchmark board, shown while benchmark runs are active.
+    Benchmark,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -403,6 +406,12 @@ pub struct App {
     menu_open: bool,
     /// The run details panel is open.
     details_open: bool,
+    /// The M11 benchmark board, read in the background every
+    /// [`BENCH_REFRESH`] (the "M11 progress" page appears while it is
+    /// active), the pending read, and when the last one started.
+    bench: Option<Board>,
+    bench_rx: Option<Receiver<Board>>,
+    bench_read: Option<Instant>,
     wake: Arc<dyn Fn() + Send + Sync>,
 }
 
@@ -434,6 +443,9 @@ impl App {
             notice: None,
             menu_open: true,
             details_open: false,
+            bench: None,
+            bench_rx: None,
+            bench_read: None,
             wake,
         };
         // Development and documentation screenshots: open on a given page.
@@ -444,6 +456,7 @@ impl App {
                 "verify" => Page::Verify,
                 "results" => Page::Results,
                 "about" => Page::About,
+                "benchmark" => Page::Benchmark,
                 _ => Page::Home,
             };
         }
@@ -963,6 +976,129 @@ fn browse_tree_file(current: &str) -> Option<String> {
     d.pick_file().map(|p| p.display().to_string())
 }
 
+/// How often the benchmark board is read again.
+const BENCH_REFRESH: Duration = Duration::from_secs(20);
+
+/// One run of the benchmark board: a coloured tile with its state and time,
+/// and the details on hover.
+fn bench_cell(ui: &mut egui::Ui, p: &Palette, cell: &monitor::Cell, size: Vec2) {
+    let s2 = if cell.s2 { " \u{00b7} S2" } else { "" };
+    let (bg, fg, top, sub, detail) = match &cell.state {
+        CellState::Done { seconds, earlier } => (
+            if *earlier {
+                p.accent_wash
+            } else {
+                p.success_wash
+            },
+            if *earlier { p.accent } else { p.success },
+            monitor::short_time(*seconds),
+            format!("{}{s2}", if *earlier { "M10 run" } else { "done" }),
+            format!(
+                "Finished; working time {} on this computer{}.",
+                monitor::short_time(*seconds),
+                if *earlier {
+                    " (made in milestone M10)"
+                } else {
+                    ""
+                }
+            ),
+        ),
+        CellState::Running {
+            percent,
+            left_seconds,
+        } => (
+            p.warning_wash,
+            p.split,
+            format!("{percent:.0}%"),
+            left_seconds.map_or("left: estimating".into(), |l| {
+                format!("\u{2248}{} left", monitor::short_time(l))
+            }),
+            format!(
+                "Running: {percent:.1}% done; {}.",
+                left_seconds.map_or("time left: estimating".into(), |l| format!(
+                    "about {} of work left (measured speed)",
+                    monitor::short_time(l)
+                ))
+            ),
+        ),
+        CellState::Stopped {
+            percent,
+            left_seconds,
+        } => (
+            p.sunken,
+            p.ink,
+            format!("stopped at {percent:.0}%"),
+            left_seconds.map_or("stopped".into(), |l| {
+                format!("\u{2248}{} left", monitor::short_time(l))
+            }),
+            "Stopped; it continues from its last checkpoint when its queue reaches it.".into(),
+        ),
+        CellState::Failed { message } => (
+            p.danger_wash,
+            p.danger,
+            "failed".into(),
+            "see run.log".into(),
+            message.clone(),
+        ),
+        CellState::Waiting { estimate_seconds } => (
+            p.sunken,
+            p.ink_soft,
+            estimate_seconds.map_or("waiting".into(), |e| {
+                format!("\u{2248}{}", monitor::short_time(e))
+            }),
+            if cell.s2 { "S2".into() } else { String::new() },
+            estimate_seconds.map_or(
+                "Waiting; no estimate until this dataset has a finished run like it.".into(),
+                |e| {
+                    format!(
+                        "Waiting; about {} (mean of this dataset's finished runs).",
+                        monitor::short_time(e)
+                    )
+                },
+            ),
+        ),
+    };
+    let mark = match &cell.state {
+        CellState::Done { .. } => Some(State::Done),
+        CellState::Running { .. } => Some(State::Running),
+        CellState::Failed { .. } => Some(State::Failed),
+        CellState::Stopped { .. } | CellState::Waiting { .. } => None,
+    };
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::hover());
+    ui.painter()
+        .rect_filled(rect, egui::CornerRadius::same(7), bg);
+    // The state marks of the stage list, drawn (no font glyph needed).
+    let text_x = if let Some(state) = mark {
+        w::state_mark(ui, rect.left_top() + Vec2::new(16.0, 14.0), state, 6.5);
+        28.0
+    } else {
+        9.0
+    };
+    let painter = ui.painter();
+    let font = |px: f32| egui::FontId::proportional(px);
+    painter.text(
+        rect.left_top() + Vec2::new(text_x, 6.0),
+        egui::Align2::LEFT_TOP,
+        top,
+        font(13.5),
+        fg,
+    );
+    if !sub.is_empty() {
+        painter.text(
+            rect.left_top() + Vec2::new(text_x, 24.0),
+            egui::Align2::LEFT_TOP,
+            sub,
+            font(11.5),
+            fg.gamma_multiply(0.85),
+        );
+    }
+    response.on_hover_text(format!(
+        "Seed {}{}: {detail}",
+        cell.seed,
+        if cell.s2 { ", with S2" } else { "" }
+    ));
+}
+
 /// How long a scan of the run folders is reused while drawing: the pages
 /// are drawn up to 60 times a second, and a scan reads every run's
 /// `run.json` (and its lock).
@@ -1041,6 +1177,7 @@ impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         self.screenshot(ui.ctx());
         self.poll(ui.ctx());
+        self.poll_bench(ui.ctx());
         // Dropped folders fill the path fields.
         let dropped: Vec<PathBuf> = ui.ctx().input(|i| {
             i.raw
@@ -1105,6 +1242,7 @@ impl eframe::App for App {
                                 Page::NewRun => self.wizard_page(ui),
                                 Page::Resume => self.resume_page(ui),
                                 Page::Verify => self.verify_page(ui),
+                                Page::Benchmark => self.benchmark_page(ui),
                                 _ => self.about_page(ui),
                             }
                         });
@@ -1125,6 +1263,139 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// Reads the benchmark board in the background every [`BENCH_REFRESH`]
+    /// (it lists the run folders, which takes a second or two for M11).
+    fn poll_bench(&mut self, ctx: &egui::Context) {
+        if let Some(rx) = &self.bench_rx {
+            if let Ok(board) = rx.try_recv() {
+                self.bench = Some(board);
+                self.bench_rx = None;
+            }
+        }
+        if self.bench_rx.is_none() && self.bench_read.is_none_or(|t| t.elapsed() >= BENCH_REFRESH) {
+            let roots = self.config.roots();
+            let (tx, rx) = mpsc::channel();
+            let wake = Arc::clone(&self.wake);
+            std::thread::spawn(move || {
+                let _ = tx.send(monitor::m11_board(&roots));
+                wake();
+            });
+            self.bench_rx = Some(rx);
+            self.bench_read = Some(Instant::now());
+        }
+        // Keep the board and the sidebar button current without input.
+        ctx.request_repaint_after(BENCH_REFRESH);
+    }
+
+    /// The M11 benchmark board: every dataset and seed with its state and
+    /// times (`qmaws_engine::monitor`), read from the run folders only.
+    fn benchmark_page(&mut self, ui: &mut egui::Ui) {
+        let p = Palette::of(ui.ctx());
+        w::page_header(
+            ui,
+            "Benchmark",
+            "M11 progress",
+            Some("Every dataset and seed of the benchmark, read from the run folders; it only reads, so it never disturbs a run."),
+        );
+        let Some(board) = self.bench.clone() else {
+            ui.horizontal(|ui| {
+                ui.spinner();
+                w::soft(ui, "Reading the run folders\u{2026}");
+            });
+            return;
+        };
+        if !board.active() {
+            w::banner(
+                ui,
+                Tone::Info,
+                "No benchmark run is being worked on now; the board shows the last state of the runs.",
+            );
+            ui.add_space(10.0);
+        }
+        let c = board.counts();
+        let (left, complete) = board.work_left();
+        let gap = 10.0;
+        let width = ((ui.available_width() - 4.0 * gap) / 5.0).max(120.0);
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = gap;
+            w::stat(
+                ui,
+                "Finished",
+                &format!("{} of {}", c.done, c.total()),
+                width,
+            );
+            w::stat(ui, "Running", &c.running.to_string(), width);
+            let waiting = if c.stopped > 0 {
+                format!("{} (+{} stopped)", c.waiting, c.stopped)
+            } else {
+                c.waiting.to_string()
+            };
+            w::stat(ui, "Waiting", &waiting, width);
+            w::stat(ui, "Failed", &c.failed.to_string(), width);
+            let left_text = if c.done == c.total() {
+                "none".to_string()
+            } else if complete {
+                format!("\u{2248} {}", monitor::short_time(left))
+            } else {
+                format!("at least {}", monitor::short_time(left))
+            };
+            w::stat(ui, "Work left (sum of runs)", &left_text, width);
+        });
+        ui.add_space(10.0);
+        w::progress_bar(ui, c.done as f32 / c.total().max(1) as f32, 8.0, p.success);
+        ui.add_space(6.0);
+        w::caption(
+            ui,
+            "Blue: done in M10 \u{00b7} green: done \u{00b7} orange: running \u{00b7} grey: waiting \u{00b7} red: failed \u{00b7} S2: with the 100-replicate bootstrap \u{00b7} \u{2248}: estimate. Point at a run for details.",
+        );
+        ui.add_space(8.0);
+        w::card(ui, |ui| {
+            let name_w = 200.0;
+            let cell_gap = 6.0;
+            let cell_w = ((ui.available_width() - name_w - 5.0 * cell_gap) / 5.0).max(90.0);
+            let cell_h = 42.0;
+            ui.horizontal(|ui| {
+                ui.add_space(name_w);
+                for seed in 1..=monitor::M11_SEEDS {
+                    ui.add_sized(
+                        [cell_w + cell_gap - 8.0, 16.0],
+                        egui::Label::new(
+                            RichText::new(format!("Seed {seed}"))
+                                .text_style(theme::caption())
+                                .color(p.ink_faint),
+                        ),
+                    );
+                }
+            });
+            for row in &board.rows {
+                ui.add_space(cell_gap);
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = cell_gap;
+                    ui.allocate_ui_with_layout(
+                        Vec2::new(name_w - cell_gap, cell_h),
+                        egui::Layout::top_down(egui::Align::Min),
+                        |ui| {
+                            ui.set_width(name_w - cell_gap);
+                            ui.label(RichText::new(&row.name).color(p.ink));
+                            ui.add_space(-6.0);
+                            if let Some(t) = row.taxa {
+                                w::caption(ui, format!("{t} taxa"));
+                            }
+                        },
+                    );
+                    for cell in &row.cells {
+                        bench_cell(ui, &p, cell, Vec2::new(cell_w, cell_h));
+                    }
+                });
+            }
+        });
+        ui.add_space(8.0);
+        w::caption(
+            ui,
+            "Times are working times on this computer. A running run's time left is from its measured speed; a waiting run's estimate is the mean of the finished runs of the same dataset with the same bootstrap setting. Runs of two parallel workers overlap, so the wall-clock time left is shorter than the sum. Updated every 20 seconds.",
+        );
+    }
+
     /// Takes the screenshot of `QMAWS_GUI_SHOT` once the delay has passed,
     /// saves it and closes the window.
     fn screenshot(&mut self, ctx: &egui::Context) {
@@ -1190,6 +1461,14 @@ impl App {
             let label = if run.done { "Last run" } else { "Running now" };
             if w::sidebar_item(ui, label, self.page == Page::Run, true).clicked() {
                 go = Some(Page::Run);
+            }
+        }
+        // The benchmark board, only while benchmark runs are active (or the
+        // page is open).
+        if self.bench.as_ref().is_some_and(Board::active) || self.page == Page::Benchmark {
+            w::sidebar_heading(ui, "Benchmark");
+            if w::sidebar_item(ui, "M11 progress", self.page == Page::Benchmark, true).clicked() {
+                go = Some(Page::Benchmark);
             }
         }
         w::sidebar_heading(ui, "Library");
