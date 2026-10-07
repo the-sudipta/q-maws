@@ -10,7 +10,7 @@ Working notes for resuming milestone M11 (full benchmark) after an interruption.
 - 2026-10-05: milestones M0 to M10 were audited against the plan and the gaps found were completed (commits 097e83f to 0a02de7; `docs/OPEN_ISSUES.md` OI-19, CHANGELOG). The queue was restarted at 17:12 UTC with the same binary (commit 7b1de8a), whose computation the fixes do not change. After each finished run, `qmaws figures` of the current program adds the comparison records (OI-19).
 - Benchmark queue (one run at a time, restartable): finished runs are skipped, unfinished ones resumed.
   Order: seed 1 of the 7 HGT datasets (S2 100) → seeds 2–5 of the HGT datasets (`--bootstrap 0`) → Fish mtDNA and E. coli seeds 2–5 → influenza A, coronavirus, mammal mtDNA, ebolavirus seed 1 (S2 100) and seeds 2–5 → rhinovirus seeds 1–5 (`--bootstrap 0`).
-- All runs use one binary, built from commit 7b1de8a (`qmaws 0.0.0`), so every run of M11 has the same code.
+- Until 2026-10-07 11:51 UTC every run used one binary, built from commit 7b1de8a (`qmaws 0.0.0`). From then on, with the owner's approval, the queues use a build of commit 5f0cd87 (branch `m11-perf`): 7b1de8a plus one change to how a chunk of quartets is shared between threads (see "Binary change" below). The computation is the same, so the results are the same.
 
 ## Next command
 The queues run on the owner's laptop, outside the repository, in `D:\_external\queues`: `m11_queue.sh`, then `m12_queue.sh`, `h5_queue.sh` and `m13_queue.sh`. Each one waits for "all done" in the log of the one before it. The logs (`*_queue.log`) are in the same folder. The script `start_all.ps1` starts every queue that is not already running, each in a hidden window (`launch_hidden.ps1`, WMI `Win32_Process Create`), so a queue never stops when the shell that launched it ends. The scheduled task `QMAWS-Queues` runs that script at every logon. To restart by hand after a sleep or a reboot:
@@ -51,3 +51,14 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_750_seed3` | done, committed (resumed after a laptop shutdown; 1,888 s after the resume, beside the second worker) |
 | `sim_hgt_1000_seed3` | running (started 2026-10-07 11:04 UTC) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
+
+## Binary change (2026-10-07)
+The weighing stage splits each chunk of quartets into blocks of 16 that run in parallel. The calibrated chunks of M11 are small (21 to 25 quartets for the simulated HGT datasets, 82 for rhinovirus), so only 2 to 6 of the 12 threads had work and the laptop ran at about 35% CPU. Commit 5f0cd87 (on 7b1de8a, branch `m11-perf`) changes only `run_blocks` in `crates/qmaws-engine/src/analysis.rs`: a chunk is cut into at least one block per thread. Records are still joined in position order, so their bytes do not depend on the blocks.
+
+Checks before the switch, all on this laptop:
+- Root fingerprints of the 7b1de8a build and the 5f0cd87 build are identical: Yersinia HGT seed 3 without S2 (`8502148d...`), Fish mtDNA seed 3 without S2 (`9f7445aa...`), and Fish mtDNA with 21-quartet chunks (`9f7445aa...`).
+- A Fish mtDNA run killed under the 7b1de8a build (452 weighing chunks done) and resumed with the 5f0cd87 build gave the same root (`9f7445aa...`).
+- The engine tests of 5f0cd87 pass (77).
+- Speed: Fish mtDNA with 21-quartet chunks took 698 s with the 7b1de8a build and 125 s with the 5f0cd87 build (both while the M11 queues were running).
+
+The switch: at 11:51 UTC both queues and their runs were stopped, `qmaws_m11.exe` was renamed `qmaws_m11_7b1de8a.exe` (kept), the 5f0cd87 build was copied to `qmaws_m11.exe`, and both queues were started again; `sim_hgt_1000_seed3` and `rhinovirus_seed5` resumed from their saved chunks. Each run records the build in `audit/environment.json` (`git_commit`): runs finished before the switch show 7b1de8a; `sim_hgt_1000_seed3`, `rhinovirus_seed5` and every later run show 5f0cd87.
