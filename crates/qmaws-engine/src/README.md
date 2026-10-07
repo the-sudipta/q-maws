@@ -16,6 +16,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 | `lib.rs` | Crate root: module list and main re-exports |
 | `lock.rs` | The run lock `work/run.lock`: one process at a time works on a run (heartbeat while open, `closed` at the end, dead or stale holders ignored; runs of versions without a lock count as in use while their `run.json` changes) |
 | `matrix_pipeline.rs` | From cleaned sequences to `M_full` and `M_ml`: parallel MAW extraction within a memory limit, entropy selection, matrix building, entropy table |
+| `monitor.rs` | The M11 benchmark board: every dataset and seed with its state and times (finished, running with time left, stopped, failed, waiting with an estimate), read from the run folders only; the self-reloading HTML page of `qmaws monitor` |
 | `readme.rs` | README files of a run folder and its committed subfolders, listing their items (written at the end of a run and after verification) |
 | `evaluation.rs` | The reference tree of a run and the comparison of its tree with it (OI-19): stored as `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json` with their SHA-256; the checks that `qmaws verify` makes by recomputing nRF, nQD and MSD |
 | `figures.rs` | Figures of a finished run (plan 4.7, 4.8): the options found from the run (reference tree, name table, group file), group sources, and every figure file with its formats; the comparison with a reference tree |
