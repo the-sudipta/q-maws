@@ -452,6 +452,23 @@ pub fn key_value(ui: &mut Ui, key: &str, value: &str) {
     });
 }
 
+/// A key and a web address that opens in the browser, laid out like
+/// [`key_value`].
+pub fn key_link(ui: &mut Ui, key: &str, url: &str) {
+    let p = Palette::of(ui.ctx());
+    ui.horizontal_top(|ui| {
+        ui.allocate_ui_with_layout(
+            Vec2::new(220.0, 20.0),
+            egui::Layout::left_to_right(egui::Align::Min),
+            |ui| {
+                ui.set_min_width(220.0);
+                ui.label(egui::RichText::new(key).color(p.ink_faint));
+            },
+        );
+        ui.hyperlink(url);
+    });
+}
+
 /// A thin horizontal line.
 pub fn rule(ui: &mut Ui) {
     let p = Palette::of(ui.ctx());

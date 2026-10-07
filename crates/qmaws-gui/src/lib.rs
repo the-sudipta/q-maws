@@ -27,14 +27,25 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Opens the window and returns when it is closed. A run still working when
 /// the window closes is stopped cleanly and can be resumed.
 pub fn run(launch: Launch) -> Result<(), String> {
+    let shot = app::Shot::from_env();
     let options = eframe::NativeOptions {
         viewport: {
             let v = egui::ViewportBuilder::default()
                 .with_title("Q-MAWS")
                 .with_app_id("q-maws")
                 .with_inner_size([1280.0, 800.0])
-                .with_min_inner_size([1000.0, 640.0])
-                .with_maximized(true);
+                .with_min_inner_size([1000.0, 640.0]);
+            // A screenshot window (development and documentation) opens
+            // off the screen, without focus and outside the taskbar, so it
+            // never disturbs the person at the computer.
+            let v = match &shot {
+                Some(s) => v
+                    .with_inner_size(s.size)
+                    .with_position([-20000.0, -20000.0])
+                    .with_active(false)
+                    .with_taskbar(false),
+                None => v.with_maximized(true),
+            };
             match qmaws_viz::icon::rgba(256) {
                 Ok(rgba) => v.with_icon(egui::IconData {
                     rgba,
@@ -59,7 +70,9 @@ pub fn run(launch: Launch) -> Result<(), String> {
                 Ok("dark") => cc.egui_ctx.set_theme(egui::ThemePreference::Dark),
                 _ => {}
             }
-            Ok(Box::new(app::App::new(&cc.egui_ctx, launch)))
+            let mut app = app::App::new(&cc.egui_ctx, launch);
+            app.shot = shot;
+            Ok(Box::new(app))
         }),
     );
     if !fonts_found {

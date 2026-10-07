@@ -61,6 +61,9 @@ const RAIL_MAX: f32 = 470.0;
 fn rail_width(ui: &egui::Ui) -> f32 {
     (ui.available_width() * 0.3).clamp(RAIL_MIN, RAIL_MAX)
 }
+/// Inner margin of the text fields, so that they are as tall as the buttons
+/// beside them.
+const FIELD_MARGIN: Margin = Margin::symmetric(10, 9);
 /// Widest content column of the form pages, in points.
 const COLUMN: f32 = 860.0;
 /// Pixel widths of the rendered figures (live and final).
@@ -343,7 +346,45 @@ struct ResultsPage {
     figure: FigureView,
 }
 
+/// A screenshot of the window for development and documentation
+/// (`QMAWS_GUI_SHOT=<file.png>`, optional `QMAWS_GUI_SIZE=<w>x<h>` and
+/// `QMAWS_GUI_DELAY=<seconds>`): the window is saved to the PNG file after
+/// the delay and closes.
+pub struct Shot {
+    path: PathBuf,
+    pub size: [f32; 2],
+    delay: Duration,
+    started: Option<Instant>,
+    requested: bool,
+}
+
+impl Shot {
+    pub fn from_env() -> Option<Self> {
+        let path = PathBuf::from(std::env::var_os("QMAWS_GUI_SHOT")?);
+        let size = std::env::var("QMAWS_GUI_SIZE")
+            .ok()
+            .and_then(|s| {
+                let (w, h) = s.split_once('x')?;
+                Some([w.trim().parse().ok()?, h.trim().parse().ok()?])
+            })
+            .unwrap_or([1600.0, 1000.0]);
+        let delay = std::env::var("QMAWS_GUI_DELAY")
+            .ok()
+            .and_then(|s| s.parse::<f64>().ok())
+            .unwrap_or(4.0);
+        Some(Self {
+            path,
+            size,
+            delay: Duration::from_secs_f64(delay),
+            started: None,
+            requested: false,
+        })
+    }
+}
+
 pub struct App {
+    /// Set by [`crate::run`] for a screenshot window.
+    pub shot: Option<Shot>,
     data_dir: PathBuf,
     download: DownloadFn,
     config: UserConfig,
@@ -367,6 +408,7 @@ impl App {
         let wake: Arc<dyn Fn() + Send + Sync> = Arc::new(move || repaint.request_repaint());
         let config = UserConfig::load();
         let mut app = Self {
+            shot: None,
             data_dir: launch.data_dir,
             download: launch.download,
             config,
@@ -400,6 +442,9 @@ impl App {
                 "about" => Page::About,
                 _ => Page::Home,
             };
+        }
+        if let Some(dir) = std::env::var_os("QMAWS_GUI_RUN") {
+            app.results.selected = Some(PathBuf::from(dir));
         }
         if launch.jobs.is_empty() {
             // On launch: point to unfinished runs (plan 4.10, 5.5).
@@ -816,6 +861,101 @@ fn local_time(utc: &str) -> String {
         .unwrap_or_else(|| utc.to_string())
 }
 
+/// An example path for the hint of a path field, in the style of this
+/// computer's system ("for example C:\data\x" or "for example ~/data/x").
+fn example_path(folder: &str, name: &str) -> String {
+    if cfg!(windows) {
+        format!("for example C:\\{folder}\\{name}")
+    } else {
+        format!("for example ~/{folder}/{name}")
+    }
+}
+
+/// The folder the dialogs open in: the field's path (or its folder) when it
+/// exists.
+fn dialog_start(current: &str) -> Option<PathBuf> {
+    let p = PathBuf::from(current.trim());
+    if current.trim().is_empty() {
+        None
+    } else if p.is_dir() {
+        Some(p)
+    } else {
+        p.parent().filter(|d| d.is_dir()).map(Path::to_path_buf)
+    }
+}
+
+/// The system's folder dialog; `None` when it is cancelled.
+fn browse_folder(current: &str) -> Option<String> {
+    let mut d = rfd::FileDialog::new();
+    if let Some(start) = dialog_start(current) {
+        d = d.set_directory(start);
+    }
+    d.pick_folder().map(|p| p.display().to_string())
+}
+
+/// The system's file dialog for a Newick tree; `None` when it is cancelled.
+fn browse_tree_file(current: &str) -> Option<String> {
+    let mut d = rfd::FileDialog::new()
+        .add_filter("Newick tree", &["nwk", "newick", "tre", "tree", "txt"])
+        .add_filter("All files", &["*"]);
+    if let Some(start) = dialog_start(current) {
+        d = d.set_directory(start);
+    }
+    d.pick_file().map(|p| p.display().to_string())
+}
+
+/// How long a scan of the run folders is reused while drawing: the pages
+/// are drawn up to 60 times a second, and a scan reads every run's
+/// `run.json` (and its lock).
+const SCAN_REUSE: Duration = Duration::from_secs(2);
+
+type ScanMemo = Option<(Instant, Vec<PathBuf>, Vec<RunSummary>)>;
+
+thread_local! {
+    static SCAN: std::cell::RefCell<ScanMemo> = const { std::cell::RefCell::new(None) };
+    static IN_USE: std::cell::RefCell<std::collections::HashMap<PathBuf, (Instant, bool)>> =
+        std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// [`launch::scan`], reused for [`SCAN_REUSE`] while drawing.
+fn scan_cached(roots: &[PathBuf]) -> Vec<RunSummary> {
+    SCAN.with(|c| {
+        let mut c = c.borrow_mut();
+        match &*c {
+            Some((at, r, runs)) if r == roots && at.elapsed() < SCAN_REUSE => runs.clone(),
+            _ => {
+                let runs = launch::scan(roots);
+                *c = Some((Instant::now(), roots.to_vec(), runs.clone()));
+                runs
+            }
+        }
+    })
+}
+
+/// [`launch::unfinished`], reused for [`SCAN_REUSE`] while drawing.
+fn unfinished_cached(roots: &[PathBuf]) -> Vec<RunSummary> {
+    scan_cached(roots)
+        .into_iter()
+        .filter(|r| !r.finished)
+        .collect()
+}
+
+/// [`launch::in_use`], reused for [`SCAN_REUSE`] while drawing. Starting
+/// or resuming a run checks again with [`launch::in_use`].
+fn in_use_cached(dir: &Path) -> bool {
+    IN_USE.with(|c| {
+        let mut c = c.borrow_mut();
+        match c.get(dir) {
+            Some((at, busy)) if at.elapsed() < SCAN_REUSE => *busy,
+            _ => {
+                let busy = launch::in_use(dir);
+                c.insert(dir.to_path_buf(), (Instant::now(), busy));
+                busy
+            }
+        }
+    })
+}
+
 /// Dataset, seed and number of taxa of a run, from its `run.json`.
 fn run_meta(dir: &Path) -> Option<(String, Option<u64>, Option<usize>)> {
     let summary = RunSummary::read(dir)?;
@@ -840,6 +980,7 @@ fn evaluation(dir: &Path) -> Option<(f64, f64, u64)> {
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.screenshot(ui.ctx());
         self.poll(ui.ctx());
         // Dropped folders fill the path fields.
         let dropped: Vec<PathBuf> = ui.ctx().input(|i| {
@@ -925,6 +1066,37 @@ impl eframe::App for App {
 }
 
 impl App {
+    /// Takes the screenshot of `QMAWS_GUI_SHOT` once the delay has passed,
+    /// saves it and closes the window.
+    fn screenshot(&mut self, ctx: &egui::Context) {
+        let Some(shot) = &mut self.shot else {
+            return;
+        };
+        let image = ctx.input(|i| {
+            i.raw.events.iter().find_map(|e| match e {
+                egui::Event::Screenshot { image, .. } => Some(image.clone()),
+                _ => None,
+            })
+        });
+        if let Some(image) = image {
+            let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
+            let png =
+                qmaws_viz::render::png_from_rgba(image.size[0] as u32, image.size[1] as u32, rgba);
+            match png.map(|b| std::fs::write(&shot.path, b).map_err(|e| e.to_string())) {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) | Err(e) => eprintln!("Error: the screenshot was not saved: {e}"),
+            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            return;
+        }
+        let started = *shot.started.get_or_insert_with(Instant::now);
+        if !shot.requested && started.elapsed() >= shot.delay {
+            shot.requested = true;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+        }
+        ctx.request_repaint_after(Duration::from_millis(100));
+    }
+
     // ----- Sidebar ---------------------------------------------------------
 
     fn sidebar(&mut self, ui: &mut egui::Ui) {
@@ -1050,7 +1222,7 @@ impl App {
             w::banner(ui, Tone::Info, &n);
             ui.add_space(14.0);
         }
-        let unfinished = launch::unfinished(&self.config.roots());
+        let unfinished = unfinished_cached(&self.config.roots());
         let running = self.running();
         let gap = 14.0;
         let width = ((ui.available_width() - 2.0 * gap) / 3.0).max(200.0);
@@ -1096,7 +1268,7 @@ impl App {
         ui.add_space(28.0);
         w::section_title(ui, "Recent runs");
         ui.add_space(2.0);
-        let mut runs = launch::scan(&self.config.roots());
+        let mut runs = scan_cached(&self.config.roots());
         runs.retain(|r| r.state.kind == analysis::KIND);
         runs.sort_by(|a, b| b.state.created_utc.cmp(&a.state.created_utc));
         if runs.is_empty() {
@@ -1110,14 +1282,7 @@ impl App {
                     w::rule(ui);
                 }
                 let (label, fg, bg) = run_status(&p, r);
-                let detail = format!(
-                    "Started {}",
-                    r.state
-                        .created_utc
-                        .get(..16)
-                        .unwrap_or(&r.state.created_utc)
-                        .replace('T', " ")
-                );
+                let detail = format!("Started {}", local_time(&r.state.created_utc));
                 if run_row(ui, &run_name(&r.dir), &detail, label, fg, bg).clicked() {
                     open = Some(r.clone());
                 }
@@ -1284,18 +1449,28 @@ impl App {
             w::card(ui, |ui| {
                 ui.set_width(width - 36.0);
                 w::section_title(ui, "Sequence folder");
-                w::caption(ui, "Type the path, or drop the folder onto this window.");
+                w::caption(
+                    ui,
+                    "Browse for it, type its path, or drop the folder onto this window.",
+                );
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     if ui
                         .add(
                             egui::TextEdit::singleline(&mut w.folder)
-                                .hint_text("C:\\data\\my_sequences")
-                                .desired_width(width - 220.0),
+                                .margin(FIELD_MARGIN)
+                                .hint_text(example_path("data", "my_sequences"))
+                                .desired_width(width - 330.0),
                         )
                         .changed()
                     {
                         w.check = None;
+                    }
+                    if w::secondary_button(ui, "Browse\u{2026}").clicked() {
+                        if let Some(f) = browse_folder(&w.folder) {
+                            w.folder = f;
+                            w.check = None;
+                        }
                     }
                     if w::secondary_button_enabled(ui, "Check folder", !w.folder.trim().is_empty())
                         .clicked()
@@ -1463,9 +1638,15 @@ impl App {
             ui.horizontal(|ui| {
                 ui.add(
                     egui::TextEdit::singleline(&mut w.reference)
-                        .hint_text("C:\\data\\reference.nwk")
-                        .desired_width(width - 160.0),
+                        .margin(FIELD_MARGIN)
+                        .hint_text(example_path("data", "reference.nwk"))
+                        .desired_width(width - 270.0),
                 );
+                if w::secondary_button(ui, "Browse\u{2026}").clicked() {
+                    if let Some(f) = browse_tree_file(&w.reference) {
+                        w.reference = f;
+                    }
+                }
                 if w::secondary_button_enabled(ui, "Check", !w.reference.trim().is_empty())
                     .clicked()
                 {
@@ -1706,7 +1887,30 @@ impl App {
                 w::section_title(ui, "Run folder");
                 w::caption(ui, "The suggested name includes the date and time.");
                 ui.add_space(4.0);
-                ui.add(egui::TextEdit::singleline(&mut w.output).desired_width(width - 36.0));
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut w.output)
+                            .margin(FIELD_MARGIN)
+                            .desired_width(width - 150.0),
+                    );
+                    if w::secondary_button(ui, "Browse\u{2026}")
+                        .on_hover_text("Choose the folder that will hold the run folder")
+                        .clicked()
+                    {
+                        let current = PathBuf::from(w.output.trim());
+                        let parent = current
+                            .parent()
+                            .map(|p| p.display().to_string())
+                            .unwrap_or_default();
+                        if let Some(f) = browse_folder(&parent) {
+                            let name = current
+                                .file_name()
+                                .map(|n| n.to_os_string())
+                                .unwrap_or_else(|| single.name.clone().into());
+                            w.output = Path::new(&f).join(name).display().to_string();
+                        }
+                    }
+                });
             } else {
                 w::section_title(ui, "Run folders");
                 w::soft(
@@ -1790,6 +1994,7 @@ impl App {
                         key(ui, "MAW lengths");
                         ui.add(
                             egui::TextEdit::singleline(&mut w.lengths_text)
+                                .margin(FIELD_MARGIN)
                                 .hint_text("Automatic, or fixed lengths such as 7,8,9")
                                 .desired_width(320.0),
                         );
@@ -1801,7 +2006,11 @@ impl App {
                         ui.checkbox(&mut w.settings.live_tree, "On");
                         ui.end_row();
                         key(ui, "Random seed");
-                        ui.add(egui::TextEdit::singleline(&mut w.seed_text).desired_width(120.0));
+                        ui.add(
+                            egui::TextEdit::singleline(&mut w.seed_text)
+                                .margin(FIELD_MARGIN)
+                                .desired_width(120.0),
+                        );
                         ui.end_row();
                         let all = std::thread::available_parallelism().map_or(1, |n| n.get());
                         key(ui, "CPU cores");
@@ -1810,6 +2019,7 @@ impl App {
                         key(ui, "Memory limit (GB)");
                         ui.add(
                             egui::TextEdit::singleline(&mut w.memory_text)
+                                .margin(FIELD_MARGIN)
                                 .hint_text("Empty: 70% of the available memory")
                                 .desired_width(320.0),
                         );
@@ -1877,7 +2087,7 @@ impl App {
                     ),
                 );
                 ui.add_space(8.0);
-                let locked = launch::in_use(&earlier.dir);
+                let locked = in_use_cached(&earlier.dir);
                 if w::secondary_button_enabled(ui, "Resume the earlier run", !locked)
                     .on_disabled_hover_text("Another Q-MAWS process is working on it")
                     .clicked()
@@ -1945,7 +2155,7 @@ impl App {
             "Unfinished runs",
             Some("A run continues from its last checkpoint; finished parts are not repeated."),
         );
-        let runs = launch::unfinished(&self.config.roots());
+        let runs = unfinished_cached(&self.config.roots());
         if runs.is_empty() {
             w::card(ui, |ui| {
                 ui.set_width(ui.available_width());
@@ -1962,7 +2172,7 @@ impl App {
                     w::rule(ui);
                     ui.add_space(4.0);
                 }
-                let locked = launch::in_use(&r.dir);
+                let locked = in_use_cached(&r.dir);
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
                         ui.set_width((ui.available_width() - 150.0).max(200.0));
@@ -2078,7 +2288,7 @@ impl App {
         });
         ui.add_space(14.0);
         let dir: Option<PathBuf> = if v.from_list {
-            let mut finished: Vec<RunSummary> = launch::scan(&roots)
+            let mut finished: Vec<RunSummary> = scan_cached(&roots)
                 .into_iter()
                 .filter(|r| r.finished && r.state.kind == analysis::KIND)
                 .collect();
@@ -2108,11 +2318,19 @@ impl App {
             w::card(ui, |ui| {
                 ui.set_width(width - 36.0);
                 w::section_title(ui, "Results folder");
-                ui.add(
-                    egui::TextEdit::singleline(&mut v.path)
-                        .hint_text("Drop the folder here or type its path")
-                        .desired_width(width - 36.0),
-                );
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut v.path)
+                            .margin(FIELD_MARGIN)
+                            .hint_text("Browse, drop the folder here or type its path")
+                            .desired_width(width - 150.0),
+                    );
+                    if w::secondary_button(ui, "Browse\u{2026}").clicked() {
+                        if let Some(f) = browse_folder(&v.path) {
+                            v.path = f;
+                        }
+                    }
+                });
                 let p = PathBuf::from(v.path.trim());
                 if !v.path.trim().is_empty() {
                     match RunSummary::read(&p) {
@@ -2135,7 +2353,18 @@ impl App {
                 ui.set_width(width - 36.0);
                 w::section_title(ui, "Where are the data now?");
                 w::caption(ui, format!("They are no longer at {missing}. Enter their new path, or leave this empty."));
-                ui.add(egui::TextEdit::singleline(&mut v.moved_input).desired_width(width - 36.0));
+                ui.horizontal(|ui| {
+                    ui.add(
+                        egui::TextEdit::singleline(&mut v.moved_input)
+                            .margin(FIELD_MARGIN)
+                            .desired_width(width - 150.0),
+                    );
+                    if w::secondary_button(ui, "Browse\u{2026}").clicked() {
+                        if let Some(f) = browse_folder(&v.moved_input) {
+                            v.moved_input = f;
+                        }
+                    }
+                });
             });
             ui.add_space(14.0);
         }
@@ -2169,6 +2398,7 @@ impl App {
             ui.add_space(6.0);
             ui.add(
                 egui::TextEdit::singleline(&mut v.quartet)
+                    .margin(FIELD_MARGIN)
                     .hint_text("Four taxon names, separated by commas")
                     .desired_width(width),
             );
@@ -2254,7 +2484,7 @@ impl App {
 
     fn results_page(&mut self, ui: &mut egui::Ui) {
         let p = Palette::of(ui.ctx());
-        let mut runs: Vec<RunSummary> = launch::scan(&self.config.roots())
+        let mut runs: Vec<RunSummary> = scan_cached(&self.config.roots())
             .into_iter()
             .filter(|r| r.finished && r.state.kind == analysis::KIND)
             .collect();
@@ -2365,7 +2595,7 @@ impl App {
                 "Q-MAWS Source-Available License v1.0 (see LICENSE)",
             );
             w::key_value(ui, "How to cite", "See CITATION.cff in the repository");
-            w::key_value(ui, "Source code", env!("CARGO_PKG_REPOSITORY"));
+            w::key_link(ui, "Source code", env!("CARGO_PKG_REPOSITORY"));
             w::key_value(
                 ui,
                 "Logical CPU cores",
@@ -2573,11 +2803,19 @@ fn run_header(
 /// The zoom controls of a figure: zoom in, zoom out, fit the whole figure,
 /// and the tree view when the figure has one.
 fn zoom_controls(ui: &mut egui::Ui, figure: &mut FigureView) {
-    if w::secondary_button(ui, "Fit")
-        .on_hover_text("Show the whole figure, with its title and legend")
+    // Added from the right (the rows are right to left), so that they read
+    // Fit, Tree, minus, plus from the left.
+    if w::secondary_button(ui, "+")
+        .on_hover_text("Zoom in")
         .clicked()
     {
-        figure.fit();
+        figure.zoom(1.3);
+    }
+    if w::secondary_button(ui, "\u{2212}")
+        .on_hover_text("Zoom out")
+        .clicked()
+    {
+        figure.zoom(1.0 / 1.3);
     }
     if figure.has_tree_view()
         && w::secondary_button(ui, "Tree")
@@ -2586,17 +2824,11 @@ fn zoom_controls(ui: &mut egui::Ui, figure: &mut FigureView) {
     {
         figure.focus_tree();
     }
-    if w::secondary_button(ui, "\u{2212}")
-        .on_hover_text("Zoom out")
+    if w::secondary_button(ui, "Fit")
+        .on_hover_text("Show the whole figure, with its title and legend")
         .clicked()
     {
-        figure.zoom(1.0 / 1.3);
-    }
-    if w::secondary_button(ui, "+")
-        .on_hover_text("Zoom in")
-        .clicked()
-    {
-        figure.zoom(1.3);
+        figure.fit();
     }
 }
 
@@ -2768,9 +3000,15 @@ fn rail(
                     ui.horizontal(|ui| {
                         ui.add(
                             egui::TextEdit::singleline(&mut run.export_to)
-                                .hint_text("C:\\paper\\figures")
-                                .desired_width(inner - 90.0),
+                                .margin(FIELD_MARGIN)
+                                .hint_text(example_path("paper", "figures"))
+                                .desired_width(inner - 190.0),
                         );
+                        if w::secondary_button(ui, "Browse\u{2026}").clicked() {
+                            if let Some(f) = browse_folder(&run.export_to) {
+                                run.export_to = f;
+                            }
+                        }
                         if w::secondary_button_enabled(ui, "Copy", !run.export_to.trim().is_empty())
                             .clicked()
                         {
@@ -3394,7 +3632,7 @@ fn batch_card(ui: &mut egui::Ui, b: &Batch, dirs: &[PathBuf], inner: f32) {
 fn run_status(p: &Palette, r: &RunSummary) -> (&'static str, egui::Color32, egui::Color32) {
     if r.finished {
         ("Finished", p.success, p.success_wash)
-    } else if launch::in_use(&r.dir) {
+    } else if in_use_cached(&r.dir) {
         ("Running", p.split, p.warning_wash)
     } else {
         ("Unfinished", p.ink_soft, p.sunken)

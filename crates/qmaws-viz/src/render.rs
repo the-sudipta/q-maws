@@ -60,6 +60,17 @@ pub fn png(svg: &str, width: u32) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("encoding the PNG: {e}"))
 }
 
+/// Opaque RGBA pixels (`width` x `height`, row by row) as a PNG file, for
+/// screenshots of the window.
+pub fn png_from_rgba(width: u32, height: u32, rgba: Vec<u8>) -> Result<Vec<u8>, String> {
+    let size = resvg::tiny_skia::IntSize::from_wh(width, height)
+        .ok_or_else(|| "the image size is not valid".to_string())?;
+    resvg::tiny_skia::Pixmap::from_vec(rgba, size)
+        .ok_or_else(|| "the pixels do not match the image size".to_string())?
+        .encode_png()
+        .map_err(|e| format!("encoding the PNG: {e}"))
+}
+
 /// The SVG as straight (not premultiplied) RGBA pixels, `width` pixels wide
 /// (height in proportion), for showing it in the window or as an icon.
 /// Returns width, height and the pixels, row by row.
