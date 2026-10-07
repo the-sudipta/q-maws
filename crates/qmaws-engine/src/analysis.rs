@@ -2081,14 +2081,19 @@ fn in_pool<R: Send>(pool: Option<&rayon::ThreadPool>, f: impl FnOnce() -> R + Se
     }
 }
 
-/// Records of positions `s..e`, computed in parallel blocks of `block`
-/// positions and joined in order, so the bytes do not depend on threads.
+/// Records of positions `s..e`, computed in parallel blocks of at most
+/// `block` positions and joined in order, so the bytes do not depend on
+/// threads. A chunk smaller than `block` × threads is cut into smaller
+/// blocks, so that every thread has work (a weighing chunk of 82 quartets
+/// in blocks of 16 kept only 6 of 12 threads busy).
 pub(crate) fn run_blocks(
     block: u64,
     s: u64,
     e: u64,
     range: &(dyn Fn(u64, u64) -> Vec<u8> + Sync),
 ) -> Vec<u8> {
+    let threads = rayon::current_num_threads().max(1) as u64;
+    let block = block.min((e - s).div_ceil(threads)).max(1);
     let blocks: Vec<(u64, u64)> = (s..e)
         .step_by(block as usize)
         .map(|b| (b, (b + block).min(e)))
