@@ -68,3 +68,12 @@ Checks before the switch, all on this laptop:
 - Speed: Fish mtDNA with 21-quartet chunks took 698 s with the 7b1de8a build and 125 s with the 5f0cd87 build (both while the M11 queues were running).
 
 The switch: at 11:51 UTC both queues and their runs were stopped, `qmaws_m11.exe` was renamed `qmaws_m11_7b1de8a.exe` (kept), the 5f0cd87 build was copied to `qmaws_m11.exe`, and both queues were started again; `sim_hgt_1000_seed3` and `rhinovirus_seed5` resumed from their saved chunks. Each run records the build in `audit/environment.json` (`git_commit`): runs finished before the switch show 7b1de8a; `sim_hgt_1000_seed3`, `rhinovirus_seed5` and every later run show 5f0cd87.
+
+## Windows power throttling (2026-10-08)
+Windows 11 runs a program without a visible window (as the queues are started, hidden) in "efficiency mode": on the slow cores at a low clock speed. Measured on this laptop with the same build (5f0cd87 with timing output) and the same Fish mtDNA weighing in chunks of 82 quartets: 0.42 s per chunk from a console, 4.92 s launched hidden, 0.35 s launched hidden with a fix that asks Windows not to throttle the program (`SetProcessInformation` with `ProcessPowerThrottling`, in `crates/qmaws-cli/src/main.rs`; no change to the computation). On the rhinovirus data the hidden run needed 3.22 s per chunk against 0.33 s from a console. The M11 runs so far ran throttled; their results do not depend on it.
+
+Builds with the fix, each its earlier commit plus only this change, and each giving the same root fingerprints as the build it replaces (Yersinia HGT seed 3 without S2, `8502148d...`; Fish mtDNA seed 3 without S2, `9f7445aa...` for M11):
+- M11: commit 5943bcc (branch `m11-perf`, on 5f0cd87), `qmaws_m11_nothrottle.exe`; switching the running M11 queues waits for the owner's approval.
+- M12 and M13: commit b8782e2 (branch `m12-run`, on 07b3a8a), now `qmaws_m12.exe` (the earlier build kept as `qmaws_m12_07b3a8a.exe`).
+- H5: commit 826812e (branch `h5-run`, on 9c42cb9), now `qmaws_h5.exe` (kept: `qmaws_h5_9c42cb9.exe`).
+The M12, H5 and M13 queues had not started any run when their binaries were replaced. ML-MAWS and IQ-TREE (H5, M13) are not Q-MAWS programs and stay throttled when run hidden; M13 (H2, timing) needs a setup without throttling for both programs before it starts.
