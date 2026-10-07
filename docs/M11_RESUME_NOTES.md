@@ -49,7 +49,7 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_250_seed3` | done, committed (6,229 s after its resume, beside the second worker) |
 | `sim_hgt_500_seed3` | done, committed (10,444 s, beside the second worker) |
 | `sim_hgt_750_seed3` | done, committed (resumed after a laptop shutdown; 1,888 s after the resume, beside the second worker) |
-| `sim_hgt_1000_seed3` | running (started 2026-10-07 11:04 UTC) |
+| `sim_hgt_1000_seed3` | done, committed (resumed with the 5f0cd87 build at 11:51 UTC; 3,029 s after that resume; seed 3 of all 7 HGT datasets done) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
 
 ## Binary change (2026-10-07)
