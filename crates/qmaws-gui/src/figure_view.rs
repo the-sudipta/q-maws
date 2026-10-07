@@ -131,6 +131,15 @@ impl FigureView {
         self.scene = Rect::ZERO;
     }
 
+    /// Zooms in (`factor` > 1) or out around the centre of the view.
+    pub fn zoom(&mut self, factor: f32) {
+        if self.scene.is_finite() && self.scene.size() != Vec2::ZERO {
+            self.scene = Rect::from_center_size(self.scene.center(), self.scene.size() / factor);
+        } else if let Some(f) = self.focus {
+            self.scene = Rect::from_center_size(f.center(), f.size() / factor);
+        }
+    }
+
     /// Zooms onto the tree itself (the default view of a Halo Tree).
     pub fn focus_tree(&mut self) {
         self.scene = self.focus.unwrap_or(Rect::ZERO);
@@ -358,6 +367,14 @@ mod view_tests {
         assert!(
             (v.scene.height() - tree.height()).abs() < 1.0,
             "back {:?}",
+            v.scene
+        );
+        let before = v.scene.height();
+        v.zoom(2.0);
+        frame(&ctx, &mut v);
+        assert!(
+            (v.scene.height() * 2.0 - before).abs() < 1.0,
+            "zoom {:?}",
             v.scene
         );
     }

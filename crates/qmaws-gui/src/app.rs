@@ -781,7 +781,19 @@ fn open_folder(p: &Path) {
     } else {
         "xdg-open"
     };
-    let _ = std::process::Command::new(cmd).arg(p).spawn();
+    let _ = std::process::Command::new(cmd).arg(system_path(p)).spawn();
+}
+
+/// `p` as the operating system's file manager expects it: absolute and,
+/// on Windows, with backslashes (Explorer opens the Documents folder for a
+/// relative path or one with forward slashes).
+fn system_path(p: &Path) -> PathBuf {
+    let full = std::path::absolute(p).unwrap_or_else(|_| p.to_path_buf());
+    if cfg!(windows) {
+        PathBuf::from(full.to_string_lossy().replace('/', "\\"))
+    } else {
+        full
+    }
 }
 
 /// A duration in words for the stage list: "under 1 s", "38 s",
@@ -2291,12 +2303,7 @@ impl App {
                 ui.label(RichText::new(run_name(&dir)).text_style(theme::title()));
             });
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if w::secondary_button(ui, "Whole figure").clicked() {
-                    r.figure.fit();
-                }
-                if r.figure.has_tree_view() && w::secondary_button(ui, "Tree").clicked() {
-                    r.figure.focus_tree();
-                }
+                zoom_controls(ui, &mut r.figure);
                 let interactive = dir.join("figures").join("interactive_tree.html");
                 if interactive.exists() && w::secondary_button(ui, "Interactive tree").clicked() {
                     open_folder(&interactive);
@@ -2556,17 +2563,41 @@ fn run_header(
                     run.controller.set_paused(!paused);
                 }
             }
-            if w::secondary_button(ui, "Whole figure").clicked() {
-                run.figure.fit();
-            }
-            if run.figure.has_tree_view() && w::secondary_button(ui, "Tree").clicked() {
-                run.figure.focus_tree();
-            }
             if w::primary_button(ui, "Details").clicked() {
                 *open_details = true;
             }
         });
     });
+}
+
+/// The zoom controls of a figure: zoom in, zoom out, fit the whole figure,
+/// and the tree view when the figure has one.
+fn zoom_controls(ui: &mut egui::Ui, figure: &mut FigureView) {
+    if w::secondary_button(ui, "Fit")
+        .on_hover_text("Show the whole figure, with its title and legend")
+        .clicked()
+    {
+        figure.fit();
+    }
+    if figure.has_tree_view()
+        && w::secondary_button(ui, "Tree")
+            .on_hover_text("Fill the panel with the tree")
+            .clicked()
+    {
+        figure.focus_tree();
+    }
+    if w::secondary_button(ui, "\u{2212}")
+        .on_hover_text("Zoom out")
+        .clicked()
+    {
+        figure.zoom(1.0 / 1.3);
+    }
+    if w::secondary_button(ui, "+")
+        .on_hover_text("Zoom in")
+        .clicked()
+    {
+        figure.zoom(1.3);
+    }
 }
 
 /// The Halo Tree panel: a header line and the figure, as large as the
@@ -2590,11 +2621,19 @@ fn tree_panel(ui: &mut egui::Ui, run: &mut RunView) {
         ("Live Halo Tree".to_string(), String::new())
     };
     ui.horizontal(|ui| {
-        w::caption(ui, left);
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        ui.vertical(|ui| {
+            w::caption(ui, left);
+            ui.add_space(-6.0);
             w::caption(ui, right);
         });
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            if run.figure.has_picture() {
+                zoom_controls(ui, &mut run.figure);
+                w::caption(ui, "Scroll to zoom \u{00b7} drag to move");
+            }
+        });
     });
+    ui.add_space(4.0);
     let empty = if run.done {
         "This run has no Halo Tree figure."
     } else if run.run_dir.is_some() {
@@ -3798,6 +3837,16 @@ mod tests {
         c.apply_answers();
         assert!(c.aborted && !c.usable());
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn folders_are_opened_with_absolute_system_paths() {
+        let p = system_path(Path::new("results/runs/x"));
+        assert!(p.is_absolute());
+        if cfg!(windows) {
+            assert!(!p.to_string_lossy().contains('/'));
+            assert!(p.to_string_lossy().ends_with(r"results\runs\x"));
+        }
     }
 
     #[test]
