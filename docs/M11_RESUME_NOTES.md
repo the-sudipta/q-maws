@@ -55,7 +55,8 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_1000_seed3` | done, committed (resumed with the 5f0cd87 build at 11:51 UTC; 3,029 s after that resume; seed 3 of all 7 HGT datasets done) |
 | `yersinia_hgt_seed4` | done, committed (159 s, 5f0cd87 build) |
 | `ecoli_shigella_hgt_seed4` | done, committed (resumed after a laptop shutdown; 11,825 s after the resume, 5f0cd87 build) |
-| `sim_hgt_0_seed4` | running (started 2026-10-07 21:07 UTC) |
+| `sim_hgt_0_seed4` | done, committed (8,829 s, 5f0cd87 build) |
+| `sim_hgt_250_seed4` | running (started 2026-10-07 23:34 UTC) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
 
 ## Binary change (2026-10-07)
