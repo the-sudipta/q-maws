@@ -48,5 +48,6 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_0_seed3` | done, committed (6,289 s, beside the second worker) |
 | `sim_hgt_250_seed3` | done, committed (6,229 s after its resume, beside the second worker) |
 | `sim_hgt_500_seed3` | done, committed (10,444 s, beside the second worker) |
-| `sim_hgt_750_seed3` | running (started 2026-10-07 07:32 UTC) |
+| `sim_hgt_750_seed3` | done, committed (resumed after a laptop shutdown; 1,888 s after the resume, beside the second worker) |
+| `sim_hgt_1000_seed3` | running (started 2026-10-07 11:04 UTC) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
