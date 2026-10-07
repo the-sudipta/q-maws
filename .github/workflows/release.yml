@@ -1,0 +1,203 @@
+name: Release
+
+# Ready-to-run bundles for Windows, macOS and Linux, attached to a published
+# GitHub release, and the same bundles in standalone/ on the default branch.
+# The release tag must be v<version>, with <version> the workspace version in
+# Cargo.toml. Can also be started by hand for a tag (bundles only).
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v1.0.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    name: Bundle (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows-x64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - name: macos-arm64
+            os: macos-latest
+            target: aarch64-apple-darwin
+          - name: macos-x64
+            os: macos-latest
+            target: x86_64-apple-darwin
+          - name: linux-x64
+            os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Check that the tag matches the workspace version
+        shell: bash
+        run: |
+          version=$(sed -n '/^\[workspace.package\]/,/^\[/s/^version = "\(.*\)"/\1/p' Cargo.toml)
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::The tag $TAG does not match the workspace version $version in Cargo.toml"
+            exit 1
+          fi
+
+      - name: Install the pinned Rust toolchain
+        shell: bash
+        run: |
+          rustup toolchain install
+          rustup target add ${{ matrix.target }}
+
+      - name: Build
+        shell: bash
+        run: cargo build --release --locked --target ${{ matrix.target }} -p qmaws-cli
+
+      - name: Assemble the bundle
+        shell: bash
+        run: |
+          out="Q-MAWS-$VERSION-${{ matrix.name }}"
+          mkdir -p "$out"
+          bin="target/${{ matrix.target }}/release/qmaws"
+          case "${{ matrix.name }}" in
+            windows-*)
+              cp "$bin.exe" "$out/Q-MAWS.exe"
+              cp run.bat "$out/"
+              ;;
+            macos-*)
+              app="$out/Q-MAWS.app/Contents"
+              mkdir -p "$app/MacOS" "$app/Resources"
+              cp "$bin" "$app/MacOS/Q-MAWS"
+              cp assets/icon/q-maws.icns "$app/Resources/"
+              sed "s/VERSION/$VERSION/g" assets/release/Info.plist > "$app/Info.plist"
+              cp run.sh "$out/"
+              chmod +x "$app/MacOS/Q-MAWS" "$out/run.sh"
+              ;;
+            linux-*)
+              cp "$bin" "$out/Q-MAWS"
+              cp run.sh assets/release/q-maws.desktop "$out/"
+              cp assets/icon/q-maws-256.png "$out/q-maws.png"
+              chmod +x "$out/Q-MAWS" "$out/run.sh"
+              ;;
+          esac
+          cp assets/release/BUNDLE_README.md "$out/README.md"
+          cp LICENSE THIRD_PARTY_NOTICES CITATION.cff "$out/"
+          echo "BUNDLE=$out" >> "$GITHUB_ENV"
+
+      - name: Check that the program starts
+        if: matrix.name != 'macos-x64'
+        shell: bash
+        run: |
+          case "${{ matrix.name }}" in
+            windows-*) "$BUNDLE/Q-MAWS.exe" --version ;;
+            macos-*) "$BUNDLE/Q-MAWS.app/Contents/MacOS/Q-MAWS" --version ;;
+            *) "$BUNDLE/Q-MAWS" --version ;;
+          esac
+
+      - name: Pack the bundle
+        shell: bash
+        run: |
+          case "${{ matrix.name }}" in
+            windows-*) 7z a -tzip "$BUNDLE.zip" "$BUNDLE" > /dev/null; echo "PACKED=$BUNDLE.zip" >> "$GITHUB_ENV" ;;
+            macos-*) ditto -c -k --keepParent "$BUNDLE" "$BUNDLE.zip"; echo "PACKED=$BUNDLE.zip" >> "$GITHUB_ENV" ;;
+            *) tar czf "$BUNDLE.tar.gz" "$BUNDLE"; echo "PACKED=$BUNDLE.tar.gz" >> "$GITHUB_ENV" ;;
+          esac
+
+      - name: Attach the bundle to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$TAG" "$PACKED" --clobber
+
+      - name: Keep the bundle for the standalone folder
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: ${{ env.PACKED }}
+
+  checksums:
+    name: Checksums
+    needs: bundle
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Fetch the bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: bundles
+          merge-multiple: true
+
+      - name: Attach SHA256SUMS.txt to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd bundles
+          sha256sum Q-MAWS-* > SHA256SUMS.txt
+          gh release upload "$TAG" SHA256SUMS.txt --clobber --repo "${{ github.repository }}"
+
+  standalone:
+    name: Standalone folder
+    needs: bundle
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name }}
+    steps:
+      - name: Check out the default branch
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Fetch the bundles
+        uses: actions/download-artifact@v4
+        with:
+          path: bundles
+          merge-multiple: true
+
+      - name: Unpack the bundles into standalone/
+        run: |
+          rm -rf standalone
+          mkdir -p standalone
+          for f in bundles/*.zip; do unzip -q "$f" -d standalone; done
+          for f in bundles/*.tar.gz; do tar xzf "$f" -C standalone; done
+          {
+            echo "# standalone"
+            echo
+            echo "## Purpose"
+            echo "Ready-to-run Q-MAWS $TAG for Windows, macOS and Linux, so that it can be used without building it. Written by the release workflow; the same bundles are attached to the GitHub release."
+            echo
+            echo "## Contents"
+            echo "| Item | Description |"
+            echo "|---|---|"
+            for d in standalone/*/; do
+              n=$(basename "$d")
+              echo "| \`$n/\` | Q-MAWS $TAG for ${n#Q-MAWS-*-}; see its README.md |"
+            done
+            echo
+            echo "## Relationships"
+            echo "Made by \`.github/workflows/release.yml\` from the release tag."
+            echo
+            echo "## Notes"
+            echo "Replaced at every release. On Windows double-click \`Q-MAWS.exe\`, on macOS \`Q-MAWS.app\`, on Linux \`Q-MAWS\`; \`run.bat\` or \`run.sh\` start the terminal mode."
+          } > standalone/README.md
+
+      - name: Commit the standalone folder
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git add standalone
+          git commit -m "📦 : Add the standalone builds of $TAG"
+          git push

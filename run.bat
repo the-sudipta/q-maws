@@ -1,8 +1,9 @@
 @echo off
 rem Q-MAWS launcher for Windows.
 rem
-rem Looks for the program in bin\ (release bundle), then in target\release\
-rem (developer build). If neither exists and cargo is available, builds it.
+rem Looks for the program next to this file (Q-MAWS.exe, release bundle), then
+rem in bin\, then in target\release\ (developer build). If none exists and
+rem cargo is available, builds it.
 rem With no arguments, starts the interactive main menu; otherwise passes all
 rem arguments through unchanged.
 setlocal

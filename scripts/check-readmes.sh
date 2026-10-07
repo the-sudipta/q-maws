@@ -12,6 +12,9 @@
 # Exception: folders under a crate's src/ that contain a single file need no
 # README.
 #
+# Exception: the bundles inside standalone/ (written by the release workflow)
+# keep the layout of the release bundles; only standalone/ itself is checked.
+#
 # Exit status 0 means every folder is covered.
 
 root=$(git rev-parse --show-toplevel) || exit 1
@@ -43,6 +46,9 @@ check_dir() {
     case "$dir" in
         crates/*/src | crates/*/src/*)
             [ "$count" -le 1 ] && return 0
+            ;;
+        standalone/*)
+            return 0
             ;;
     esac
 

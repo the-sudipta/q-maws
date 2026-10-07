@@ -26,9 +26,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 - The provisional Halo Tree has the style of the final one: branches coloured and widened by S1 from the quartets weighed so far, automatic clade bands, the same size, and the provisional label (`PROVISIONAL — 35% of quartets`) as a badge in the corner of the tree instead of a large diagonal text. Applies to `figures/live/` and the animation frames; the provisional tree event carries the S1 values. Results and records are unchanged.
 - The run view: the sidebar folds away (Menu brings it back); the tree fills the height of the window; a Details panel shows the stage, units done and left, the speed measured on this computer, the time left for the stage and for the whole run, the expected finish, every stage with its time, the run and the full log; the live worksheet shows the calculation for the quartet being weighed with the taxon names: the 16 word patterns as 0/1 columns with their counts and the tree each split pattern supports, then the three trees with their split words, W1, the W2 log-likelihood and the weight, the chosen one marked.
 - Times shown to the user are this computer's local time (finish times, start times in lists, the status page); run records and logs keep UTC.
+- Browse buttons in the window (sequence folder, reference tree, run folder, results folder, data folder of a verification, export folder) open the system's folder or file dialog (`rfd`); path fields show an example path of this system.
+- During the S2 bootstrap the window shows the species tree with its S1 support and halo values (from `report/`), in the style of the final figure and marked as such, instead of the last provisional tree.
+- Release bundles (`.github/workflows/release.yml`): for every published release, Windows (`Q-MAWS.exe`), macOS (`Q-MAWS.app`, Apple silicon and Intel) and Linux (`Q-MAWS`) bundles with `run.bat` or `run.sh`, a README, `LICENSE`, `THIRD_PARTY_NOTICES` and `CITATION.cff`, attached to the release with their SHA-256 sums and unpacked into `standalone/`. `run.bat` and `run.sh` find `Q-MAWS(.exe)` next to them.
+- A double-clicked Q-MAWS works in its own folder when it can write there, and otherwise in `Documents/Q-MAWS` (an app on macOS, which Finder starts in `/`, or a read-only folder).
 
 ### Fixed
 
+- The folder buttons of the window opened the Documents folder on Windows: Explorer needs an absolute path with backslashes. The zoom buttons (Fit, Tree, minus, plus) now always visibly change the view.
+- The tests wrote into the user's Q-MAWS settings, so test folders appeared in the lists of runs; they now use a settings folder of their own, and remembered results folders that no longer exist are left out.
+- `qmaws run --input` with a folder that does not exist left an empty run folder behind; it now stops before making it.
+- A run that stopped with an error showed no message in the window; the message is now shown with the run.
+- The pages of the window read every run's `run.json` and lock at every frame (up to 60 times a second, and at every mouse movement); the lists are now read at most every two seconds.
+- The Home page showed start times in UTC; it now shows this computer's local time like the other lists.
+- The live worksheet showed the W2 log-likelihoods with three decimals, so near-star quartets looked identical across the three trees; it now shows each tree's gap to the best one (four decimals) and the best value.
+- Help and messages: `--data-dir` printed its default twice; `qmaws teach` without options named only `--example` as required (either `--example` or `--input` is); `qmaws resume` listed runs with doubled names and brackets; `qmaws datasets` mixed byte counts with KB and MB.
+- The About page shows the source code address as a link.
 - CI failed on every platform since the M9 commits: the interface test expected a live provisional tree, but on a fast computer the calibrated chunk held every quartet, so no update was due. The test now uses a fixed chunk size.
 - `docs/DESIGN.md` said a run has 11 stages; it has 10 (OI-19). `docs/EXTERNAL_TOOLS.md` had no entry for wQFM; it now has one, and one for DendroPy.
 

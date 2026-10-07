@@ -673,6 +673,38 @@ fn started_by_double_click() -> bool {
     }
 }
 
+/// The folder a double-clicked Q-MAWS works in (its `results/` and `data/`
+/// are made there): the program's own folder when it can write there, as in
+/// an unpacked release; otherwise `Documents/Q-MAWS` in the user's home (an
+/// app bundle on macOS, which Finder starts in `/`, or a read-only install
+/// folder). `None` leaves the current folder.
+fn double_click_folder() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?.to_path_buf();
+    let in_bundle = dir
+        .ancestors()
+        .any(|a| a.extension().is_some_and(|e| e == "app"));
+    if !in_bundle && writable(&dir) {
+        return Some(dir);
+    }
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })?;
+    let docs = PathBuf::from(home).join("Documents").join("Q-MAWS");
+    std::fs::create_dir_all(&docs).ok()?;
+    Some(docs)
+}
+
+/// True when a file can be made (and is then removed) in `dir`.
+fn writable(dir: &Path) -> bool {
+    let probe = dir.join(format!(".qmaws-write-test-{}", std::process::id()));
+    match std::fs::write(&probe, b"") {
+        Ok(()) => {
+            let _ = std::fs::remove_file(&probe);
+            true
+        }
+        Err(_) => false,
+    }
+}
+
 /// Closes the console window Windows opened for a double-clicked program,
 /// so only the Q-MAWS window stays on screen. Nothing to do elsewhere.
 fn release_console() {
@@ -720,6 +752,9 @@ fn main() -> ExitCode {
         // file manager): open the window. Typed in a terminal: show the help.
         if started_by_double_click() {
             release_console();
+            if let Some(dir) = double_click_folder() {
+                let _ = std::env::set_current_dir(dir);
+            }
             return menu_cmd::gui(
                 Vec::new(),
                 false,
@@ -1267,6 +1302,16 @@ fn choose_unfinished_run() -> Result<PathBuf, ExitCode> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn writable_folders_are_told_apart_and_the_probe_is_removed() {
+        let dir = std::env::temp_dir().join(format!("qmaws-writable-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(writable(&dir));
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+        assert!(!writable(&dir.join("missing")));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn command_line_definition_is_consistent() {

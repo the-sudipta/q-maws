@@ -10,7 +10,8 @@
 here=$(cd "$(dirname "$0")" && pwd)
 
 find_program() {
-    for candidate in "$here/Q-MAWS" "$here/Q-MAWS.app/Contents/MacOS/Q-MAWS"         "$here/bin/qmaws" "$here/target/release/qmaws"; do
+    for candidate in "$here/Q-MAWS" "$here/Q-MAWS.app/Contents/MacOS/Q-MAWS" \
+        "$here/bin/qmaws" "$here/target/release/qmaws"; do
         if [ -x "$candidate" ]; then
             program=$candidate
             return 0
