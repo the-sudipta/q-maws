@@ -40,6 +40,7 @@ const OVERALL_STEPS: u64 = 1000;
 
 pub struct TerminalDisplay {
     mode: DisplayMode,
+    color: bool,
     bars: Option<Bars>,
     last_plain: Mutex<Option<Instant>>,
 }
@@ -57,8 +58,30 @@ impl TerminalDisplay {
         let bars = (mode == DisplayMode::Normal && interactive).then(|| Bars::new(color));
         Self {
             mode,
+            color,
             bars,
             last_plain: Mutex::new(None),
+        }
+    }
+
+    /// True when colours are on.
+    pub fn color(&self) -> bool {
+        self.color
+    }
+
+    /// The display mode.
+    pub fn mode(&self) -> DisplayMode {
+        self.mode
+    }
+
+    /// Prints a block of text above the bars (or on standard error without
+    /// bars), for example the batch view of a queue. Nothing in quiet mode.
+    pub fn print_block(&self, text: &str) {
+        if self.mode == DisplayMode::Quiet {
+            return;
+        }
+        for line in text.lines() {
+            self.line(line);
         }
     }
 

@@ -691,9 +691,21 @@ fn ask_number<T: std::str::FromStr + std::fmt::Display + Copy>(
 }
 
 fn resume(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
-    let runs = launch::unfinished(&ctx.config.roots());
+    let (runs, busy): (Vec<RunSummary>, Vec<RunSummary>) = launch::unfinished(&ctx.config.roots())
+        .into_iter()
+        .partition(|r| !launch::in_use(&r.dir));
+    for b in &busy {
+        p.say(&format!(
+            "In use by another Q-MAWS process, so it cannot be resumed now: {}",
+            b.line()
+        ));
+    }
     if runs.is_empty() {
-        p.say("There are no unfinished runs.");
+        p.say(if busy.is_empty() {
+            "There are no unfinished runs."
+        } else {
+            "There are no unfinished runs to resume."
+        });
         return None;
     }
     let (dirs, queue, last) = if let [only] = runs.as_slice() {
@@ -727,7 +739,9 @@ fn resume(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
 
 /// After a single resumed run: offers the next unfinished one.
 pub fn ask_next_run(p: &mut dyn Prompter, roots: &[PathBuf]) -> Option<PathBuf> {
-    let next = launch::unfinished(roots).into_iter().next()?;
+    let next = launch::unfinished(roots)
+        .into_iter()
+        .find(|r| !launch::in_use(&r.dir))?;
     let name = next
         .dir
         .file_name()

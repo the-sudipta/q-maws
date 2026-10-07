@@ -4,14 +4,16 @@
 //! stop (plan 5.5).
 
 use crate::{data_cmd, report, verify_cmd, EXIT_ERROR, EXIT_STOPPED};
+use qmaws_engine::batch::{self, Batch};
 use qmaws_engine::launch::{self, Interface, UserConfig};
-use qmaws_engine::{resume_run, Outcome};
+use qmaws_engine::{resume_run, Event, Outcome, ProgressSink};
 use qmaws_tui::menu::{self, MenuAction, MenuContext, TerminalPrompter};
 use qmaws_tui::{DisplayMode, TerminalDisplay};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 /// Opens the window with these jobs (none: the main menu).
 pub fn gui(jobs: Vec<qmaws_gui::Job>, queue: bool, data_dir: &Path) -> ExitCode {
@@ -34,20 +36,21 @@ pub fn gui(jobs: Vec<qmaws_gui::Job>, queue: bool, data_dir: &Path) -> ExitCode 
 
 /// The runs of `resume --all`: the saved queue if it still holds unfinished
 /// runs (an interrupted queue continues), otherwise every unfinished run,
-/// saved as the new queue.
-pub fn queue_for_all() -> Vec<PathBuf> {
+/// saved as the new queue. Runs that another process is working on are
+/// left out of this session (they stay in the saved queue) and returned
+/// second.
+pub fn queue_for_all() -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut config = UserConfig::load();
-    let saved = config.queued_unfinished();
-    if !saved.is_empty() {
-        return saved;
+    let mut dirs = config.queued_unfinished();
+    if dirs.is_empty() {
+        dirs = launch::unfinished(&config.roots())
+            .into_iter()
+            .map(|r| r.dir)
+            .collect();
+        config.set_queue(&dirs);
+        let _ = config.save();
     }
-    let dirs: Vec<PathBuf> = launch::unfinished(&config.roots())
-        .into_iter()
-        .map(|r| r.dir)
-        .collect();
-    config.set_queue(&dirs);
-    let _ = config.save();
-    dirs
+    dirs.into_iter().partition(|d| !launch::in_use(d))
 }
 
 /// How a list of runs in the terminal ended.
@@ -74,6 +77,76 @@ pub fn resume_terminal(
     }
 }
 
+/// Forwards the engine's events to the terminal display and keeps the batch
+/// view of a queue (plan 5.5.1) up to date: the progress of the current run
+/// goes into the batch, and `batch_status.html` is rewritten every 30 s.
+struct BatchSink<'a> {
+    inner: &'a TerminalDisplay,
+    batch: Mutex<Batch>,
+    index: usize,
+    folder: PathBuf,
+    written: Mutex<Instant>,
+}
+
+impl ProgressSink for BatchSink<'_> {
+    fn event(&self, event: &Event) {
+        if let Event::Progress(s) = event {
+            if let Ok(mut b) = self.batch.lock() {
+                b.set_progress(self.index, s);
+                if let Ok(mut w) = self.written.lock() {
+                    if w.elapsed() >= Duration::from_secs(batch::REFRESH_SECONDS) {
+                        let _ = b.write_html(&self.folder);
+                        *w = Instant::now();
+                    }
+                }
+            }
+        }
+        self.inner.event(event);
+    }
+
+    fn pause_requested(&self) -> bool {
+        self.inner.pause_requested()
+    }
+}
+
+/// Shows the batch view of a queue before run `index` (terminal text, or a
+/// JSON line with `--json-progress`), writes `batch_status.html`, and
+/// returns the sink for the run.
+fn batch_view<'a>(
+    dirs: &[PathBuf],
+    index: Option<usize>,
+    stopped: Option<usize>,
+    failed: &[usize],
+    display: &'a TerminalDisplay,
+) -> BatchSink<'a> {
+    let b = Batch::read(dirs, index, stopped, failed);
+    let folder = batch::status_folder(dirs);
+    let now = qmaws_engine::clock::UtcDateTime::now();
+    if display.mode() == DisplayMode::Json {
+        let (left, complete) = b.left_seconds();
+        let line = serde_json::json!({
+            "event": "batch",
+            "fraction": b.fraction(),
+            "runs_finished": b.finished(),
+            "runs_total": b.entries.len(),
+            "current_run": index.map(|i| i + 1),
+            "left_seconds": complete.then_some(left),
+            "status_page": folder.join(batch::STATUS_FILE),
+        });
+        println!("{line}");
+    } else {
+        display.print_block(&b.terminal(display.color(), &now));
+    }
+    let _ = b.write_html(&folder);
+    BatchSink {
+        inner: display,
+        batch: Mutex::new(b),
+        index: index.unwrap_or(0),
+        folder,
+        written: Mutex::new(Instant::now()),
+    }
+}
+
 fn resume_list(
     dirs: &[PathBuf],
     queue: bool,
@@ -82,11 +155,29 @@ fn resume_list(
     mode: DisplayMode,
     data_dir: &Path,
 ) -> Ended {
+    let several = dirs.len() > 1;
     for (i, dir) in dirs.iter().enumerate() {
         if queue && mode != DisplayMode::Json {
             println!("Queue: run {} of {}: {}", i + 1, dirs.len(), dir.display());
         }
-        match resume_run(dir, Interface::Terminal.name(), display, cancel) {
+        let sink = several.then(|| batch_view(dirs, Some(i), None, &[], display));
+        let shown: &dyn ProgressSink = match &sink {
+            Some(s) => s,
+            None => display,
+        };
+        let result = resume_run(dir, Interface::Terminal.name(), shown, cancel);
+        if several {
+            let (stopped, failed) = match &result {
+                Ok(Outcome::Stopped) => (Some(i), vec![]),
+                Err(_) => (None, vec![i]),
+                _ => (None, vec![]),
+            };
+            let last = i + 1 == dirs.len() || stopped.is_some() || !failed.is_empty();
+            if last {
+                let _ = batch_view(dirs, None, stopped, &failed, display);
+            }
+        }
+        match result {
             Ok(outcome @ Outcome::Finished { .. }) => {
                 let _ = report(outcome, dir, mode);
                 after_finished(dir, data_dir, mode);
@@ -168,18 +259,36 @@ fn start_terminal(
     mode: DisplayMode,
     data_dir: &Path,
 ) -> Ended {
-    for run in runs {
+    let dirs: Vec<PathBuf> = runs.iter().map(|r| r.output.clone()).collect();
+    let several = dirs.len() > 1;
+    for (i, run) in runs.iter().enumerate() {
         if let Err(e) = run.store_reference() {
             eprintln!("Error: {e}");
             return Ended::Failed;
         }
-        match qmaws_engine::analysis::start(
+        let sink = several.then(|| batch_view(&dirs, Some(i), None, &[], display));
+        let shown: &dyn ProgressSink = match &sink {
+            Some(s) => s,
+            None => display,
+        };
+        let result = qmaws_engine::analysis::start(
             &run.output,
             &run.options(),
             Interface::Terminal.name(),
-            display,
+            shown,
             cancel,
-        ) {
+        );
+        if several {
+            let (stopped, failed) = match &result {
+                Ok(Outcome::Stopped) => (Some(i), vec![]),
+                Err(_) => (None, vec![i]),
+                _ => (None, vec![]),
+            };
+            if i + 1 == dirs.len() || stopped.is_some() || !failed.is_empty() {
+                let _ = batch_view(&dirs, None, stopped, &failed, display);
+            }
+        }
+        match result {
             Ok(outcome @ Outcome::Finished { .. }) => {
                 let _ = report(outcome, &run.output, mode);
                 after_finished(&run.output, data_dir, mode);

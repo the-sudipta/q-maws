@@ -441,10 +441,10 @@ pub fn key_value(ui: &mut Ui, key: &str, value: &str) {
     let p = Palette::of(ui.ctx());
     ui.horizontal_top(|ui| {
         ui.allocate_ui_with_layout(
-            Vec2::new(170.0, 20.0),
+            Vec2::new(220.0, 20.0),
             egui::Layout::left_to_right(egui::Align::Min),
             |ui| {
-                ui.set_min_width(170.0);
+                ui.set_min_width(220.0);
                 ui.label(egui::RichText::new(key).color(p.ink_faint));
             },
         );

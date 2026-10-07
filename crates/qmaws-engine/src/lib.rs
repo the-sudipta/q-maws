@@ -8,6 +8,7 @@
 
 pub mod analysis;
 pub mod atomic;
+pub mod batch;
 pub mod bootstrap;
 pub mod clock;
 pub mod evaluation;

@@ -20,6 +20,7 @@ use qmaws_data::otl;
 use qmaws_data::registry::{Layout, Registry};
 use qmaws_data::DataDir;
 use qmaws_engine::analysis::{self, AnalysisConfig, InputChoices};
+use qmaws_engine::batch::{self, Batch, Phase};
 use qmaws_engine::launch::{self, NewRun, RunReference, RunSummary, Settings, UserConfig};
 use qmaws_engine::progress::{LiveQuartet, Snapshot};
 use qmaws_engine::rundir::DEFAULT_RUNS_ROOT;
@@ -52,7 +53,14 @@ pub struct Launch {
 /// Lines kept in the stage log.
 const LOG_LINES: usize = 2000;
 /// Width of the right-hand column of the run view, in points.
-const RAIL_WIDTH: f32 = 336.0;
+/// Width of the right-hand column of the run view: a share of the window,
+/// within these bounds.
+const RAIL_MIN: f32 = 400.0;
+const RAIL_MAX: f32 = 470.0;
+
+fn rail_width(ui: &egui::Ui) -> f32 {
+    (ui.available_width() * 0.3).clamp(RAIL_MIN, RAIL_MAX)
+}
 /// Widest content column of the form pages, in points.
 const COLUMN: f32 = 860.0;
 /// Pixel widths of the rendered figures (live and final).
@@ -271,14 +279,26 @@ struct StageLine {
 
 struct RunView {
     controller: Controller,
+    /// The run folders of the jobs, in order (the batch).
+    dirs: Vec<PathBuf>,
+    /// The batch view of a queue of several runs (plan 5.5.1).
+    batch: Option<Batch>,
+    batch_read: Option<Instant>,
+    batch_written: Option<Instant>,
     queue: bool,
     resumed_single: bool,
     run_dir: Option<PathBuf>,
     log: VecDeque<String>,
     snapshot: Option<Snapshot>,
     quartet: Option<LiveQuartet>,
-    /// Provisional trees received in this session.
+    /// Provisional trees received in this session, and the share of
+    /// quartets behind the latest.
     frames: u32,
+    live_percent: f64,
+    /// (time, stage, units done) of recent progress, for the speed.
+    rates: VecDeque<(Instant, usize, u64)>,
+    /// Dataset, seed and number of taxa of the current run.
+    meta: Option<(String, Option<u64>, Option<usize>)>,
     results: Vec<(PathBuf, Result<Outcome, String>)>,
     done: bool,
     next: Option<RunSummary>,
@@ -334,6 +354,10 @@ pub struct App {
     results: ResultsPage,
     run: Option<RunView>,
     notice: Option<String>,
+    /// The sidebar is shown on the run page (it folds away there).
+    menu_open: bool,
+    /// The run details panel is open.
+    details_open: bool,
     wake: Arc<dyn Fn() + Send + Sync>,
 }
 
@@ -362,6 +386,8 @@ impl App {
             results: ResultsPage::default(),
             run: None,
             notice: None,
+            menu_open: true,
+            details_open: false,
             wake,
         };
         // Development and documentation screenshots: open on a given page.
@@ -411,10 +437,15 @@ impl App {
     }
 
     fn start(&mut self, jobs: Vec<Job>, queue: bool, resumed_single: bool) {
+        let dirs: Vec<PathBuf> = jobs.iter().map(|j| j.dir().clone()).collect();
         let controller =
             Controller::spawn(jobs, queue, self.data_dir.clone(), Arc::clone(&self.wake));
         self.run = Some(RunView {
             controller,
+            dirs,
+            batch: None,
+            batch_read: None,
+            batch_written: None,
             queue,
             resumed_single,
             run_dir: None,
@@ -422,6 +453,9 @@ impl App {
             snapshot: None,
             quartet: None,
             frames: 0,
+            live_percent: 0.0,
+            rates: VecDeque::new(),
+            meta: None,
             results: Vec::new(),
             done: false,
             next: None,
@@ -436,6 +470,10 @@ impl App {
         self.page = Page::Run;
         self.wizard.step = Step::Run;
         self.notice = None;
+        // The tree gets the room of the sidebar.
+        self.menu_open = false;
+        // Development and documentation screenshots: open the details.
+        self.details_open = std::env::var_os("QMAWS_GUI_DETAILS").is_some();
     }
 
     fn running(&self) -> bool {
@@ -477,7 +515,9 @@ impl App {
                             .iter()
                             .all(|(_, r)| matches!(r, Ok(Outcome::Finished { .. })));
                     if all_finished && run.resumed_single && !run.queue {
-                        run.next = launch::unfinished(&roots).into_iter().next();
+                        run.next = launch::unfinished(&roots)
+                            .into_iter()
+                            .find(|r| !launch::in_use(&r.dir));
                     }
                 }
             }
@@ -500,6 +540,13 @@ impl App {
                 run.stages = stage_lines(&dir, run.snapshot.as_ref(), run.done);
                 run.stages_read = Some(Instant::now());
             }
+        }
+        if run.dirs.len() > 1
+            && run
+                .batch_read
+                .is_none_or(|t| t.elapsed() > Duration::from_millis(2000))
+        {
+            refresh_batch(run);
         }
         if self.page == Page::Run {
             run.figure.poll(ctx, &wake);
@@ -528,6 +575,8 @@ fn on_event(run: &mut RunView, event: Event) {
             run.previous = qmaws_engine::provisional::last_tree(&dir)
                 .and_then(|t| TreeLayout::from_newick(&t).ok());
             run.live_svg = None;
+            run.meta = run_meta(&dir);
+            run.rates.clear();
             run.run_dir = Some(dir);
             run.snapshot = None;
             run.quartet = None;
@@ -536,29 +585,58 @@ fn on_event(run: &mut RunView, event: Event) {
             let verb = if resumed { "Resumed" } else { "Started" };
             push_log(run, format!("{verb} run: {run_dir}"));
         }
-        Event::Progress(s) => run.snapshot = Some(s),
+        Event::Progress(s) => {
+            if run.snapshot.as_ref().map(|x| x.stage_index) != Some(s.stage_index) {
+                run.stages_read = None;
+            }
+            let now = Instant::now();
+            run.rates
+                .push_back((now, s.stage_index, s.stage_units_done));
+            while run
+                .rates
+                .front()
+                .is_some_and(|(t, _, _)| now.duration_since(*t) > Duration::from_secs(60))
+            {
+                run.rates.pop_front();
+            }
+            if run.meta.as_ref().is_none_or(|(_, _, taxa)| taxa.is_none()) {
+                run.meta = run.run_dir.as_deref().and_then(run_meta);
+            }
+            run.snapshot = Some(s);
+        }
         Event::Log { message } => push_log(run, message),
         Event::Quartet(q) => run.quartet = Some(*q),
         Event::Provisional(p) => {
             run.frames = p.frame;
+            run.live_percent = p.percent;
             if let Ok(layout) = TreeLayout::from_newick(&p.newick) {
                 let changed = match &run.previous {
                     Some(prev) => layout.changed_edges(prev),
                     None => vec![false; layout.nodes.len()],
                 };
                 let name = run.run_dir.as_deref().map(run_name).unwrap_or_default();
+                let all = layout.taxa();
+                let m = all.len();
                 let style = HaloTreeStyle {
                     title: vec![
-                        format!("Provisional Halo Tree: {name}"),
+                        format!("Quartet Halo Tree (provisional): {name}"),
                         format!(
-                            "Update {}, from {:.0}% of the quartets; branches changed since the previous update in blue",
-                            p.frame, p.percent
+                            "{m} taxa, {:.0}% of the quartets weighed, update {}; S1 from the quartets so far; changed branches in blue",
+                            p.percent, p.frame
                         ),
                     ],
                     watermark: Some(format!("PROVISIONAL \u{2014} {:.0}% of quartets", p.percent)),
-                    size: 800.0,
+                    size: (600.0 + 6.0 * m as f64).clamp(800.0, 1600.0),
+                    support: Some(qmaws_viz::tree::EdgeSupport {
+                        label: "S1".into(),
+                        values: p
+                            .support
+                            .iter()
+                            .map(|(clade, v)| (qmaws_viz::tree::canonical_split(clade, &all), *v))
+                            .collect(),
+                    }),
+                    groups: Some(qmaws_viz::groups::automatic_groups(&layout)),
                     highlight: Some(changed),
-                    ..Default::default()
                 };
                 let halo = p.halo.into_iter().collect();
                 let svg = qmaws_viz::tree::halo_tree_svg(&layout, &halo, &style);
@@ -622,18 +700,28 @@ fn stage_lines(dir: &Path, snapshot: Option<&Snapshot>, done: bool) -> Vec<Stage
     let Some(summary) = RunSummary::read(dir) else {
         return Vec::new();
     };
+    // The live progress decides which stage runs (run.json is read less
+    // often and can lag behind); run.json gives the times of finished ones.
+    let live = snapshot.filter(|_| !done).map(|x| x.stage_index);
     summary
         .state
         .stages
         .iter()
-        .map(|s| {
+        .enumerate()
+        .map(|(i, s)| {
             let duration = match (&s.started_utc, &s.finished_utc) {
                 (Some(a), Some(b)) => utc_seconds(b)
                     .zip(utc_seconds(a))
                     .map(|(b, a)| short_duration((b - a).max(0) as f64)),
                 _ => None,
             };
-            let (state, detail) = match s.status {
+            let status = match live {
+                Some(k) if i + 1 < k => StageStatus::Done,
+                Some(k) if i + 1 == k => StageStatus::Running,
+                Some(_) => StageStatus::Pending,
+                None => s.status,
+            };
+            let (state, detail) = match status {
                 StageStatus::Done => (State::Done, duration.unwrap_or_default()),
                 StageStatus::Running if done => (State::Queued, "stopped".to_string()),
                 StageStatus::Running => {
@@ -696,10 +784,6 @@ fn open_folder(p: &Path) {
     let _ = std::process::Command::new(cmd).arg(p).spawn();
 }
 
-fn format_seconds(s: f64) -> String {
-    qmaws_engine::progress::format_duration(s)
-}
-
 /// A duration in words for the stage list: "under 1 s", "38 s",
 /// "1 min 52 s", "2 h 05 min".
 fn short_duration(s: f64) -> String {
@@ -710,6 +794,22 @@ fn short_duration(s: f64) -> String {
         60..=3599 => format!("{} min {} s", s / 60, s % 60),
         _ => format!("{} h {:02} min", s / 3600, (s % 3600) / 60),
     }
+}
+
+/// A UTC time from a run record (`YYYY-MM-DDTHH:MM:SSZ`) as this computer's
+/// local time.
+fn local_time(utc: &str) -> String {
+    utc_seconds(utc)
+        .map(qmaws_engine::clock::local_clock)
+        .unwrap_or_else(|| utc.to_string())
+}
+
+/// Dataset, seed and number of taxa of a run, from its `run.json`.
+fn run_meta(dir: &Path) -> Option<(String, Option<u64>, Option<usize>)> {
+    let summary = RunSummary::read(dir)?;
+    let config = serde_json::from_value::<AnalysisConfig>(summary.state.config.clone()).ok();
+    let taxa = Some(summary.state.inputs.len()).filter(|&n| n > 0);
+    Some((batch::dataset_name(dir), config.map(|c| c.seed), taxa))
 }
 
 /// The name of a run folder.
@@ -754,17 +854,20 @@ impl eframe::App for App {
         }
 
         let p = Palette::of(ui.ctx());
-        egui::Panel::left("sidebar")
-            .resizable(false)
-            .exact_size(228.0)
-            .show_separator_line(false)
-            .frame(egui::Frame::new().fill(p.sidebar).inner_margin(Margin {
-                left: 14,
-                right: 14,
-                top: 20,
-                bottom: 14,
-            }))
-            .show(ui, |ui| self.sidebar(ui));
+        let sidebar = self.page != Page::Run || self.menu_open;
+        if sidebar {
+            egui::Panel::left("sidebar")
+                .resizable(false)
+                .exact_size(228.0)
+                .show_separator_line(false)
+                .frame(egui::Frame::new().fill(p.sidebar).inner_margin(Margin {
+                    left: 14,
+                    right: 14,
+                    top: 20,
+                    bottom: 14,
+                }))
+                .show(ui, |ui| self.sidebar(ui));
+        }
         let margin = if self.page == Page::Run || self.page == Page::Results {
             Margin {
                 left: 24,
@@ -1979,12 +2082,7 @@ impl App {
                     .show(ui, |ui| {
                         for r in &finished {
                             let selected = picked.as_ref() == Some(&r.dir);
-                            let detail = r
-                                .state
-                                .created_utc
-                                .get(..16)
-                                .unwrap_or_default()
-                                .replace('T', " ");
+                            let detail = local_time(&r.state.created_utc);
                             if result_row(ui, &run_name(&r.dir), &detail, selected).clicked() {
                                 picked = Some(r.dir.clone());
                             }
@@ -2174,12 +2272,7 @@ impl App {
                     .show(ui, |ui| {
                         for run in &runs {
                             let selected = r.selected.as_ref() == Some(&run.dir);
-                            let detail = run
-                                .state
-                                .created_utc
-                                .get(..16)
-                                .unwrap_or_default()
-                                .replace('T', " ");
+                            let detail = local_time(&run.state.created_utc);
                             if result_row(ui, &run_name(&run.dir), &detail, selected).clicked() {
                                 r.selected = Some(run.dir.clone());
                             }
@@ -2279,16 +2372,20 @@ impl App {
     // ----- Run -------------------------------------------------------------
 
     fn run_page(&mut self, ui: &mut egui::Ui) {
+        let menu_open = self.menu_open;
         let Some(run) = &mut self.run else {
             self.page = Page::Home;
             return;
         };
         let mut action = None;
-        run_header(ui, run);
+        let mut toggle_menu = false;
+        let mut open_details = false;
+        run_header(ui, run, menu_open, &mut toggle_menu, &mut open_details);
         ui.add_space(12.0);
+        let rail_w = rail_width(ui);
         egui::Panel::right("rail")
             .resizable(false)
-            .exact_size(RAIL_WIDTH)
+            .exact_size(rail_w)
             .show_separator_line(false)
             .frame(egui::Frame::new().inner_margin(Margin {
                 left: 18,
@@ -2299,26 +2396,36 @@ impl App {
             .show(ui, |ui| {
                 egui::ScrollArea::vertical()
                     .auto_shrink([false, false])
-                    .show(ui, |ui| rail(ui, run, &mut action));
+                    .show(ui, |ui| {
+                        rail(ui, run, &mut action, &mut open_details, rail_w)
+                    });
             });
-        let empty = if run.done {
-            "This run has no Halo Tree figure."
-        } else if run.run_dir.is_some() {
-            "The live Halo Tree appears when the first quartets have been weighed."
-        } else {
-            "Starting\u{2026}"
-        };
-        run.figure.show(ui, empty);
+        tree_panel(ui, run);
+        if toggle_menu {
+            self.menu_open = !self.menu_open;
+        }
+        if open_details {
+            self.details_open = true;
+        }
+        if self.details_open {
+            if let Some(run) = &self.run {
+                if details_window(ui.ctx(), run) {
+                    self.details_open = false;
+                }
+            }
+        }
         match action {
             Some(RunAction::ResumeHere(dir)) => self.start(vec![Job::Resume { dir }], false, true),
             Some(RunAction::Home) => {
                 self.run = None;
                 self.wizard = Wizard::new();
                 self.page = Page::Home;
+                self.menu_open = true;
             }
             Some(RunAction::Results(dir)) => {
                 self.results.selected = Some(dir);
                 self.page = Page::Results;
+                self.menu_open = true;
             }
             None => {}
         }
@@ -2331,35 +2438,54 @@ enum RunAction {
     Results(PathBuf),
 }
 
-/// The title row of the run view: run name, what is happening, and Pause
-/// and Stop.
-fn run_header(ui: &mut egui::Ui, run: &mut RunView) {
+/// Plain-English unit of a stage's work, for the details.
+fn stage_unit(id: &str) -> &'static str {
+    match id {
+        "maw_extract" => "taxa",
+        "quartet_count" | "quartet_weight" => "quartets",
+        "bootstrap" => "replicates",
+        "matrix_build" => "steps",
+        _ => "steps",
+    }
+}
+
+/// Units per second of the current stage, measured over the last minute.
+fn stage_rate(run: &RunView) -> Option<f64> {
+    let stage = run.snapshot.as_ref()?.stage_index;
+    let samples: Vec<&(Instant, usize, u64)> =
+        run.rates.iter().filter(|(_, s, _)| *s == stage).collect();
+    let (first, last) = (samples.first()?, samples.last()?);
+    let seconds = last.0.duration_since(first.0).as_secs_f64();
+    (seconds >= 5.0 && last.2 > first.2).then(|| (last.2 - first.2) as f64 / seconds)
+}
+
+/// The title row of the run view: menu, dataset and what is happening, and
+/// Details, the figure views, Pause and Stop.
+fn run_header(
+    ui: &mut egui::Ui,
+    run: &mut RunView,
+    menu_open: bool,
+    toggle_menu: &mut bool,
+    open_details: &mut bool,
+) {
     let p = Palette::of(ui.ctx());
-    let name = run
-        .run_dir
-        .as_deref()
-        .map(run_name)
-        .unwrap_or_else(|| "New run".into());
     let stopped = run
         .results
         .iter()
         .any(|(_, r)| matches!(r, Ok(Outcome::Stopped)));
     let failed = run.results.iter().any(|(_, r)| r.is_err());
-    let (title, tone) = if run.done {
+    let (title, live) = if run.done {
         if failed {
-            (
-                "Stopped with an error".to_string(),
-                Some((p.danger, p.danger_wash)),
-            )
+            ("Stopped with an error".to_string(), false)
         } else if stopped {
-            ("Stopped".to_string(), Some((p.ink_soft, p.sunken)))
+            ("Stopped".to_string(), false)
         } else {
-            ("Finished".to_string(), Some((p.success, p.success_wash)))
+            ("Finished".to_string(), false)
         }
     } else if run.controller.is_paused() {
-        ("Paused".to_string(), Some((p.ink_soft, p.sunken)))
+        ("Paused".to_string(), false)
     } else if run.controller.stop_requested() {
-        ("Stopping after the current step\u{2026}".to_string(), None)
+        ("Stopping after the current step\u{2026}".to_string(), false)
     } else {
         let t = run
             .snapshot
@@ -2369,25 +2495,44 @@ fn run_header(ui: &mut egui::Ui, run: &mut RunView) {
                 label => label.to_string(),
             })
             .unwrap_or_else(|| "Starting\u{2026}".into());
-        (t, Some((p.split, p.warning_wash)))
+        (t, true)
     };
     ui.horizontal(|ui| {
+        if w::secondary_button(ui, if menu_open { "Hide menu" } else { "Menu" }).clicked() {
+            *toggle_menu = true;
+        }
+        ui.add_space(8.0);
         ui.vertical(|ui| {
-            let mut eyebrow = name;
-            if run.queue {
+            let mut eyebrow = match &run.meta {
+                Some((dataset, seed, taxa)) => {
+                    let mut e = dataset.clone();
+                    if let Some(s) = seed {
+                        e.push_str(&format!("  \u{00b7}  seed {s}"));
+                    }
+                    if let Some(m) = taxa {
+                        e.push_str(&format!("  \u{00b7}  {m} taxa"));
+                    }
+                    e
+                }
+                None => run
+                    .run_dir
+                    .as_deref()
+                    .map(run_name)
+                    .unwrap_or_else(|| "New run".into()),
+            };
+            if run.dirs.len() > 1 {
                 eyebrow.push_str(&format!(
-                    "  \u{00b7}  run {} of the queue",
-                    run.results.len() + usize::from(!run.done)
+                    "  \u{00b7}  run {} of {}",
+                    (run.results.len() + usize::from(!run.done)).min(run.dirs.len()),
+                    run.dirs.len()
                 ));
             }
             w::caption(ui, eyebrow);
             ui.add_space(-6.0);
             ui.horizontal(|ui| {
                 ui.label(RichText::new(&title).text_style(theme::title()));
-                if let Some((fg, bg)) = tone {
-                    if !run.done && !run.controller.is_paused() {
-                        w::pill(ui, "Live", fg, bg);
-                    }
+                if live {
+                    w::pill(ui, "Live", p.split, p.warning_wash);
                 }
             });
         });
@@ -2417,31 +2562,78 @@ fn run_header(ui: &mut egui::Ui, run: &mut RunView) {
             if run.figure.has_tree_view() && w::secondary_button(ui, "Tree").clicked() {
                 run.figure.focus_tree();
             }
+            if w::primary_button(ui, "Details").clicked() {
+                *open_details = true;
+            }
         });
     });
 }
 
-/// The right-hand column of the run view: progress, stages, the live
-/// worksheet, the stage log and, at the end, the next steps.
-fn rail(ui: &mut egui::Ui, run: &mut RunView, action: &mut Option<RunAction>) {
+/// The Halo Tree panel: a header line and the figure, as large as the
+/// window allows.
+fn tree_panel(ui: &mut egui::Ui, run: &mut RunView) {
+    let finished = run.finished_here();
+    let (left, right) = if finished {
+        (
+            "Quartet Halo Tree".to_string(),
+            "final tree \u{00b7} S1 support, halo values and clades".to_string(),
+        )
+    } else if run.frames > 0 {
+        (
+            "Live Halo Tree".to_string(),
+            format!(
+                "provisional \u{00b7} {:.0}% of quartets \u{00b7} update {} \u{00b7} changed branches in blue",
+                run.live_percent, run.frames
+            ),
+        )
+    } else {
+        ("Live Halo Tree".to_string(), String::new())
+    };
+    ui.horizontal(|ui| {
+        w::caption(ui, left);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            w::caption(ui, right);
+        });
+    });
+    let empty = if run.done {
+        "This run has no Halo Tree figure."
+    } else if run.run_dir.is_some() {
+        "The live Halo Tree appears when the first quartets have been weighed."
+    } else {
+        "Starting\u{2026}"
+    };
+    run.figure.show(ui, empty);
+}
+
+/// The right-hand column of the run view: the queue, progress, the live
+/// calculation and, at the end, the next steps.
+fn rail(
+    ui: &mut egui::Ui,
+    run: &mut RunView,
+    action: &mut Option<RunAction>,
+    open_details: &mut bool,
+    rail_w: f32,
+) {
     let p = Palette::of(ui.ctx());
-    let inner = RAIL_WIDTH - 18.0 - 28.0;
+    let inner = rail_w - 18.0 - 28.0;
+    // Nothing in the column may draw over the tree.
+    ui.set_max_width(rail_w - 18.0);
+    let clip = ui.max_rect();
+    ui.set_clip_rect(clip.intersect(ui.clip_rect()));
+    if let Some(b) = &run.batch {
+        batch_card(ui, b, &run.dirs, inner);
+        ui.add_space(10.0);
+    }
     // Progress.
     w::compact_card(ui, |ui| {
         ui.set_width(inner);
-        let (percent, left) = match &run.snapshot {
-            Some(s) => (
-                if run.done && run.finished_here() {
-                    100.0
-                } else {
-                    100.0 * s.overall_fraction
-                },
-                s.remaining_seconds
-                    .map(|r| format!("{} left", format_seconds(r)))
-                    .unwrap_or_else(|| "estimating\u{2026}".into()),
-            ),
-            None if run.done && run.finished_here() => (100.0, String::new()),
-            None => (0.0, String::new()),
+        let finished = run.done && run.finished_here();
+        let percent = if finished {
+            100.0
+        } else {
+            run.snapshot
+                .as_ref()
+                .map_or(0.0, |s| 100.0 * s.overall_fraction)
         };
         ui.horizontal(|ui| {
             ui.label(
@@ -2451,141 +2643,55 @@ fn rail(ui: &mut egui::Ui, run: &mut RunView, action: &mut Option<RunAction>) {
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if !run.done {
+                    let left = match run.snapshot.as_ref().and_then(|s| s.remaining_seconds) {
+                        Some(r) if r >= 1.0 => format!("{} left", batch::long_duration(r)),
+                        Some(_) => "finishing\u{2026}".into(),
+                        None => "estimating\u{2026}".into(),
+                    };
                     w::caption(ui, left);
                 }
             });
         });
-        let colour = if run.done && run.finished_here() {
-            p.success
-        } else {
-            p.accent
-        };
-        w::progress_bar(ui, (percent / 100.0) as f32, 7.0, colour);
-        if let Some(s) = &run.snapshot {
-            if !run.done {
-                ui.add_space(4.0);
+        w::progress_bar(
+            ui,
+            (percent / 100.0) as f32,
+            7.0,
+            if finished { p.success } else { p.accent },
+        );
+        ui.add_space(2.0);
+        if let Some(s) = run.snapshot.as_ref().filter(|_| !run.done) {
+            let unit = stage_unit(&s.stage_name);
+            w::caption(
+                ui,
+                format!(
+                    "{} \u{00b7} {} of {} {unit}",
+                    stage_label(&s.stage_name),
+                    loader::group_thousands(s.stage_units_done),
+                    loader::group_thousands(s.stage_units_total)
+                ),
+            );
+            if let Some(r) = s.remaining_seconds.filter(|r| *r >= 60.0) {
+                ui.add_space(-6.0);
                 w::caption(
                     ui,
                     format!(
-                        "Stage {} of {} \u{00b7} {:.0}% of this stage",
-                        s.stage_index,
-                        s.stage_count,
-                        100.0 * s.stage_fraction()
+                        "Finishes around {} (this computer's time)",
+                        qmaws_engine::clock::local_clock(
+                            qmaws_engine::clock::unix_now() + r.round() as i64
+                        )
                     ),
                 );
-                if !s.current_item.is_empty() {
-                    ui.add_space(-6.0);
-                    w::caption(ui, &s.current_item);
-                }
             }
+        }
+        if w::quiet_button(ui, "All details: stages, times, speed, log").clicked() {
+            *open_details = true;
         }
     });
     ui.add_space(10.0);
-    // Stages.
-    if !run.stages.is_empty() {
-        w::compact_card(ui, |ui| {
-            ui.set_width(inner);
-            for s in &run.stages {
-                w::stage_row(ui, s.state, s.name, &s.detail);
-            }
-        });
-        ui.add_space(10.0);
-    }
-    // Numbers.
-    if let Some(s) = &run.snapshot {
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-            let half = (inner + 28.0 - 8.0) / 2.0;
-            w::stat(ui, "Working time", &format_seconds(s.elapsed_seconds), half);
-            let trees = if run.frames == 0 {
-                "\u{2014}".to_string()
-            } else {
-                run.frames.to_string()
-            };
-            w::stat(ui, "Live tree updates", &trees, half);
-        });
-        ui.add_space(10.0);
-    }
-    // Live worksheet.
+    // The live calculation, with the taxon names.
     if let Some(q) = &run.quartet {
         if !run.done {
-            w::compact_card(ui, |ui| {
-                ui.set_width(inner);
-                ui.horizontal(|ui| {
-                    w::section_title(ui, "Live worksheet");
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                        w::caption(
-                            ui,
-                            format!(
-                                "{} of {}",
-                                loader::group_thousands(q.quartets_done),
-                                loader::group_thousands(q.quartets_total)
-                            ),
-                        );
-                    });
-                });
-                for (letter, t) in ["a", "b", "c", "d"].iter().zip(&q.taxa) {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(*letter).color(p.ink_faint).monospace());
-                        ui.label(t);
-                    });
-                }
-                ui.add_space(4.0);
-                let best = q
-                    .weights
-                    .map(|v| (0..3).max_by(|&a, &b| v[a].total_cmp(&v[b])).unwrap_or(0));
-                egui::Grid::new("weights")
-                    .num_columns(4)
-                    .spacing([14.0, 4.0])
-                    .show(ui, |ui| {
-                        for h in ["", "W1", "log L", &q.weights_name.to_uppercase()] {
-                            ui.label(
-                                RichText::new(h)
-                                    .text_style(theme::caption())
-                                    .color(p.ink_faint),
-                            );
-                        }
-                        ui.end_row();
-                        for (t, name) in ["ab|cd", "ac|bd", "ad|bc"].iter().enumerate() {
-                            let chosen = best == Some(t);
-                            let colour = if chosen { p.ink } else { p.ink_soft };
-                            ui.label(RichText::new(*name).monospace().color(colour));
-                            cell(ui, q.w1.map(|v| v[t]), 3, colour);
-                            cell(ui, q.log_likelihoods.map(|v| v[t]), 1, colour);
-                            cell(
-                                ui,
-                                q.weights.map(|v| v[t]),
-                                3,
-                                if chosen { p.success } else { colour },
-                            );
-                            ui.end_row();
-                        }
-                    });
-                egui::CollapsingHeader::new(
-                    RichText::new("Pattern counts").text_style(theme::caption()),
-                )
-                .id_salt("counts")
-                .show(ui, |ui| {
-                    egui::Grid::new("counts")
-                        .num_columns(2)
-                        .spacing([18.0, 2.0])
-                        .show(ui, |ui| {
-                            for row in 0..8 {
-                                for i in [row, row + 8] {
-                                    ui.label(
-                                        RichText::new(format!(
-                                            "{} {:>9}",
-                                            qmaws_core::quartet::pattern_name(i),
-                                            q.counts[i]
-                                        ))
-                                        .monospace(),
-                                    );
-                                }
-                                ui.end_row();
-                            }
-                        });
-                });
-            });
+            calculation_card(ui, q, inner);
             ui.add_space(10.0);
         }
     }
@@ -2598,7 +2704,12 @@ fn rail(ui: &mut egui::Ui, run: &mut RunView, action: &mut Option<RunAction>) {
                     w::section_title(ui, "Results");
                     ui.add_space(2.0);
                     if let Some((nrf, nqd, msd)) = evaluation(&d) {
-                        w::caption(ui, format!("nRF {nrf:.3} \u{00b7} nQD {nqd:.3} \u{00b7} MSD {msd} against the reference"));
+                        w::caption(
+                            ui,
+                            format!(
+                                "nRF {nrf:.3} \u{00b7} nQD {nqd:.3} \u{00b7} MSD {msd} against the reference"
+                            ),
+                        );
                     }
                     let figures = d.join("figures");
                     ui.horizontal_wrapped(|ui| {
@@ -2680,35 +2791,564 @@ fn rail(ui: &mut egui::Ui, run: &mut RunView, action: &mut Option<RunAction>) {
                 *action = Some(RunAction::Home);
             }
         });
-        ui.add_space(10.0);
     }
-    // Stage log.
-    egui::CollapsingHeader::new(RichText::new("Stage log").text_style(theme::section()))
-        .id_salt("stage_log")
-        .default_open(false)
-        .show(ui, |ui| {
-            egui::ScrollArea::vertical()
-                .max_height(260.0)
-                .stick_to_bottom(true)
-                .auto_shrink([false, true])
-                .show(ui, |ui| {
-                    for l in &run.log {
-                        ui.label(
-                            RichText::new(l)
-                                .text_style(theme::caption())
-                                .color(p.ink_soft),
-                        );
-                    }
-                });
-        });
 }
 
-fn cell(ui: &mut egui::Ui, value: Option<f64>, digits: usize, colour: egui::Color32) {
-    let text = match value {
-        Some(v) => format!("{v:.digits$}"),
-        None => "\u{2013}".into(),
-    };
-    ui.label(RichText::new(text).monospace().color(colour));
+/// The count of one word pattern (bits in the order of the four taxa).
+fn pattern_count(q: &LiveQuartet, bits: &str) -> u64 {
+    (0..16)
+        .find(|&i| qmaws_core::quartet::pattern_name(i) == bits)
+        .map_or(0, |i| q.counts[i])
+}
+
+/// The tree (0, 1, 2) that a word pattern supports: the split patterns
+/// 1100/0011, 1010/0101 and 1001/0110; other patterns support none.
+fn pattern_tree(bits: &str) -> Option<usize> {
+    match bits {
+        "1100" | "0011" => Some(0),
+        "1010" | "0101" => Some(1),
+        "1001" | "0110" => Some(2),
+        _ => None,
+    }
+}
+
+/// A taxon name shortened to `max` characters for a table header. The end
+/// is kept (accession numbers and strain names differ at the end).
+fn short_name(name: &str, max: usize) -> String {
+    let count = name.chars().count();
+    if count <= max {
+        name.to_string()
+    } else {
+        let tail: String = name.chars().skip(count - (max - 1)).collect();
+        format!("\u{2026}{tail}")
+    }
+}
+
+/// The live worksheet: the calculation the engine is doing for the quartet
+/// being weighed, with the taxon names. The 16 word patterns (in which of
+/// the four taxa each minimal absent word occurs) with their counts, the
+/// three possible trees with the words that support each, W1, the W2
+/// log-likelihood and the weight used for the species tree; the chosen
+/// tree is marked.
+fn calculation_card(ui: &mut egui::Ui, q: &LiveQuartet, inner: f32) {
+    let p = Palette::of(ui.ctx());
+    let n = &q.taxa;
+    let tree_colour = [p.accent, p.split, p.danger];
+    let best = q
+        .weights
+        .map(|v| (0..3).max_by(|&a, &b| v[a].total_cmp(&v[b])).unwrap_or(0));
+    w::compact_card(ui, |ui| {
+        ui.set_width(inner);
+        // Table rows as tall as their text, not as tall as a button.
+        ui.spacing_mut().interact_size.y = 0.0;
+        ui.spacing_mut().item_spacing.y = 3.0;
+        ui.horizontal(|ui| {
+            w::section_title(ui, "Live worksheet");
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                w::caption(
+                    ui,
+                    format!(
+                        "quartet {} of {}",
+                        loader::group_thousands(q.quartets_done),
+                        loader::group_thousands(q.quartets_total)
+                    ),
+                );
+            });
+        });
+        // The four taxa, numbered as the table columns.
+        for (i, t) in n.iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(format!("{}", i + 1))
+                        .monospace()
+                        .color(p.ink_faint),
+                );
+                ui.label(RichText::new(t).color(p.ink));
+            });
+        }
+        ui.add_space(8.0);
+        w::caption(
+            ui,
+            "Word patterns: 1 = the minimal absent word occurs in that taxon",
+        );
+        let col = ((inner - 150.0) / 4.0).max(46.0);
+        let name_len = ((col / 7.2) as usize).max(5);
+        egui::Grid::new("worksheet_patterns")
+            .num_columns(6)
+            .min_col_width(col)
+            .spacing([4.0, 1.0])
+            .show(ui, |ui| {
+                for t in n {
+                    ui.label(
+                        RichText::new(short_name(t, name_len))
+                            .text_style(theme::caption())
+                            .color(p.ink_soft),
+                    )
+                    .on_hover_text(t);
+                }
+                ui.label(
+                    RichText::new("words")
+                        .text_style(theme::caption())
+                        .color(p.ink_soft),
+                );
+                ui.label(
+                    RichText::new("supports")
+                        .text_style(theme::caption())
+                        .color(p.ink_soft),
+                );
+                ui.end_row();
+                for i in 0..16 {
+                    let bits = qmaws_core::quartet::pattern_name(i);
+                    let supports = pattern_tree(&bits);
+                    let strong = supports.is_some() && supports == best;
+                    for c in bits.chars() {
+                        let one = c == '1';
+                        ui.label(RichText::new(c.to_string()).monospace().color(if one {
+                            p.ink
+                        } else {
+                            p.ink_faint
+                        }));
+                    }
+                    let count = RichText::new(loader::group_thousands(q.counts[i])).monospace();
+                    ui.label(if strong {
+                        count.color(p.success).strong()
+                    } else {
+                        count.color(p.ink)
+                    });
+                    match supports {
+                        Some(t) => ui.label(
+                            RichText::new(format!("tree {}", t + 1))
+                                .text_style(theme::caption())
+                                .color(tree_colour[t]),
+                        ),
+                        None => ui.label(""),
+                    };
+                    ui.end_row();
+                }
+            });
+        ui.add_space(8.0);
+        w::caption(ui, "The three possible trees of this quartet");
+        let sides = [
+            ((0, 1), (2, 3), ("1100", "0011")),
+            ((0, 2), (1, 3), ("1010", "0101")),
+            ((0, 3), (1, 2), ("1001", "0110")),
+        ];
+        // Each tree with its full taxon names, then the numbers.
+        for (t, ((a, b), (c, d), _)) in sides.iter().enumerate() {
+            let chosen = best == Some(t);
+            ui.horizontal_wrapped(|ui| {
+                ui.label(
+                    RichText::new(format!("tree {}", t + 1))
+                        .text_style(theme::caption())
+                        .color(tree_colour[t]),
+                );
+                ui.label(
+                    RichText::new(format!(
+                        "{}, {}  |  {}, {}{}",
+                        n[*a],
+                        n[*b],
+                        n[*c],
+                        n[*d],
+                        if chosen { "   (chosen)" } else { "" }
+                    ))
+                    .text_style(theme::caption())
+                    .color(if chosen { p.success } else { p.ink }),
+                );
+            });
+        }
+        ui.add_space(4.0);
+        egui::Grid::new("worksheet_trees")
+            .num_columns(5)
+            .spacing([8.0, 3.0])
+            .show(ui, |ui| {
+                for h in [
+                    "".to_string(),
+                    "split words".to_string(),
+                    "W1".to_string(),
+                    "W2 log L".to_string(),
+                    format!("weight ({})", capitalised(&q.weights_name)),
+                ] {
+                    ui.label(
+                        RichText::new(h)
+                            .text_style(theme::caption())
+                            .color(p.ink_soft),
+                    );
+                }
+                ui.end_row();
+                for (t, (_, _, (p1, p2))) in sides.iter().enumerate() {
+                    let chosen = best == Some(t);
+                    let colour = if chosen { p.success } else { p.ink };
+                    ui.label(
+                        RichText::new(format!("tree {}", t + 1))
+                            .text_style(theme::caption())
+                            .color(tree_colour[t]),
+                    );
+                    let words = pattern_count(q, p1) + pattern_count(q, p2);
+                    let num = |text: String| RichText::new(text).monospace().color(colour);
+                    ui.label(num(loader::group_thousands(words)));
+                    ui.label(num(q
+                        .w1
+                        .map_or("\u{2013}".into(), |v| format!("{:.4}", v[t]))));
+                    ui.label(num(q
+                        .log_likelihoods
+                        .map_or("\u{2013}".into(), |v| format!("{:.3}", v[t]))));
+                    ui.label(num(q
+                        .weights
+                        .map_or("\u{2013}".into(), |v| format!("{:.4}", v[t]))));
+                    ui.end_row();
+                }
+            });
+        ui.add_space(4.0);
+        w::caption(
+            ui,
+            "W1: share of the split words that support the tree. W2: log-likelihood of all 16 counts under the two-state model. The weight (W2c: W2 over 100 resamples of the words) is what the species tree uses.",
+        );
+    });
+}
+
+/// The details of the run in a large panel: what runs now and how far, the
+/// speed on this computer, the time left for the stage and the whole run,
+/// every stage with its time, the run, and the full log. Returns true when
+/// it is closed.
+fn details_window(ctx: &egui::Context, run: &RunView) -> bool {
+    let p = Palette::of(ctx);
+    let response = egui::Modal::new(egui::Id::new("run_details")).show(ctx, |ui| {
+        let screen = ctx.content_rect();
+        ui.set_width((screen.width() * 0.72).clamp(640.0, 1100.0));
+        ui.set_max_height(screen.height() * 0.82);
+        let mut close = false;
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                w::caption(ui, "Run details");
+                ui.add_space(-6.0);
+                ui.label(
+                    RichText::new(
+                        run.run_dir
+                            .as_deref()
+                            .map(run_name)
+                            .unwrap_or_else(|| "New run".into()),
+                    )
+                    .text_style(theme::title()),
+                );
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if w::secondary_button(ui, "Close").clicked() {
+                    close = true;
+                }
+                if let Some(d) = &run.run_dir {
+                    if w::secondary_button(ui, "Open run.log").clicked() {
+                        open_folder(&d.join("run.log"));
+                    }
+                }
+            });
+        });
+        ui.add_space(8.0);
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                let now = qmaws_engine::clock::unix_now();
+                // What runs now.
+                w::section_title(ui, "Now");
+                w::card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    match &run.snapshot {
+                        None if run.done => w::soft(ui, "The run has ended."),
+                        None => w::soft(ui, "Starting\u{2026}"),
+                        Some(s) => {
+                            let unit = stage_unit(&s.stage_name);
+                            let left_units = s.stage_units_total.saturating_sub(s.stage_units_done);
+                            let rate = stage_rate(run);
+                            let lines: Vec<(&str, String)> = vec![
+                                (
+                                    "Stage",
+                                    format!(
+                                        "{} of {}: {}",
+                                        s.stage_index,
+                                        s.stage_count,
+                                        stage_label(&s.stage_name)
+                                    ),
+                                ),
+                                (
+                                    "Done in this stage",
+                                    format!(
+                                        "{} of {} {unit} ({:.1}%)",
+                                        loader::group_thousands(s.stage_units_done),
+                                        loader::group_thousands(s.stage_units_total),
+                                        100.0 * s.stage_fraction()
+                                    ),
+                                ),
+                                (
+                                    "Left in this stage",
+                                    format!(
+                                        "{} {unit} ({:.1}%)",
+                                        loader::group_thousands(left_units),
+                                        100.0 * (1.0 - s.stage_fraction())
+                                    ),
+                                ),
+                                ("Working on", s.current_item.clone()),
+                                (
+                                    "Speed on this computer",
+                                    match rate {
+                                        Some(r) => format!("{r:.1} {unit} per second (last minute)"),
+                                        None => "measuring\u{2026}".into(),
+                                    },
+                                ),
+                                (
+                                    "Time left in this stage",
+                                    match rate {
+                                        Some(r) if r > 0.0 => {
+                                            batch::long_duration(left_units as f64 / r)
+                                        }
+                                        _ => "estimating\u{2026}".into(),
+                                    },
+                                ),
+                                ("Working time so far", batch::long_duration(s.elapsed_seconds)),
+                                (
+                                    "Whole run done",
+                                    format!("{:.1}%", 100.0 * s.overall_fraction),
+                                ),
+                                (
+                                    "Time left for the whole run",
+                                    s.remaining_seconds
+                                        .map(batch::long_duration)
+                                        .unwrap_or_else(|| "estimating\u{2026}".into()),
+                                ),
+                                (
+                                    "Whole run on this computer",
+                                    s.remaining_seconds
+                                        .map(|r| batch::long_duration(s.elapsed_seconds + r))
+                                        .unwrap_or_else(|| "estimating\u{2026}".into()),
+                                ),
+                                (
+                                    "Expected finish",
+                                    s.remaining_seconds
+                                        .map(|r| {
+                                            format!(
+                                                "{} (this computer's time)",
+                                                qmaws_engine::clock::local_clock(now + r.round() as i64)
+                                            )
+                                        })
+                                        .unwrap_or_else(|| "estimating\u{2026}".into()),
+                                ),
+                            ];
+                            for (k, v) in lines {
+                                w::key_value(ui, k, &v);
+                            }
+                            ui.add_space(4.0);
+                            w::caption(
+                                ui,
+                                "Times are estimates from the speed measured on this computer during this run; they settle as the run goes on.",
+                            );
+                        }
+                    }
+                });
+                ui.add_space(12.0);
+                // Every stage.
+                w::section_title(ui, "Stages");
+                w::card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    for s in &run.stages {
+                        w::stage_row(ui, s.state, s.name, &s.detail);
+                    }
+                    if run.stages.is_empty() {
+                        w::soft(ui, "The stages appear when the run has started.");
+                    }
+                });
+                ui.add_space(12.0);
+                // The run.
+                w::section_title(ui, "This run");
+                w::card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    if let Some(d) = &run.run_dir {
+                        w::key_value(ui, "Run folder", &d.display().to_string());
+                    }
+                    if let Some((dataset, seed, taxa)) = &run.meta {
+                        w::key_value(ui, "Data", dataset);
+                        if let Some(m) = taxa {
+                            let m = *m as u64;
+                            let quartets = if m >= 4 {
+                                m * (m - 1) * (m - 2) * (m - 3) / 24
+                            } else {
+                                0
+                            };
+                            w::key_value(
+                                ui,
+                                "Taxa and quartets",
+                                &format!("{m} taxa, {} quartets", loader::group_thousands(quartets)),
+                            );
+                        }
+                        if let Some(s) = seed {
+                            w::key_value(ui, "Seed", &s.to_string());
+                        }
+                    }
+                    w::key_value(
+                        ui,
+                        "Logical CPU cores",
+                        &std::thread::available_parallelism()
+                            .map_or(1, |n| n.get())
+                            .to_string(),
+                    );
+                });
+                ui.add_space(12.0);
+                // The log.
+                w::section_title(ui, "Log");
+                w::card(ui, |ui| {
+                    ui.set_width(ui.available_width());
+                    egui::ScrollArea::vertical()
+                        .id_salt("details_log")
+                        .max_height(320.0)
+                        .stick_to_bottom(true)
+                        .auto_shrink([false, true])
+                        .show(ui, |ui| {
+                            for l in &run.log {
+                                ui.label(
+                                    RichText::new(l)
+                                        .monospace()
+                                        .color(p.ink_soft),
+                                );
+                            }
+                        });
+                    w::caption(
+                        ui,
+                        "Log lines carry UTC times in run.log; times on this page are this computer's.",
+                    );
+                });
+            });
+        close
+    });
+    response.inner || response.should_close()
+}
+
+/// Reads the batch of a queue again: the runs' records, the stopped and
+/// failed runs, and the progress of the current run; rewrites the status
+/// page every 30 s and when the queue has ended.
+fn refresh_batch(run: &mut RunView) {
+    let index = (!run.done).then_some(run.results.len());
+    let stopped = run
+        .results
+        .iter()
+        .position(|(_, r)| matches!(r, Ok(Outcome::Stopped)));
+    let failed: Vec<usize> = run
+        .results
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, r))| r.is_err())
+        .map(|(i, _)| i)
+        .collect();
+    let mut b = Batch::read(&run.dirs, index, stopped, &failed);
+    if let (Some(i), Some(s)) = (index, &run.snapshot) {
+        b.set_progress(i, s);
+    }
+    let due = run
+        .batch_written
+        .is_none_or(|t| t.elapsed() > Duration::from_secs(batch::REFRESH_SECONDS));
+    let final_write = run.done && run.batch.as_ref().is_some_and(|old| *old != b);
+    if due || final_write {
+        let _ = b.write_html(&batch::status_folder(&run.dirs));
+        run.batch_written = Some(Instant::now());
+    }
+    run.batch = Some(b);
+    run.batch_read = Some(Instant::now());
+}
+
+/// The queue card of the run view: batch progress, time left, the dataset ×
+/// seed grid and the phases (plan 5.5.1), as on the status page.
+fn batch_card(ui: &mut egui::Ui, b: &Batch, dirs: &[PathBuf], inner: f32) {
+    let p = Palette::of(ui.ctx());
+    w::compact_card(ui, |ui| {
+        ui.set_width(inner);
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                w::caption(ui, "Queue");
+                ui.add_space(-6.0);
+                ui.label(
+                    RichText::new(format!("{:.0}%", 100.0 * b.fraction()))
+                        .text_style(theme::title())
+                        .color(p.ink),
+                );
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                w::caption(
+                    ui,
+                    format!("{} of {} runs finished", b.finished(), b.entries.len()),
+                );
+            });
+        });
+        w::progress_bar(ui, b.fraction() as f32, 6.0, p.accent);
+        let (left, complete) = b.left_seconds();
+        let left_text = if b.finished() == b.entries.len() {
+            "All runs finished".to_string()
+        } else if left == 0.0 && !complete {
+            "Time left: estimating".to_string()
+        } else {
+            format!(
+                "About {}{} left (estimate)",
+                if complete { "" } else { "at least " },
+                batch::long_duration(left)
+            )
+        };
+        ui.add_space(2.0);
+        w::caption(ui, left_text);
+        ui.add_space(4.0);
+        // Grid: one row per dataset, one column per seed.
+        let (rows, cols) = b.grid();
+        let name_w = 96.0;
+        let cell = ((inner - name_w) / cols.len().max(1) as f32).clamp(18.0, 40.0);
+        let small = theme::caption().resolve(ui.style());
+        let (rect, _) = ui.allocate_exact_size(
+            Vec2::new(inner, 18.0 + 22.0 * rows.len() as f32),
+            egui::Sense::hover(),
+        );
+        for (j, c) in cols.iter().enumerate() {
+            ui.painter().text(
+                egui::pos2(
+                    rect.left() + name_w + cell * (j as f32 + 0.5),
+                    rect.top() + 7.0,
+                ),
+                egui::Align2::CENTER_CENTER,
+                c.map_or("\u{2013}".to_string(), |x| x.to_string()),
+                small.clone(),
+                p.ink_faint,
+            );
+        }
+        for (i, r) in rows.iter().enumerate() {
+            let y = rect.top() + 18.0 + 22.0 * i as f32 + 11.0;
+            let mut name: String = r.chars().take(14).collect();
+            if name.chars().count() < r.chars().count() {
+                name.push('\u{2026}');
+            }
+            ui.painter().text(
+                egui::pos2(rect.left(), y),
+                egui::Align2::LEFT_CENTER,
+                name,
+                small.clone(),
+                p.ink_soft,
+            );
+            for (j, &c) in cols.iter().enumerate() {
+                let Some(e) = b.entries.iter().find(|e| &e.dataset == r && e.seed == c) else {
+                    continue;
+                };
+                let centre = egui::pos2(rect.left() + name_w + cell * (j as f32 + 0.5), y);
+                let state = match e.phase {
+                    Phase::Finished => State::Done,
+                    Phase::Running => State::Running,
+                    Phase::Queued => State::Queued,
+                    Phase::Stopped | Phase::Failed => State::Failed,
+                };
+                w::state_mark(ui, centre, state, 6.5);
+            }
+        }
+        let phases = b.phases();
+        if phases.len() > 1 {
+            for (label, done, total) in phases {
+                w::caption(ui, format!("{label}: {done} of {total}"));
+            }
+        }
+        let page = batch::status_folder(dirs).join(batch::STATUS_FILE);
+        if page.exists() && w::quiet_button(ui, "Open the status page").clicked() {
+            open_folder(&page);
+        }
+    });
 }
 
 /// The status label and colours of a run in a list.
@@ -3184,6 +3824,8 @@ mod tests {
         );
         assert_eq!(utc_seconds("bad"), None);
         assert_eq!(stage_label("quartet_weight"), "Weighing quartets");
+        assert_eq!(short_name("NC_009059", 6), "\u{2026}09059");
+        assert_eq!(short_name("Danio", 6), "Danio");
         assert_eq!(short_duration(0.2), "under 1 s");
         assert_eq!(short_duration(38.0), "38 s");
         assert_eq!(short_duration(112.0), "1 min 52 s");

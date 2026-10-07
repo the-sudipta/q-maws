@@ -8,6 +8,7 @@ Source code of the run engine. Each module has one responsibility and its own un
 |---|---|
 | `analysis.rs` | The analysis run: stages from input to quartet pattern counts, weights, the tree and its support (S1, halo values, S2 bootstrap stage), checkpoints, chunked counting and weighting in Feistel order, resume, root fingerprint, and the audit files (results, quartet decisions, sample worksheets, environment) |
 | `atomic.rs` | Atomic writes (temporary file, sync, rename) with SHA-256 hash files; validity checks; removal of stale temporary files |
+| `batch.rs` | The batch progress view of a queue (plan 5.5.1): the runs from their `run.json`, time estimates (finished runs of the same dataset, or rough by quartets), summary, dataset × seed grid, phases, the terminal text and the self-contained `batch_status.html` page |
 | `bootstrap.rs` | S2 bootstrap replicates (weighted counts, W2b or W2c, wQFM-rs): used by the run stage `bootstrap` and, timed, by the cost measurement of `s2-cost` |
 | `clock.rs` | UTC date and time without dependencies, for run identifiers and log lines |
 | `hash.rs` | SHA-256 helpers with hexadecimal output, one-shot and streaming |

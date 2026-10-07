@@ -1309,8 +1309,13 @@ impl<'a> Session<'a> {
         for &(rank, w) in &weights {
             acc.add(quartet::unrank(rank), w);
         }
-        let halo: Vec<(String, Option<f64>)> = acc
-            .finish()
+        let finished = acc.finish();
+        let support: Vec<(Vec<String>, f64)> = finished
+            .edges
+            .iter()
+            .filter_map(|e| e.s1.map(|v| (e.clade.clone(), v)))
+            .collect();
+        let halo: Vec<(String, Option<f64>)> = finished
             .halo
             .into_iter()
             .map(|h| (h.taxon, h.value))
@@ -1323,17 +1328,32 @@ impl<'a> Session<'a> {
             + 1;
         let layout = qmaws_viz::tree::TreeLayout::from_newick(&result.newick)
             .map_err(EngineError::Invalid)?;
+        // The style of the final Halo Tree (support colours, automatic
+        // clade bands, the same size), with S1 from the quartets weighed
+        // so far and the provisional label.
+        let m = names.len();
         let style = qmaws_viz::tree::HaloTreeStyle {
             title: vec![
-                format!("Provisional Halo Tree: {}", self.state.run_id),
+                format!("Quartet Halo Tree (provisional): {}", self.state.run_id),
                 format!(
-                    "{} taxa, {done} of {q} quartets ({percent:.0}%), update {frame}",
-                    names.len()
+                    "{m} taxa, {} of {} quartets weighed ({percent:.0}%), update {frame}; S1 from the quartets weighed so far",
+                    qmaws_data::loader::group_thousands(done),
+                    qmaws_data::loader::group_thousands(q)
                 ),
             ],
             watermark: Some(format!("PROVISIONAL \u{2014} {percent:.0}% of quartets")),
-            size: 800.0,
-            ..Default::default()
+            size: (600.0 + 6.0 * m as f64).clamp(800.0, 1600.0),
+            support: Some(qmaws_viz::tree::EdgeSupport {
+                label: "S1".into(),
+                values: support
+                    .iter()
+                    .map(|(clade, v)| {
+                        (qmaws_viz::tree::canonical_split(clade, &names), *v)
+                    })
+                    .collect(),
+            }),
+            groups: Some(qmaws_viz::groups::automatic_groups(&layout)),
+            highlight: None,
         };
         let svg = qmaws_viz::tree::halo_tree_svg(&layout, &halo.iter().cloned().collect(), &style);
         let render = |r: Result<Vec<u8>, String>| r.map_err(EngineError::Invalid);
@@ -1372,6 +1392,7 @@ impl<'a> Session<'a> {
             percent,
             newick: result.newick,
             halo,
+            support,
             svg: provisional::latest_file(&self.dir, "svg")
                 .display()
                 .to_string(),

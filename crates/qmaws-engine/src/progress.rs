@@ -94,6 +94,9 @@ pub struct ProvisionalTree {
     pub newick: String,
     /// Halo value per taxon (`None` without weighted quartets).
     pub halo: Vec<(String, Option<f64>)>,
+    /// S1 of each internal edge spanned by weighted quartets so far: the
+    /// taxa below the edge (sorted) and the value.
+    pub support: Vec<(Vec<String>, f64)>,
     /// Latest SVG file of the provisional tree.
     pub svg: String,
 }

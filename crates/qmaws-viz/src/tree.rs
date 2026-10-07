@@ -695,16 +695,19 @@ pub fn halo_tree_svg(
         ly + 10.0
     );
     if let Some(mark) = &style.watermark {
+        // A clear label in the top right corner: visible on every
+        // provisional image without covering the tree.
+        // Inside the tree square (below the title lines), top right: the
+        // corner outside the circle, so it covers nothing.
+        let tw = 7.4 * mark.chars().count() as f64;
+        let (bw, bh) = (tw + 24.0, 24.0);
+        let bx = w - 12.0 - bw;
+        let by = title_h + 8.0;
         let _ = write!(
             s,
-            r##"<text x="{cx:.1}" y="{cy:.1}" font-size="{:.1}" font-weight="bold" fill="#c0392b" fill-opacity="0.22" text-anchor="middle" dominant-baseline="central" transform="rotate(-30 {cx:.1} {cy:.1})">{}</text>"##,
-            (w / mark.chars().count().max(1) as f64 * 1.3).min(48.0),
-            escape(mark)
-        );
-        let _ = write!(
-            s,
-            r##"<text x="{:.1}" y="20" font-size="12" font-weight="bold" fill="#c0392b" text-anchor="end">{}</text>"##,
-            w - 12.0,
+            r##"<rect x="{bx:.1}" y="{by:.1}" width="{bw:.1}" height="{bh:.1}" rx="12" fill="#fdecea" stroke="#c0392b" stroke-width="1"/><text x="{:.1}" y="{:.1}" font-size="12.5" font-weight="bold" fill="#c0392b" text-anchor="middle">{}</text>"##,
+            bx + bw / 2.0,
+            by + 16.5,
             escape(mark)
         );
     }
@@ -818,7 +821,7 @@ mod tests {
             assert!(svg.contains(&format!(">{t}</text>")), "label {t}");
         }
         assert!(svg.contains("Test &lt;tree&gt;"));
-        assert_eq!(svg.matches("PROVISIONAL — 35% of quartets").count(), 2);
+        assert_eq!(svg.matches("PROVISIONAL — 35% of quartets").count(), 1);
         // Two taxa below 0.6 plus the legend symbol.
         assert_eq!(svg.matches("<circle").count(), 3);
         assert!(svg.contains("#bdbdbd"), "no value is grey");

@@ -1160,9 +1160,15 @@ fn main() -> ExitCode {
             data_dir,
         } => {
             let (dirs, queue) = if all {
-                let dirs = menu_cmd::queue_for_all();
+                let (dirs, busy) = menu_cmd::queue_for_all();
+                for d in &busy {
+                    println!(
+                        "Left out: {} (another Q-MAWS process is working on it).",
+                        d.display()
+                    );
+                }
                 if dirs.is_empty() {
-                    println!("There are no unfinished runs.");
+                    println!("There are no unfinished runs to resume.");
                     return ExitCode::SUCCESS;
                 }
                 (dirs, true)

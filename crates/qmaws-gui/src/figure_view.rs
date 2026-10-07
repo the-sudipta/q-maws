@@ -40,10 +40,10 @@ fn tree_square(svg: &str) -> Option<[f32; 4]> {
     if lines == 0 || w <= 0.0 || h <= w {
         return None;
     }
-    // The title and the tree; the legend below is reached by scrolling or
-    // with "Whole figure".
+    // The tree square (with the provisional label in its corner); the
+    // title is shown by the window, the legend with "Whole figure".
     let top = 18.0 * lines as f32 + 10.0;
-    Some([0.0, 0.0, 1.0, (top + w) / h])
+    Some([0.0, top / h, 1.0, w / h])
 }
 
 pub struct FigureView {
@@ -306,8 +306,8 @@ mod tests {
         let svg = r##"<svg width="800" height="1000"><rect/><text>a</text><text>b</text><text>c</text><g></g></svg>"##;
         let [x, y, w, h] = tree_square(svg).unwrap();
         assert_eq!((x, w), (0.0, 1.0));
-        assert_eq!(y, 0.0);
-        assert!((h - 0.864).abs() < 1e-6);
+        assert!((y - 0.064).abs() < 1e-6);
+        assert!((h - 0.8).abs() < 1e-6);
         assert!(tree_square("<svg width=\"10\" height=\"10\"><g></g></svg>").is_none());
     }
 }
