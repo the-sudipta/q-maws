@@ -789,7 +789,54 @@ mod windows_console {
     }
 }
 
+/// Asks Windows not to throttle this process: Windows 11 runs processes
+/// without a visible window (the benchmark queues) in "efficiency mode", on
+/// the slow cores at a low clock speed, which made the quartet weighing
+/// about ten times slower. Results do not depend on it. No effect on other
+/// systems.
+fn disable_power_throttling() {
+    #[cfg(windows)]
+    {
+        #[repr(C)]
+        struct PowerThrottlingState {
+            version: u32,
+            control_mask: u32,
+            state_mask: u32,
+        }
+        #[link(name = "kernel32")]
+        extern "system" {
+            fn GetCurrentProcess() -> isize;
+            fn SetProcessInformation(
+                process: isize,
+                class: i32,
+                information: *mut core::ffi::c_void,
+                size: u32,
+            ) -> i32;
+        }
+        const PROCESS_POWER_THROTTLING: i32 = 4;
+        const EXECUTION_SPEED: u32 = 0x1;
+        let mut state = PowerThrottlingState {
+            version: 1,
+            // Control the execution speed, and set it to "not throttled".
+            control_mask: EXECUTION_SPEED,
+            state_mask: 0,
+        };
+        // SAFETY: the pseudo handle of the current process and a pointer to
+        // a correctly sized PROCESS_POWER_THROTTLING_STATE; a failure (older
+        // Windows) only leaves the default behaviour.
+        unsafe {
+            SetProcessInformation(
+                GetCurrentProcess(),
+                PROCESS_POWER_THROTTLING,
+                (&mut state as *mut PowerThrottlingState).cast(),
+                std::mem::size_of::<PowerThrottlingState>() as u32,
+            );
+        }
+    }
+}
+
 fn main() -> ExitCode {
+    disable_power_throttling();
     let cli = Cli::parse();
     let mode = if cli.json_progress {
         DisplayMode::Json

@@ -36,6 +36,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Fixed
 
+- On Windows 11 a run started without a visible window (a background queue) was put into "efficiency mode" by the system: on the slow cores at a low clock speed, about ten times slower (measured: Fish mtDNA weighing chunks of 82 quartets took 4.92 s each launched hidden, 0.35 s with this fix). The program now asks Windows not to throttle it (`SetProcessInformation`, `ProcessPowerThrottling`); results are unchanged.
 - Progress estimates: until the S2 bootstrap had a measured speed, the overall progress counted work units, so a run showed about 50% (and the batch view "under 1 min" left) as soon as its quartets were counted, before the long weighing. The S2 speed is now expected from the counting and weighing speeds (a replicate recounts with column weights, measured at about 15 times the counting cost), and the overall progress shown never goes back.
 - The batch view and `batch_status.html` name the stages in plain English ("Weighing quartets" instead of `quartet_weight`), say "under 1 min left" instead of "about under 1 min left", keep the expected finish on one line, and the terminal names each queued run by its folder.
 - The folder buttons of the window opened the Documents folder on Windows: Explorer needs an absolute path with backslashes. The zoom buttons (Fit, Tree, minus, plus) now always visibly change the view.
