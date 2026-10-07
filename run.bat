@@ -9,7 +9,8 @@ setlocal
 set "HERE=%~dp0"
 set "PROGRAM="
 
-if exist "%HERE%bin\qmaws.exe" set "PROGRAM=%HERE%bin\qmaws.exe"
+if exist "%HERE%Q-MAWS.exe" set "PROGRAM=%HERE%Q-MAWS.exe"
+if not defined PROGRAM if exist "%HERE%bin\qmaws.exe" set "PROGRAM=%HERE%bin\qmaws.exe"
 if not defined PROGRAM if exist "%HERE%target\release\qmaws.exe" set "PROGRAM=%HERE%target\release\qmaws.exe"
 
 if defined PROGRAM goto run

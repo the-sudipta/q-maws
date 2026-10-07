@@ -310,6 +310,10 @@ struct RunView {
     previous: Option<TreeLayout>,
     /// The live tree drawn with its changed branches, and its version.
     live_svg: Option<(u64, Arc<String>)>,
+    /// The species tree with its S1 support and halo values, drawn once the
+    /// support stage has written them and shown until the final figure
+    /// exists (the S2 bootstrap can take long).
+    species_svg: Option<(u64, Arc<String>)>,
     stages: Vec<StageLine>,
     stages_read: Option<Instant>,
     /// Folder to copy the final figures to, and the result of the copy.
@@ -507,6 +511,7 @@ impl App {
             figure: FigureView::default(),
             previous: None,
             live_svg: None,
+            species_svg: None,
             stages: Vec::new(),
             stages_read: None,
             export_to: String::new(),
@@ -569,8 +574,20 @@ impl App {
         }
         if let Some(dir) = run.run_dir.clone() {
             let finished = run.finished_here();
+            if !finished
+                && run.species_svg.is_none()
+                && run
+                    .stages_read
+                    .is_none_or(|t| t.elapsed() > Duration::from_millis(1500))
+            {
+                if let Some(svg) = species_tree_svg(&dir, run.previous.as_ref()) {
+                    run.species_svg = Some((1_000_000, Arc::new(svg)));
+                }
+            }
             if finished {
                 run.figure.show_file(&final_figure(&dir), FINAL_WIDTH);
+            } else if let Some((version, svg)) = &run.species_svg {
+                run.figure.show_svg(*version, Arc::clone(svg), FINAL_WIDTH);
             } else if let Some((version, svg)) = &run.live_svg {
                 run.figure.show_svg(*version, Arc::clone(svg), LIVE_WIDTH);
             } else if live_figure(&dir).exists() {
@@ -620,6 +637,7 @@ fn on_event(run: &mut RunView, event: Event) {
             run.previous = qmaws_engine::provisional::last_tree(&dir)
                 .and_then(|t| TreeLayout::from_newick(&t).ok());
             run.live_svg = None;
+            run.species_svg = None;
             run.meta = run_meta(&dir);
             run.rates.clear();
             run.run_dir = Some(dir);
@@ -692,6 +710,59 @@ fn on_event(run: &mut RunView, event: Event) {
         }
         Event::Finished { .. } | Event::Stopped => {}
     }
+}
+
+/// The species tree of a run whose support stage is done but whose final
+/// figure is not drawn yet: `report/tree.nwk` with S1 (`report/support.tsv`)
+/// and the halo values (`report/halo.tsv`), in the style of the final Halo
+/// Tree; the branches that changed since the last provisional tree are
+/// blue. `None` until the three files exist.
+fn species_tree_svg(dir: &Path, previous: Option<&TreeLayout>) -> Option<String> {
+    let report = dir.join("report");
+    let newick = std::fs::read_to_string(report.join("tree.nwk")).ok()?;
+    let support_text = std::fs::read_to_string(report.join("support.tsv")).ok()?;
+    let halo_text = std::fs::read_to_string(report.join("halo.tsv")).ok()?;
+    let layout = TreeLayout::from_newick(newick.trim()).ok()?;
+    let all = layout.taxa();
+    let m = all.len();
+    // support.tsv: edge, size, s1, ..., clade (comma-separated, last).
+    let support: std::collections::BTreeMap<Vec<String>, f64> = support_text
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let cols: Vec<&str> = line.split('\t').collect();
+            let s1 = cols.get(2)?.parse::<f64>().ok()?;
+            let clade: Vec<String> = cols.last()?.split(',').map(str::to_string).collect();
+            Some((qmaws_viz::tree::canonical_split(&clade, &all), s1))
+        })
+        .collect();
+    // halo.tsv: taxon, halo (empty or NA without weighted quartets), ...
+    let halo: std::collections::BTreeMap<String, Option<f64>> = halo_text
+        .lines()
+        .skip(1)
+        .filter_map(|line| {
+            let mut cols = line.split('\t');
+            let taxon = cols.next()?.to_string();
+            Some((taxon, cols.next().and_then(|v| v.parse::<f64>().ok())))
+        })
+        .collect();
+    let name = run_name(dir);
+    let changed = previous.map(|prev| layout.changed_edges(prev));
+    let style = HaloTreeStyle {
+        title: vec![
+            format!("Quartet Halo Tree (species tree): {name}"),
+            format!("{m} taxa, all quartets weighed; S1 support; the final figure follows after the S2 bootstrap"),
+        ],
+        watermark: Some("SPECIES TREE \u{2014} S1 support, S2 still running".into()),
+        size: (600.0 + 6.0 * m as f64).clamp(800.0, 1600.0),
+        support: Some(qmaws_viz::tree::EdgeSupport {
+            label: "S1".into(),
+            values: support,
+        }),
+        groups: Some(qmaws_viz::groups::automatic_groups(&layout)),
+        highlight: changed,
+    };
+    Some(qmaws_viz::tree::halo_tree_svg(&layout, &halo, &style))
 }
 
 /// The live provisional Halo Tree of a run (rewritten at every update).
@@ -2841,6 +2912,11 @@ fn tree_panel(ui: &mut egui::Ui, run: &mut RunView) {
             "Quartet Halo Tree".to_string(),
             "final tree \u{00b7} S1 support, halo values and clades".to_string(),
         )
+    } else if run.species_svg.is_some() {
+        (
+            "Species tree".to_string(),
+            "all quartets weighed \u{00b7} S1 support \u{00b7} the final figure follows after the S2 bootstrap".to_string(),
+        )
     } else if run.frames > 0 {
         (
             "Live Halo Tree".to_string(),
@@ -2866,7 +2942,10 @@ fn tree_panel(ui: &mut egui::Ui, run: &mut RunView) {
         });
     });
     ui.add_space(4.0);
-    let empty = if run.done {
+    let failed = run.results.iter().any(|(_, r)| r.is_err());
+    let empty = if run.done && failed {
+        "The run stopped with an error before its Halo Tree was drawn; the message is on the right."
+    } else if run.done {
         "This run has no Halo Tree figure."
     } else if run.run_dir.is_some() {
         "The live Halo Tree appears when the first quartets have been weighed."
@@ -3029,6 +3108,29 @@ fn rail(
                         *action = Some(RunAction::Results(d.clone()));
                     }
                 }
+            }
+            // Every run of the batch that ended with an error, with its message.
+            let errors: Vec<(PathBuf, String)> = run
+                .results
+                .iter()
+                .filter_map(|(d, r)| r.as_ref().err().map(|e| (d.clone(), e.clone())))
+                .collect();
+            if !errors.is_empty() {
+                w::section_title(ui, "Stopped with an error");
+                for (d, e) in &errors {
+                    let text = if run.dirs.len() > 1 {
+                        format!("{}: {e}", run_name(d))
+                    } else {
+                        e.clone()
+                    };
+                    w::banner(ui, Tone::Danger, &text);
+                    ui.add_space(4.0);
+                }
+                w::soft(
+                    ui,
+                    "Finished parts are kept; once the cause is fixed, the run can be resumed from the Resume page.",
+                );
+                ui.add_space(6.0);
             }
             let stopped = run
                 .results
@@ -3242,7 +3344,7 @@ fn calculation_card(ui: &mut egui::Ui, q: &LiveQuartet, inner: f32) {
                     "".to_string(),
                     "split words".to_string(),
                     "W1".to_string(),
-                    "W2 log L".to_string(),
+                    "W2 \u{0394}log L".to_string(),
                     format!("weight ({})", capitalised(&q.weights_name)),
                 ] {
                     ui.label(
@@ -3266,9 +3368,12 @@ fn calculation_card(ui: &mut egui::Ui, q: &LiveQuartet, inner: f32) {
                     ui.label(num(q
                         .w1
                         .map_or("\u{2013}".into(), |v| format!("{:.4}", v[t]))));
-                    ui.label(num(q
-                        .log_likelihoods
-                        .map_or("\u{2013}".into(), |v| format!("{:.3}", v[t]))));
+                    // The gap to the best tree: near-star quartets differ
+                    // only in the later decimals of their log-likelihoods.
+                    ui.label(num(q.log_likelihoods.map_or("\u{2013}".into(), |v| {
+                        let best = v.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                        format!("{:.4}", v[t] - best)
+                    })));
                     ui.label(num(q
                         .weights
                         .map_or("\u{2013}".into(), |v| format!("{:.4}", v[t]))));
@@ -3276,9 +3381,16 @@ fn calculation_card(ui: &mut egui::Ui, q: &LiveQuartet, inner: f32) {
                 }
             });
         ui.add_space(4.0);
+        let best_log_l = q
+            .log_likelihoods
+            .map(|v| v.iter().copied().fold(f64::NEG_INFINITY, f64::max));
         w::caption(
             ui,
-            "W1: share of the split words that support the tree. W2: log-likelihood of all 16 counts under the two-state model. The weight (W2c: W2 over 100 resamples of the words) is what the species tree uses.",
+            format!(
+                "W1: share of the split words that support the tree. W2 \u{0394}log L: the tree's log-likelihood of all 16 counts under the two-state model, minus the best one{}. The weight ({}: W2 over 100 resamples of the words) is what the species tree uses.",
+                best_log_l.map_or(String::new(), |b| format!(" ({b:.3})")),
+                capitalised(&q.weights_name)
+            ),
         );
     });
 }

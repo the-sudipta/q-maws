@@ -1,15 +1,16 @@
 #!/bin/sh
 # Q-MAWS launcher for macOS and Linux.
 #
-# Looks for the program in bin/ (release bundle), then in target/release/
-# (developer build). If neither exists and cargo is available, builds it.
+# Looks for the program next to this file (Q-MAWS, or inside Q-MAWS.app on
+# macOS: release bundle), then in bin/, then in target/release/ (developer
+# build). If neither exists and cargo is available, builds it.
 # With no arguments, starts the interactive main menu; otherwise passes all
 # arguments through unchanged.
 
 here=$(cd "$(dirname "$0")" && pwd)
 
 find_program() {
-    for candidate in "$here/bin/qmaws" "$here/target/release/qmaws"; do
+    for candidate in "$here/Q-MAWS" "$here/Q-MAWS.app/Contents/MacOS/Q-MAWS"         "$here/bin/qmaws" "$here/target/release/qmaws"; do
         if [ -x "$candidate" ]; then
             program=$candidate
             return 0
