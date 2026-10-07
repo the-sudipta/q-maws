@@ -1,10 +1,13 @@
 # Q-MAWS
 
+[![CI](https://github.com/the-sudipta/q-maws/actions/workflows/ci.yml/badge.svg)](https://github.com/the-sudipta/q-maws/actions/workflows/ci.yml)
+[![License: Q-MAWS Source-Available v1.0](https://img.shields.io/badge/license-Q--MAWS%20Source--Available%20v1.0-orange)](LICENSE)
+
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
 > **Status: early development (milestone M11, the full benchmark, in progress).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, is compared with a reference tree (your own, a benchmark dataset's, or one from the Open Tree of Life), can be verified, and ends with its figures; the benchmark results and the releases come in later milestones. This README is a draft and is completed as features are added.
 
-License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge will be added when the archive exists (M14).
+License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge is added when the first release is archived on Zenodo.
 
 ## What Q-MAWS does
 
@@ -48,6 +51,42 @@ cargo build --release
 ## Terminal mode
 
 `qmaws menu` (also `run.bat` or `./run.sh` without arguments) shows the interactive main menu: start a new run, resume an unfinished run (one, or all one after another), verify a run, exit. Every long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume` (`--all` for every unfinished run).
+
+An example session: Yersinia HGT (8 genomes of about 4.6 million letters) without the S2 bootstrap, then its quick verification. The output is copied from a real run on the development laptop; lines marked `…` are left out.
+
+```
+$ qmaws --no-color run --dataset yersinia_hgt --bootstrap 0 --data-dir 'D:\q-maws\data' --output yersinia_example
+Starting run yersinia_example in yersinia_example
+Started analysis of D:\q-maws\data\raw\yersinia_hgt\unsimulated-yersinia.
+Ingest: 8 taxa, average length 4605552; MAW lengths 5 to 14.
+MAW extraction: 8 taxa to do, 1 at a time, strand filter on.
+  AAKT020000: 1466539 MAWs
+Stage 2 of 10 (maw_extract): 12% | overall 1% | elapsed 0:00:23, remaining estimating | 1 of 8 taxa
+…
+Selected MAW lengths: [11, 12, 13]
+Full matrix: 8 taxa x 2921358 columns, estimated 41 MB (memory limit 558 MB).
+…
+Quartet weighting: 70 quartets, 1 chunks of up to 70 (calibration 24 quartets per second; model pi1 = 0.500000, 100 resamples).
+Stage 6 of 10 (quartet_weight): 100% | overall 100% | elapsed 0:02:58, remaining 0:00:00 | all 1 chunks done
+Amalgamation (wQFM-rs, w2c weights): 96 weighted quartets, consistency score 60.8967 of 70.0000, in 0.0 s.
+Support: 5 internal edges, S1 from 0.830000 to 0.971111; 0 taxa with a halo value below 0.6; in 0.1 s.
+Run finished. Root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
+…
+Figure: tanglegram against the AFproject reference tree (yersinia_hgt): nRF 1.000 (10 of 10 splits differ); nQD 0.729 (51 of 70 quartets differ); MSD 13 (raw, 8 taxa).
+
+$ qmaws --no-color verify --output yersinia_example --seed 1
+Verifying yersinia_example (quick check)...
+Stored root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
+[PASS] 8 taxa read, 8 recorded
+[PASS] every taxon name and cleaned sequence hash agrees with audit/inputs.json
+[PASS] quartet_count chunk 0 (positions 0 to 69): SHA-256 of the counts
+[PASS] quartet_weight chunk 0 (positions 0 to 69): SHA-256 of the weights rounded to 9 significant digits; the raw bytes agree too
+[PASS] nRF recomputed: 1.000000 (10 of 10 splits differ); stored 1.000000
+…
+Verdict: PASS (every comparison agrees)
+```
+
+nRF 1.000 against the AFproject reference is what this dataset gives (ML-MAWS also reports 1.000 on it); the M11 results compare every dataset.
 
 ## Direct commands
 
