@@ -38,6 +38,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `yersinia_hgt_seed5/` | Yersinia HGT, seed 5, primary configuration, S1 only (M11) |
 | `ecoli_shigella_hgt_seed5/` | E. coli/Shigella HGT, seed 5, primary configuration, S1 only (M11) |
 | `sim_hgt_0_seed5/` | Simulated HGT = 0 (33), seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_250_seed5/` | Simulated HGT = 250 (33), seed 5, primary configuration, S1 only (M11) |
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
 
 ## Relationships
