@@ -58,7 +58,8 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_0_seed4` | done, committed (8,829 s, 5f0cd87 build) |
 | `sim_hgt_250_seed4` | done, committed (resumed after a laptop shutdown; 1,301 s after the resume, 5f0cd87 build) |
 | `sim_hgt_500_seed4` | done, committed (6,701 s, 5f0cd87 build) |
-| `sim_hgt_750_seed4` | running (started 2026-10-08 04:07 UTC) |
+| `sim_hgt_750_seed4` | done, committed (resumed after a sudden laptop stop; 4,149 s after the resume, 5f0cd87 build) |
+| `sim_hgt_1000_seed4` | running (started 2026-10-08 05:42 UTC) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
 
 ## Binary change (2026-10-07)
