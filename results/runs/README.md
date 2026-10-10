@@ -52,6 +52,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `ecoli_seed5/` | E. coli/Shigella (29), seed 5, primary configuration, S1 only (M11) |
 | `influenza_a_seed1/` | Influenza A, segment 6 (38), seed 1, primary configuration, S2 100 replicates (M11) |
 | `coronavirus_seed1/` | Coronavirus (34), seed 1, primary configuration, S2 100 replicates (M11) |
+| `mammal_mtdna_seed1/` | Mammal mtDNA (41), seed 1, primary configuration, S2 100 replicates (M11) |
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
 
 ## Relationships

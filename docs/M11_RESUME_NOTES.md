@@ -77,6 +77,7 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `ecoli_seed5` | done, committed (5,363 s, 5f0cd87 build) |
 | `influenza_a_seed1` | done, committed (4,502 s, 5f0cd87 build, with S2) |
 | `coronavirus_seed1` | done, committed (6,428 s, 5f0cd87 build, with S2) |
+| `mammal_mtdna_seed1` | done, committed (7,114 s, 5f0cd87 build, with S2) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
 
 ## Binary change (2026-10-07)
