@@ -179,6 +179,29 @@ fn primary(c: &AnalysisConfig) -> bool {
         && c.matrix == analysis::MATRIX_FULL
 }
 
+/// How recently a run must have written a file to count as running when it
+/// has no run lock (runs of builds before the lock, such as the M11 queue):
+/// longer than its slowest step between two writes (an S2 replicate of
+/// ebolavirus takes about five minutes).
+const ACTIVE_WINDOW_SECONDS: u64 = 20 * 60;
+
+/// True when the run wrote its record, its log, a chunk or a bootstrap
+/// replicate within [`ACTIVE_WINDOW_SECONDS`].
+fn recently_active(dir: &Path) -> bool {
+    let work = dir.join("work");
+    [
+        dir.join("run.json"),
+        dir.join("run.log"),
+        work.join("chunks"),
+        work.join("bootstrap"),
+        work.join("maws"),
+    ]
+    .iter()
+    .filter_map(|p| std::fs::metadata(p).ok()?.modified().ok())
+    .filter_map(|t| t.elapsed().ok())
+    .any(|age| age.as_secs() < ACTIVE_WINDOW_SECONDS)
+}
+
 /// The last non-empty line of a run's log, if it reports an error.
 fn error_line(dir: &Path) -> Option<String> {
     let text = std::fs::read_to_string(dir.join("run.log")).ok()?;
@@ -224,7 +247,7 @@ pub fn m11_board(roots: &[PathBuf]) -> Board {
                 },
                 Some(r) => {
                     let p = analysis::run_progress(&r.dir, &r.state);
-                    if launch::in_use(&r.dir) {
+                    if launch::in_use(&r.dir) || recently_active(&r.dir) {
                         CellState::Running {
                             percent: p.percent,
                             left_seconds: p.remaining_seconds,
