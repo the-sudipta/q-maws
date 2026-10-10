@@ -45,6 +45,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `fish_mito_seed2/` | Fish mtDNA (25), seed 2, primary configuration, S1 only (M11) |
 | `ecoli_seed2/` | E. coli/Shigella (29), seed 2, primary configuration, S1 only (M11) |
 | `fish_mito_seed3/` | Fish mtDNA (25), seed 3, primary configuration, S1 only (M11) |
+| `ecoli_seed3/` | E. coli/Shigella (29), seed 3, primary configuration, S1 only (M11) |
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
 
 ## Relationships
