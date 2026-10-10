@@ -78,7 +78,8 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `influenza_a_seed1` | done, committed (4,502 s, 5f0cd87 build, with S2) |
 | `coronavirus_seed1` | done, committed (6,428 s, 5f0cd87 build, with S2) |
 | `mammal_mtdna_seed1` | done, committed (7,114 s, 5f0cd87 build, with S2) |
-| `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
+| `ebolavirus_seed1` | running (main queue, started 2026-10-09 18:10 UTC, with S2) |
+| `rhinovirus_seed5` | unfinished (about 40% on 2026-10-08); the second worker stopped by design once the main queue reached the NCBI runs, so the main queue continues it when it reaches rhinovirus |
 
 ## Binary change (2026-10-07)
 The weighing stage splits each chunk of quartets into blocks of 16 that run in parallel. The calibrated chunks of M11 are small (21 to 25 quartets for the simulated HGT datasets, 82 for rhinovirus), so only 2 to 6 of the 12 threads had work and the laptop ran at about 35% CPU. Commit 5f0cd87 (on 7b1de8a, branch `m11-perf`) changes only `run_blocks` in `crates/qmaws-engine/src/analysis.rs`: a chunk is cut into at least one block per thread. Records are still joined in position order, so their bytes do not depend on the blocks.
