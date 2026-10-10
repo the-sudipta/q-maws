@@ -69,6 +69,7 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `sim_hgt_1000_seed5` | done, committed (2,645 s, 5f0cd87 build) |
 | `fish_mito_seed2` | done, committed (334 s, 5f0cd87 build) |
 | `ecoli_seed2` | done, committed (6,765 s, 5f0cd87 build) |
+| `fish_mito_seed3` | done, committed (584 s, 5f0cd87 build) |
 | `rhinovirus_seed5` | running in the second worker (started 2026-10-06 16:22 UTC) |
 
 ## Binary change (2026-10-07)
