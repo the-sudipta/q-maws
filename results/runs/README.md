@@ -68,6 +68,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `mammal_mtdna_seed4/` | Mammal mtDNA (41), seed 4, primary configuration, S1 only (M11) |
 | `ebolavirus_seed4/` | Ebolavirus (59), seed 4, primary configuration, S1 only (M11) |
 | `influenza_a_seed5/` | Influenza A, segment 6 (38), seed 5, primary configuration, S1 only (M11) |
+| `coronavirus_seed5/` | Coronavirus (34), seed 5, primary configuration, S1 only (M11) |
 
 ## Relationships
 Written by `crates/qmaws-engine`; checked by `qmaws verify`.
