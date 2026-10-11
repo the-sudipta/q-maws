@@ -80,7 +80,8 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `mammal_mtdna_seed1` | done, committed (7,114 s, 5f0cd87 build, with S2) |
 | `ebolavirus_seed1` | done, committed (resumed after several laptop shutdowns; 3,727 s after the last resume, 5f0cd87 build, with S2) |
 | `influenza_a_seed2` | done, committed (resumed after a laptop shutdown; 408 s after the last resume, 5f0cd87 build) |
-| `coronavirus_seed2` | running (started 2026-10-11 07:03 UTC) |
+| `coronavirus_seed2` | done, committed (3,404 s, 5f0cd87 build) |
+| `mammal_mtdna_seed2` | running (started 2026-10-11 08:00 UTC) |
 | `rhinovirus_seed5` | unfinished (about 40% on 2026-10-08); the second worker stopped by design once the main queue reached the NCBI runs, so the main queue continues it when it reaches rhinovirus |
 
 ## Binary change (2026-10-07)
