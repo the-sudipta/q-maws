@@ -95,6 +95,7 @@ From 2026-10-06 16:22 UTC, at the owner's request to use the idle cores, a secon
 | `coronavirus_seed5` | done, committed (596 s after its last start or resume, 5943bcc build) |
 | `mammal_mtdna_seed5` | done, committed (410 s after its last start or resume, 5943bcc build) |
 | `ebolavirus_seed5` | done, committed (4,665 s after its last start or resume, 5943bcc build) |
+| `rhinovirus_seed1` | running (started 2026-10-11 21:09 UTC) |
 | `rhinovirus_seed5` | unfinished (about 40% on 2026-10-08); the second worker stopped by design once the main queue reached the NCBI runs, so the main queue continues it when it reaches rhinovirus |
 
 ## Binary change (2026-10-07)
