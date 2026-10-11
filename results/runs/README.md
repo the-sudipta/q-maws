@@ -62,6 +62,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
 | `coronavirus_seed3/` | Coronavirus (34), seed 3, primary configuration, S1 only (M11) |
 | `mammal_mtdna_seed3/` | Mammal mtDNA (41), seed 3, primary configuration, S1 only (M11) |
+| `ebolavirus_seed3/` | Ebolavirus (59), seed 3, primary configuration, S1 only (M11) |
 
 ## Relationships
 Written by `crates/qmaws-engine`; checked by `qmaws verify`.
