@@ -73,6 +73,7 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `ebolavirus_seed5/` | Ebolavirus (59), seed 5, primary configuration, S1 only (M11) |
 | `rhinovirus_seed1/` | Human rhinovirus (116), seed 1, primary configuration, S1 only (M11) |
 | `rhinovirus_seed2/` | Human rhinovirus (116), seed 2, primary configuration, S1 only (M11) |
+| `rhinovirus_seed3/` | Human rhinovirus (116), seed 3, primary configuration, S1 only (M11) |
 
 ## Relationships
 Written by `crates/qmaws-engine`; checked by `qmaws verify`.
