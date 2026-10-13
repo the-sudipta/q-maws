@@ -7,6 +7,7 @@ Sensitivity of the results to settings (milestone M12; plan Part 8, item 6; docs
 | Item | Description |
 |---|---|
 | `weights.tsv` | nRF, nQD and MSD against the reference tree of the primary run (W2c) and of the W1, W2a and W2b variants of each dataset, with the file each value comes from; the ML-MAWS values reported in its Table III beside them, labelled "reported" |
+| `settings.tsv` | nRF, nQD and MSD against the reference tree of the seed-1 primary run and of the six runs that change one setting (K = 1, 2, 4; strand filter off; `M_ml`; W2-emp) of each dataset, with the file each value comes from |
 | `fish_mito/` | Variants of Fish mtDNA |
 | `ecoli/` | Variants of E. coli–Shigella (29 genomes) |
 | `sim_hgt_0/` | Variants of simulated HGT 0 |
