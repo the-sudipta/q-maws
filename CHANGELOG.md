@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Added
 
+- M12: the 24 sensitivity runs (K = 1, 2, 4; strand filter off; `M_ml`; W2-emp) with `results/sensitivity/settings.tsv`, beside the weight variants; H4 (not supported: ECE of S1 0.200240 against 0.200200 for ML-MAWS UFBoot); seed variability. Report: `docs/milestones/M12.md`.
 - The full benchmark of M11: 14 datasets × 5 seeds in the primary configuration (S2 on seed 1), every run verified; comparison tables in `results/summary/` and the H1 test (not supported: nRF median difference −0.133, Holm-adjusted p = 0.156; nQD higher than ML-MAWS on all seven HGT datasets); AFproject upload files in `baselines/afproject_submission/`. Report: `docs/milestones/M11.md`.
 - The comparison with the reference tree is part of the verification record (OI-19): `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json`, each with its SHA-256; `qmaws verify` (quick and full) recomputes nRF, nQD and MSD and compares them.
 - Your own reference tree: `qmaws run --reference`, and the reference step of the menu and the GUI now keep the tree, store it with the run and compare the result with it (before, it was only checked).
