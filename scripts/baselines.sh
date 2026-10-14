@@ -44,6 +44,13 @@ annotate() { # level title message
     echo "$2: $3"
 }
 fail() { status="$1"; note="$2"; annotate warning "$tool $dataset" "$2"; }
+die() { # message [file whose last lines explain it]
+    msg="$1"
+    [ -n "${2:-}" ] && [ -f "$2" ] && msg="$msg: $(tail -n 8 "$2" | tr '
+' ' ' | cut -c1-900)"
+    annotate error "$tool $dataset" "$msg"
+    exit 1
+}
 
 # 1. The input: a folder with one FASTA file per taxon (file name = taxon
 #    name, as in the reference trees) and the reference tree.
@@ -70,7 +77,10 @@ case "$dataset" in
         want=$(awk -F'\t' -v d="$dataset" '$1 == d { print $8 }' "$root/data/manifests/simulated/hgt.tsv")
         got=$(sha256sum "$sim/sequences.fasta" | cut -d' ' -f1)
         if [ "$got" != "$want" ]; then
-            fail "not run (data differ)" "sequences.fasta SHA-256 $got differs from the manifest value $want"
+            want_tree=$(awk -F'	' -v d="$dataset" '$1 == d { print $9 }' "$root/data/manifests/simulated/hgt.tsv")
+            got_tree=$(sha256sum "$sim/species.treefile" | cut -d' ' -f1)
+            same_tree=no; [ "$got_tree" = "$want_tree" ] && same_tree=yes
+            fail "not run (data differ)" "sequences.fasta SHA-256 $got differs from the manifest value $want (species tree identical: $same_tree)"
         fi
         awk -v d="$inp" '/^>/ { f = d "/" substr($1, 2) ".fasta" } { print > f }' "$sim/sequences.fasta"
         reference="$root/data/manifests/simulated/trees/$dataset.nwk"
@@ -113,9 +123,9 @@ case "$tool" in
         ;;
     cdmaws)
         src="$work/cd-maws-sa"
-        [ -d "$src/.git" ] || git clone -q "$CDMAWS_REPO" "$src" || exit 1
+        [ -d "$src/.git" ] || git clone -q "$CDMAWS_REPO" "$src" || die "git clone of cd-maws-sa failed"
         (cd "$src" && git checkout -q "$CDMAWS_COMMIT" && g++ -O2 -o cd-maws-sa/maw-gen cd-maws-sa/maw-gen.cpp && g++ -O2 -o cd-maws-sa/dist-calc cd-maws-sa/dist-calc.cpp) \
-            > "$run/build.txt" 2>&1 || exit 1
+            > "$run/build.txt" 2>&1 || die "cd-maws-sa checkout or build failed" "$run/build.txt"
         version="cd-maws-sa commit $CDMAWS_COMMIT (maw-gen <file> <out> 4 14; dist-calc); $(g++ --version | head -n 1)"
         : > "$run/maws.txt"
         ok=1

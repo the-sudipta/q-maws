@@ -41,13 +41,12 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        tool: [mash, cdmaws, peafowl]
+        # Second run: only the jobs that did not finish in run 38546099791
+        # (CD-MAWS on the AFproject data; one H5 dataset to see where its data differ).
+        tool: [cdmaws]
         dataset: [fish_mito, ecoli, ecoli_shigella_hgt, yersinia_hgt,
                   sim_hgt_0, sim_hgt_250, sim_hgt_500, sim_hgt_750, sim_hgt_1000,
-                  hgt_h000_r1, hgt_h000_r2, hgt_h000_r3, hgt_h000_r4, hgt_h000_r5,
-                  hgt_h010_r1, hgt_h010_r2, hgt_h010_r3, hgt_h010_r4, hgt_h010_r5,
-                  hgt_h020_r1, hgt_h020_r2, hgt_h020_r3, hgt_h020_r4, hgt_h020_r5,
-                  hgt_h040_r1, hgt_h040_r2, hgt_h040_r3, hgt_h040_r4, hgt_h040_r5]
+                  hgt_h000_r1]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
