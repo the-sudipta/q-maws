@@ -13,6 +13,7 @@ Source code of the `qmaws` binary.
 | `figure_check_cmd.rs` | The hidden command `figure-check`: figures for the taxon names of a dataset on a random tree, to check readability |
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
 | `hgt_cmd.rs` | Hidden `hgt-trees`: the gene trees of one simulated genome with transfers, the AliSim partition file and the transfer table (H5) |
+| `h2_cmd.rs` | Hidden `h2`: the scaling comparison of Amendment 3 (wall-clock time of Q-MAWS and ML-MAWS on the same computer from the M13 queue's `times.tsv`; criterion: Q-MAWS faster in every replicate with m ≥ 100; crossover m), with peak memory and the figure `scaling.svg` |
 | `h5_cmd.rs` | Hidden `h5`: the confirmatory test of Amendment 4 (Q-MAWS v2 against ML-MAWS on the 20 simulated HGT datasets: exact one-sided Wilcoxon, zeros dropped, Holm), with the primary configuration as a descriptive comparison |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
