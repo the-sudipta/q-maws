@@ -124,9 +124,9 @@ case "$tool" in
     cdmaws)
         src="$work/cd-maws-sa"
         [ -d "$src/.git" ] || git clone -q "$CDMAWS_REPO" "$src" || die "git clone of cd-maws-sa failed"
-        (cd "$src" && git checkout -q "$CDMAWS_COMMIT" && g++ -O2 -o cd-maws-sa/maw-gen cd-maws-sa/maw-gen.cpp && g++ -O2 -o cd-maws-sa/dist-calc cd-maws-sa/dist-calc.cpp) \
+        (cd "$src" && git checkout -q "$CDMAWS_COMMIT" && g++ -O2 -mavx2 -mbmi -mbmi2 -mlzcnt -o cd-maws-sa/maw-gen cd-maws-sa/maw-gen.cpp && g++ -O2 -o cd-maws-sa/dist-calc cd-maws-sa/dist-calc.cpp) \
             > "$run/build.txt" 2>&1 || die "cd-maws-sa checkout or build failed" "$run/build.txt"
-        version="cd-maws-sa commit $CDMAWS_COMMIT (maw-gen <file> <out> 4 14; dist-calc); $(g++ --version | head -n 1)"
+        version="cd-maws-sa commit $CDMAWS_COMMIT (maw-gen <file> <out> 4 14, built with -mavx2 -mbmi -mbmi2 -mlzcnt to match its own #pragma GCC target, which g++ 13 needs; dist-calc); $(g++ --version | head -n 1)"
         : > "$run/maws.txt"
         ok=1
         for f in "$inp"/*.fasta; do
