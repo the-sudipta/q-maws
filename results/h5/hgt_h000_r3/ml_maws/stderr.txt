@@ -1,0 +1,157 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[STEP 1] Done. 30 species (0.087934s)
+  [1] T1 (1000000 bp)
+  [2] T2 (1000000 bp)
+  [3] T21 (1000000 bp)
+  [4] T19 (1000000 bp)
+  [5] T13 (1000000 bp)
+  [6] T7 (1000000 bp)
+  [7] T24 (1000000 bp)
+  [8] T14 (1000000 bp)
+  [9] T29 (1000000 bp)
+  [10] T4 (1000000 bp)
+  [11] T23 (1000000 bp)
+  [12] T25 (1000000 bp)
+  [13] T3 (1000000 bp)
+  [14] T26 (1000000 bp)
+  [15] T22 (1000000 bp)
+  [16] T5 (1000000 bp)
+  [17] T15 (1000000 bp)
+  [18] T9 (1000000 bp)
+  [19] T6 (1000000 bp)
+  [20] T8 (1000000 bp)
+  [21] T10 (1000000 bp)
+  [22] T28 (1000000 bp)
+  [23] T11 (1000000 bp)
+  [24] T17 (1000000 bp)
+  [25] T12 (1000000 bp)
+  [26] T30 (1000000 bp)
+  [27] T16 (1000000 bp)
+  [28] T18 (1000000 bp)
+  [29] T20 (1000000 bp)
+  [30] T27 (1000000 bp)
+
+[INFO] Adaptive length range: [5, 14] (avgSeqLen=1000000, nSpecies=30)
+[STEP 2/5] Extracting Minimal Absent Words (range=[5,14])...
+  T1: 313473 MAWs (1.15856s)
+  T2: 310740 MAWs (1.13859s)
+  T21: 311040 MAWs (2.20242s)
+  T19: 311821 MAWs (3.29577s)
+  T13: 311316 MAWs (3.28013s)
+  T7: 310971 MAWs (3.32471s)
+  T24: 311530 MAWs (3.28537s)
+  T14: 310816 MAWs (3.2926s)
+  T29: 311919 MAWs (3.25688s)
+  T4: 313156 MAWs (3.44322s)
+  T23: 314587 MAWs (3.69766s)
+  T25: 312845 MAWs (3.31367s)
+  T3: 311096 MAWs (3.27854s)
+  T26: 311775 MAWs (3.46123s)
+  T22: 313445 MAWs (3.52422s)
+  T5: 312134 MAWs (3.31914s)
+  T15: 312412 MAWs (3.36041s)
+  T9: 312343 MAWs (3.36801s)
+  T6: 312147 MAWs (3.41301s)
+  T8: 312900 MAWs (3.28069s)
+  T10: 310822 MAWs (3.23295s)
+  T28: 311063 MAWs (3.21936s)
+  T11: 312414 MAWs (3.16051s)
+  T17: 312498 MAWs (3.22776s)
+  T12: 312537 MAWs (3.11135s)
+  T30: 312650 MAWs (3.23112s)
+  T16: 313338 MAWs (3.23245s)
+  T18: 313881 MAWs (3.08835s)
+  T20: 312475 MAWs (3.09592s)
+  T27: 312804 MAWs (3.12101s)
+[STEP 2] Done (93.5073s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 2682 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 2682
+[INFO] Union of MAW sets: 745580 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 745580
+[INFO] Union of MAW sets: 1832056 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 1832056
+[INFO] Union of MAW sets: 190065 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 190065
+[INFO] Union of MAW sets: 4828 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 4828
+[INFO] Union of MAW sets: 130 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 130
+[INFO] Multi-length aggregation: selected lengths = {10, 11, 12}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={10,11,12})...
+[INFO] Union of MAW sets: 2767701 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 2767701
+[INFO] Matrix has 2767701 characters, capping to 50000 most informative...
+[INFO] Capped to 50000 most informative characters
+[INFO] Matrix: 30 species x 50000 characters (3 length(s))
+[INFO] PHYLIP matrix written: results/h5/hgt_h000_r3/ml_maws/ml_maws_matrix.phy (30 taxa, 50000 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s results/h5/hgt_h000_r3/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 12 --prefix results/h5/hgt_h000_r3/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: results/h5/hgt_h000_r3/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     30
+    n (avg seq len): 1000000
+    |U| (characters):50000
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.088       34.62         30.65       O(m * n)
+  MAW Extraction                93.419      487.55        452.93      O(m * n * sigma)
+                                  (m=30, n_avg=1000000, sigma=4)
+  Entropy Selection             11.362      891.69        404.14      O(L * m * |U_max|)
+                                  (L_range=[5..14])
+  Matrix Construction           15.547      946.70        55.02       O(m * |U|)
+                                  (lengths={10,11,12})
+  ML Inference                  778.480     946.70        0.00        NP-hard (heuristic)
+                                  (m=30, |U|=50000)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         898.896     946.70        
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: results/h5/hgt_h000_r3/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      30
+  MAW length:   {10,11,12}
+  Characters:   50000
+  Strand-aware: Yes
+  Total time:   898.90 sec
+  Peak memory:  946.70 MB
+  Output dir:   results/h5/hgt_h000_r3/ml_maws
+============================================================
+
