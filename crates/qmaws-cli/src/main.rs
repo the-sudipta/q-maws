@@ -429,6 +429,20 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development (Amendment 5): Q-MAWS beside Mash, CD-MAWS and Peafowl
+    #[command(hide = true)]
+    Baselines {
+        /// Folder with one subfolder per tool and dataset (scripts/baselines.sh)
+        #[arg(long, default_value = "results/baselines")]
+        dir: PathBuf,
+        /// Folder of the M11 summary (qmaws.tsv)
+        #[arg(long, default_value = "results/summary")]
+        summary: PathBuf,
+        /// Folder of the H5 results (h5_values.tsv)
+        #[arg(long, default_value = "results/h5")]
+        h5: PathBuf,
+    },
+
     /// Development (H2): the scaling comparison of Amendment 3 on results/scaling
     #[command(hide = true)]
     H2 {
@@ -595,6 +609,7 @@ enum Command {
     },
 }
 
+mod baselines_cmd;
 mod compare_cmd;
 mod controls_cmd;
 mod data_cmd;
@@ -757,6 +772,7 @@ fn main() -> ExitCode {
             seed,
         } => return metrics_check_cmd::run(&output, pairs, seed),
         Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
+        Command::Baselines { dir, summary, h5 } => return baselines_cmd::run(&dir, &summary, &h5),
         Command::H2 { dir } => return h2_cmd::run(&dir),
         Command::H5 { dir, trees } => return h5_cmd::run(&dir, &trees),
         Command::HgtTrees {
@@ -1145,6 +1161,7 @@ fn main() -> ExitCode {
         | Command::FigureCheck { .. }
         | Command::MetricsCheck { .. }
         | Command::TreeCompare { .. }
+        | Command::Baselines { .. }
         | Command::H2 { .. }
         | Command::H5 { .. }
         | Command::HgtTrees { .. }
