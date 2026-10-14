@@ -6,15 +6,20 @@ Source code of the `qmaws` binary.
 ## Contents
 | Item | Description |
 |---|---|
+| `compare_cmd.rs` | Hidden `tree-compare`: nRF, nQD and MSD of any Newick tree (support labels and branch lengths allowed) against a reference tree, for the ML-MAWS runs of H2 and H4 |
 | `controls_cmd.rs` | The hidden command `controls`: simulated (positive) and shuffled (negative) controls with Fish mtDNA as a reference point, written to `results/controls/` |
 | `data_cmd.rs` | The commands `datasets`, `download` and `inspect` |
 | `figures_cmd.rs` | The command `figures`, and the figures drawn after every finished analysis run |
 | `figure_check_cmd.rs` | The hidden command `figure-check`: figures for the taxon names of a dataset on a random tree, to check readability |
 | `h3_cmd.rs` | The command `simulate-h3`: runs the H3 experiment and writes its tables, figure and evaluation |
+| `hgt_cmd.rs` | Hidden `hgt-trees`: the gene trees of one simulated genome with transfers, the AliSim partition file and the transfer table (H5) |
+| `h5_cmd.rs` | Hidden `h5`: the confirmatory test of Amendment 4 (Q-MAWS v2 against ML-MAWS on the 20 simulated HGT datasets: exact one-sided Wilcoxon, zeros dropped, Holm), with the primary configuration as a descriptive comparison |
 | `iqtree_cmd.rs` | The hidden development commands `iqtree-export` and `iqtree-compare` of the IQ-TREE cross-check |
 | `matrix_cmd.rs` | The command `matrix` |
+| `metrics_check_cmd.rs` | Hidden `metrics-check`: golden test G9, random tree pairs with nQD and MSD checked against independent oracles and `pairs.tsv` for the DendroPy nRF check |
 | `menu_cmd.rs` | The commands `menu` (carries out the terminal menu's choice in the chosen interface, offers the next unfinished run) and `gui`; resuming a list or queue of runs in the terminal; the runs of `resume --all` |
 | `s2_cmd.rs` | The hidden development command `s2-cost`: times S2 bootstrap replicates of a finished run and writes `report/s2_cost.txt` |
+| `sensitivity_cmd.rs` | Hidden `variant` (a finished run's tree with other quartet weights) and `calibration` (reliability table and ECE of support values against true trees, pooled; H4) |
 | `wqfm_cmd.rs` | The hidden development commands `wqfm-export` and `wqfm-compare` of the wQFM jar comparison |
 | `summary_cmd.rs` | The hidden development command `summary`: comparison tables of milestone M11 in `results/summary/` from finished runs and published values, the H1 test (`--h1-pairs`, `--h1-zeros`), and the AFproject upload files (`--afproject`) |
 | `teach_cmd.rs` | The command `teach` |

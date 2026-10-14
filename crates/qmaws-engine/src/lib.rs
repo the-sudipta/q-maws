@@ -10,6 +10,7 @@ pub mod analysis;
 pub mod atomic;
 pub mod bootstrap;
 pub mod clock;
+pub mod evaluation;
 pub mod figures;
 pub mod hash;
 pub mod launch;
@@ -22,6 +23,7 @@ pub mod runner;
 pub mod state;
 pub mod store;
 pub mod toy;
+pub mod variant;
 pub mod verify;
 
 #[cfg(test)]

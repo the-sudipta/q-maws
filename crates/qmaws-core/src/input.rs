@@ -410,9 +410,87 @@ pub fn rename_duplicates(taxa: &mut [Taxon]) -> Vec<(String, String)> {
     renamed
 }
 
+/// Applies the user's answers to the warnings (plan 2.2): renames duplicate
+/// names (`_2`, `_3`, ...) when `rename` is set, then leaves out the taxa
+/// named in `skip` (names after renaming). Returns the renamings and the
+/// names left out, in input order. A name in `skip` that matches no taxon
+/// is ignored.
+pub fn apply_choices(
+    taxa: &mut Vec<Taxon>,
+    rename: bool,
+    skip: &[String],
+) -> (Vec<(String, String)>, Vec<String>) {
+    let renamed = if rename {
+        rename_duplicates(taxa)
+    } else {
+        Vec::new()
+    };
+    let mut skipped = Vec::new();
+    taxa.retain(|t| {
+        let keep = !skip.contains(&t.name);
+        if !keep {
+            skipped.push(t.name.clone());
+        }
+        keep
+    });
+    (renamed, skipped)
+}
+
+/// The warnings that still need an answer: every warning except identical
+/// sequences whose second taxon is in `keep` ("keep both") and short
+/// sequences whose taxon is in `keep` ("keep").
+pub fn unresolved<'a>(findings: &'a [Finding], keep: &[String]) -> Vec<&'a Finding> {
+    findings
+        .iter()
+        .filter(|f| f.is_warning())
+        .filter(|f| match f {
+            Finding::IdenticalSequences { second, .. } => !keep.contains(second),
+            Finding::ShortSequence { taxon, .. } => !keep.contains(taxon),
+            _ => true,
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn choices_resolve_every_kind_of_warning() {
+        let long = "ACGT".repeat(40);
+        let file = |name: &str, seq: &str| {
+            taxa_from_file(name, seq.as_bytes(), RecordMode::ConcatenatePerFile)
+        };
+        let mut taxa: Vec<Taxon> = [
+            file("a.fa", &long),
+            file("b.fa", &format!("{long}A")),
+            file("c.fa", &format!("{long}C")),
+            file("d.fa", &format!("{long}G")),
+            file("empty.fa", "NNNN"),
+            file("short.fa", "ACGTA"),
+            file("twin.fa", &long),
+        ]
+        .concat();
+        // A second taxon named "b" (from a FASTA header).
+        taxa.extend(taxa_from_file(
+            "x.fa",
+            format!(">b\n{long}T\n").as_bytes(),
+            RecordMode::OneTaxonPerRecord,
+        ));
+        let before = validate(&taxa);
+        assert_eq!(unresolved(&before, &[]).len(), 4, "{before:?}");
+        let (renamed, skipped) = apply_choices(&mut taxa, true, &["empty".to_string()]);
+        assert_eq!(renamed, vec![("b".to_string(), "b_2".to_string())]);
+        assert_eq!(skipped, vec!["empty".to_string()]);
+        let after = validate(&taxa);
+        let left = unresolved(&after, &[]);
+        assert_eq!(left.len(), 2, "identical and short remain: {left:?}");
+        assert!(unresolved(&after, &["twin".into(), "short".into()]).is_empty());
+        // "keep one" of identical sequences: leave the second out.
+        let (_, skipped) = apply_choices(&mut taxa, false, &["twin".to_string()]);
+        assert_eq!(skipped, vec!["twin".to_string()]);
+        assert_eq!(unresolved(&validate(&taxa), &["short".into()]).len(), 0);
+    }
 
     #[test]
     fn extensions_are_recognised() {

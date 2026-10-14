@@ -1,6 +1,7 @@
 //! The analysis run: from sequence files to a tree, as a
-//! resumable sequence of stages. (Evaluation and figures are added in
-//! later milestones.)
+//! resumable sequence of stages. The comparison with a reference tree
+//! (`evaluation.rs`) and the figures (`figures.rs`) are made after the run
+//! and are not part of the root fingerprint (docs/OPEN_ISSUES.md, OI-19).
 //!
 //! | Stage | Unit of work | Output |
 //! |---|---|---|
@@ -121,6 +122,69 @@ pub struct AnalysisConfig {
     /// a run without S2 reads and hashes as before.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub bootstrap: u32,
+    /// The answers to the input warnings (plan 2.2). Left out of `run.json`
+    /// when empty, so the configuration of a run without warnings reads and
+    /// hashes as before.
+    #[serde(default, skip_serializing_if = "InputChoices::is_empty")]
+    pub input_choices: InputChoices,
+    /// Number of MAW lengths kept by the entropy selection (plan 2.4.3,
+    /// K; the M12 sensitivity analysis varies it). Left out of `run.json`
+    /// when it is the primary value 3.
+    #[serde(
+        default = "default_top_lengths",
+        skip_serializing_if = "is_default_top_lengths"
+    )]
+    pub top_lengths: usize,
+    /// The matrix the quartets are counted on: `full` (`M_full`, primary)
+    /// or `ml` (`M_ml`, M12 sensitivity analysis). Left out of `run.json`
+    /// when `full`.
+    #[serde(default = "default_matrix", skip_serializing_if = "is_full_matrix")]
+    pub matrix: String,
+}
+
+/// The primary matrix (`M_full`).
+pub const MATRIX_FULL: &str = "full";
+/// `M_ml` as the matrix of the quartets (M12).
+pub const MATRIX_ML: &str = "ml";
+
+fn default_top_lengths() -> usize {
+    matrix::TOP_K
+}
+
+fn is_default_top_lengths(k: &usize) -> bool {
+    *k == matrix::TOP_K
+}
+
+fn default_matrix() -> String {
+    MATRIX_FULL.to_string()
+}
+
+fn is_full_matrix(m: &str) -> bool {
+    m == MATRIX_FULL
+}
+
+/// Answers to the input warnings (plan 2.2), applied in this order: rename
+/// duplicate names, leave out the taxa in `skip`; warnings about taxa in
+/// `keep` (identical or short sequences) are accepted.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InputChoices {
+    /// Rename duplicate names by appending `_2`, `_3`, ...
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub rename_duplicates: bool,
+    /// Taxa left out (names after renaming): empty files, the second of two
+    /// identical sequences ("keep one"), short sequences ("skip").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skip: Vec<String>,
+    /// Taxa kept despite a warning: the second of two identical sequences
+    /// ("keep both"), short sequences ("keep").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub keep: Vec<String>,
+}
+
+impl InputChoices {
+    pub fn is_empty(&self) -> bool {
+        !self.rename_duplicates && self.skip.is_empty() && self.keep.is_empty()
+    }
 }
 
 fn is_zero(v: &u32) -> bool {
@@ -171,6 +235,20 @@ impl AnalysisConfig {
             RecordMode::ConcatenatePerFile
         }
     }
+
+    /// Reads the input at `path` (normally `self.input`) and applies the
+    /// answers to its warnings. Returns the input and the names left out.
+    pub(crate) fn load_input(
+        &self,
+        path: &Path,
+    ) -> Result<(qmaws_data::loader::LoadedInput, Vec<String>), EngineError> {
+        let mut loaded = qmaws_data::loader::load(path, self.mode())
+            .map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let c = &self.input_choices;
+        let (_, skipped) =
+            qmaws_data::loader::apply_choices(&mut loaded, c.rename_duplicates, &c.skip);
+        Ok((loaded, skipped))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -191,12 +269,20 @@ pub(crate) struct InputsRecord {
     pub lmin: usize,
     pub lmax: usize,
     pub average_length: u64,
+    /// Taxa left out on request (plan 2.2); left out of the file when none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub skipped: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Selection {
     entropies: Vec<EntropyRow>,
     selected: Vec<usize>,
+}
+
+/// True when `run_dir` already holds a run (its `run.json` exists).
+pub fn run_exists(run_dir: &Path) -> bool {
+    RunDir::new(run_dir).run_json().exists()
 }
 
 /// SHA-256 of a configuration as stored in `run.json` (`config_sha256`):
@@ -337,6 +423,17 @@ fn start_session(
             "unknown weighting {}",
             options.config.weighting
         )));
+    }
+    if ![MATRIX_FULL, MATRIX_ML].contains(&options.config.matrix.as_str()) {
+        return Err(EngineError::Invalid(format!(
+            "unknown matrix {} (full or ml)",
+            options.config.matrix
+        )));
+    }
+    if options.config.top_lengths == 0 {
+        return Err(EngineError::Invalid(
+            "the number of MAW lengths must be at least 1".into(),
+        ));
     }
     dir.create_layout().map_err(io_err(run_dir))?;
     let created = UtcDateTime::now();
@@ -727,20 +824,38 @@ impl<'a> Session<'a> {
 
     fn ingest(&mut self) -> Result<(), EngineError> {
         self.set_running(INGEST)?;
-        let cfg = &self.options.config;
-        let loaded = qmaws_data::loader::load(Path::new(&cfg.input), cfg.mode())
-            .map_err(|e| EngineError::Invalid(e.to_string()))?;
-        let problems: Vec<String> = loaded
+        let cfg = self.options.config.clone();
+        let (loaded, skipped) = cfg.load_input(Path::new(&cfg.input))?;
+        let mut problems: Vec<String> = loaded
             .findings
             .iter()
-            .filter(|f| f.is_error() || f.is_warning())
+            .filter(|f| f.is_error())
             .map(|f| f.message())
             .collect();
+        problems.extend(
+            qmaws_core::input::unresolved(&loaded.findings, &cfg.input_choices.keep)
+                .iter()
+                .map(|f| f.message()),
+        );
         if !problems.is_empty() {
             return Err(EngineError::Invalid(format!(
-                "the input has problems that must be resolved first (see qmaws inspect): {}",
+                "the input has problems that must be resolved first (see qmaws inspect; answer warnings with --rename-duplicates, --skip or --keep): {}",
                 problems.join(" ")
             )));
+        }
+        for t in &loaded.taxa {
+            if t.name != t.original_name {
+                self.log(&format!(
+                    "Ingest: {} is used as {}.",
+                    t.original_name, t.name
+                ))?;
+            }
+        }
+        if !skipped.is_empty() {
+            self.log(&format!(
+                "Ingest: left out on request: {}.",
+                skipped.join(", ")
+            ))?;
         }
         let total: u64 = loaded.taxa.iter().map(|t| t.cleaned.cleaned_length()).sum();
         let m = loaded.taxa.len() as u64;
@@ -777,6 +892,7 @@ impl<'a> Session<'a> {
             lmin,
             lmax,
             average_length,
+            skipped,
         };
         let text = serde_json::to_string_pretty(&record).expect("inputs serialise") + "\n";
         let hash = self.write("audit/inputs.json", text.as_bytes())?;
@@ -815,8 +931,10 @@ impl<'a> Session<'a> {
         self.reset_from(MAW_EXTRACT);
         self.set_running(MAW_EXTRACT)?;
         let cfg = self.options.config.clone();
-        let loaded = qmaws_data::loader::load(Path::new(&cfg.input), cfg.mode())
-            .map_err(|e| EngineError::Invalid(e.to_string()))?;
+        let (loaded, _) = cfg.load_input(Path::new(&cfg.input))?;
+        if loaded.taxa.len() != inputs.taxa.len() {
+            return Err(EngineError::InputChanged(cfg.input.clone()));
+        }
         for (t, rec) in loaded.taxa.iter().zip(&inputs.taxa) {
             if t.name != rec.name || sha256_hex(&t.cleaned.sequence) != rec.cleaned_sha256 {
                 return Err(EngineError::InputChanged(rec.source_file.clone()));
@@ -907,7 +1025,11 @@ impl<'a> Session<'a> {
                 l.dedup();
                 l
             }
-            _ => matrix::select_lengths(&entropies, matrix::TOP_K, matrix::MIN_CHARS),
+            _ => matrix::select_lengths(
+                &entropies,
+                self.options.config.top_lengths,
+                matrix::MIN_CHARS,
+            ),
         };
         let sel = Selection {
             entropies: entropies.iter().map(EntropyRow::from).collect(),
@@ -959,8 +1081,17 @@ impl<'a> Session<'a> {
         drop(sets);
         let keep = matrix::ml_columns(&full, self.options.config.ml_max_columns);
         let names: Vec<String> = inputs.taxa.iter().map(|t| t.name.clone()).collect();
-        let phy = matrix::to_phylip(&full.select(&keep), &names);
-        let h_full = self.write("work/matrix/m_full.bin", &store::matrix_to_bytes(&full))?;
+        let ml = full.select(&keep);
+        let phy = matrix::to_phylip(&ml, &names);
+        // `work/matrix/m_full.bin` holds the matrix of the quartets: M_full,
+        // or M_ml in the M12 variant (`matrix: ml`).
+        let analysed = if self.options.config.matrix == MATRIX_ML {
+            self.log("Quartets are counted on M_ml (sensitivity variant).")?;
+            &ml
+        } else {
+            &full
+        };
+        let h_full = self.write("work/matrix/m_full.bin", &store::matrix_to_bytes(analysed))?;
         let h_phy = self.write("report/m_ml.phy", phy.as_bytes())?;
         self.log(&format!(
             "M_full {m} x {}; M_ml {m} x {}.",
@@ -989,8 +1120,58 @@ impl<'a> Session<'a> {
             .map_err(|e| EngineError::Invalid(e.to_string()))
     }
 
+    /// Plan 4.12: the quartet results in `work/chunks/` need
+    /// `COUNT_RECORD` (+ `WEIGHT_RECORD` when weighted) bytes per quartet.
+    /// Prints the estimate and stops before the stage if the disk lacks the
+    /// space still needed.
+    fn check_disk_space(&mut self, q: u64) -> Result<(), EngineError> {
+        let per_quartet = store::COUNT_RECORD as u64
+            + if self.weighted() {
+                store::WEIGHT_RECORD as u64
+            } else {
+                0
+            };
+        let needed = q * per_quartet;
+        let present: u64 = std::fs::read_dir(self.dir.chunks())
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok()?.metadata().ok())
+                    .map(|m| m.len())
+                    .sum()
+            })
+            .unwrap_or(0);
+        let still = needed.saturating_sub(present);
+        let mb = |b: u64| (b as f64 / 1e6).ceil() as u64;
+        match crate::matrix_pipeline::free_disk_bytes(self.dir.root()) {
+            Some(free) => {
+                self.log(&format!(
+                    "Quartet results: {q} quartets x {per_quartet} bytes = about {} MB on disk ({} MB still to write); {} MB free.",
+                    mb(needed),
+                    mb(still),
+                    mb(free)
+                ))?;
+                if still > free {
+                    return Err(EngineError::Invalid(format!(
+                        "not enough free disk space for the quartet results: {} MB needed, {} MB free on the disk of {}; free some space and resume the run",
+                        mb(still),
+                        mb(free),
+                        self.dir.root().display()
+                    )));
+                }
+            }
+            None => self.log(&format!(
+                "Quartet results: {q} quartets x {per_quartet} bytes = about {} MB on disk (free space unknown).",
+                mb(needed)
+            ))?,
+        }
+        Ok(())
+    }
+
     fn quartet_count(&mut self, m: usize) -> Result<Option<Outcome>, EngineError> {
         let q = quartet::quartet_count(m);
+        if self.status(QUARTET_COUNT) != StageStatus::Done {
+            self.check_disk_space(q)?;
+        }
         let full = self.load_full()?;
         let cc = CoCounts::new(&full.rows, full.columns_len() as u64);
         let path = PopcountPath::detect();
@@ -2339,6 +2520,9 @@ mod tests {
                 weighting: WEIGHTING_SYM.into(),
                 replicates: 3,
                 bootstrap: 0,
+                input_choices: Default::default(),
+                top_lengths: qmaws_core::matrix::TOP_K,
+                matrix: "full".into(),
             },
             chunk_seconds: 3.0,
             chunk_quartets: Some(chunk),
@@ -2511,6 +2695,76 @@ mod tests {
     }
 
     #[test]
+    fn primary_settings_serialise_as_before_the_sensitivity_options() {
+        // A run made before `top_lengths` and `matrix` existed has the same
+        // settings and hash: the primary values are left out of run.json.
+        let opts = options(Path::new("in"), 5);
+        let v = serde_json::to_value(&opts.config).unwrap();
+        assert!(v.get("top_lengths").is_none() && v.get("matrix").is_none());
+        let old: AnalysisConfig = serde_json::from_value(v).unwrap();
+        assert_eq!(old.top_lengths, matrix::TOP_K);
+        assert_eq!(old.matrix, MATRIX_FULL);
+        let mut variant = opts.config.clone();
+        variant.top_lengths = 2;
+        variant.matrix = MATRIX_ML.into();
+        let v = serde_json::to_value(&variant).unwrap();
+        assert_eq!(v["top_lengths"], 2);
+        assert_eq!(v["matrix"], "ml");
+    }
+
+    #[test]
+    fn sensitivity_runs_and_weight_variants() {
+        let tmp = TempDir::new("analysis_sensitivity");
+        let input = tmp.path().join("in");
+        write_inputs(&input, 8, 600, 11);
+        // The primary run, and its W2c variant: the same tree.
+        let run = tmp.path().join("run");
+        let opts = options(&input, 5);
+        finish(&run, &opts);
+        let v = crate::variant::make(&run, crate::variant::Weights::W2c, &tmp.path().join("w2c"))
+            .unwrap();
+        assert_eq!(
+            format!("{}\n", v.newick),
+            std::fs::read_to_string(run.join("report/tree.nwk")).unwrap()
+        );
+        for w in [
+            crate::variant::Weights::W1,
+            crate::variant::Weights::W2a,
+            crate::variant::Weights::W2b,
+        ] {
+            let out = tmp.path().join(w.name());
+            let s = crate::variant::make(&run, w, &out).unwrap();
+            assert!(s.weighted_quartets > 0, "{w:?}");
+            assert!(atomic::is_valid(&out.join("variant.json")));
+            assert!(atomic::is_valid(&out.join("support.tsv")));
+        }
+        // M_ml as the matrix of the quartets, with 2 lengths.
+        let mut ml = options(&input, 5);
+        ml.config.matrix = MATRIX_ML.into();
+        ml.config.top_lengths = 2;
+        let ml_run = tmp.path().join("ml");
+        finish(&ml_run, &ml);
+        let sel: Selection = serde_json::from_slice(
+            &atomic::read_verified(&ml_run.join("work/matrix/selection.json")).unwrap(),
+        )
+        .unwrap();
+        assert!(sel.selected.len() <= 2);
+        let log = std::fs::read_to_string(ml_run.join("run.log")).unwrap();
+        assert!(log.contains("Quartets are counted on M_ml"));
+        // Unknown settings are refused before anything is written.
+        let mut bad = options(&input, 5);
+        bad.config.matrix = "half".into();
+        let e = start(
+            &tmp.path().join("bad"),
+            &bad,
+            "terminal",
+            &NullSink,
+            &AtomicBool::new(false),
+        );
+        assert!(e.is_err());
+    }
+
+    #[test]
     fn figures_of_a_finished_run_leave_the_root_unchanged() {
         use crate::figures::{self, FigureOptions, ReferenceTree, SupportChoice};
         let tmp = TempDir::new("analysis_figures");
@@ -2534,6 +2788,8 @@ mod tests {
         let fo = FigureOptions {
             reference: Some(ReferenceTree {
                 label: "test tree".into(),
+                source: "test".into(),
+                newick: reference.to_newick(false),
                 tree: reference,
             }),
             support: SupportChoice::S2,
@@ -2557,6 +2813,12 @@ mod tests {
             assert!(fig.join(f).exists(), "{f}");
         }
         assert!(run.join("report").join("reference_comparison.tsv").exists());
+        // The reference and the comparison are stored for qmaws verify.
+        let stored = crate::evaluation::stored_reference(&run).unwrap().unwrap();
+        assert_eq!(stored.info.label, "test tree");
+        let checks = crate::evaluation::check(&run, 1e-6);
+        assert_eq!(checks.len(), 5);
+        assert!(checks.iter().all(|(ok, _)| *ok), "{checks:?}");
         let groups = std::fs::read_to_string(fig.join("groups.tsv")).unwrap();
         assert!(groups.starts_with("# source: groups.tsv"));
         assert!(groups.contains("T2\tSecond"));

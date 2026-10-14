@@ -10,7 +10,9 @@ Source code of the science crate. Each module receives data and returns data; no
 | `maw.rs` | Suffix automaton, MAW enumeration with lengths and strand filter, compact word codes, the brute-force oracle |
 | `amalgamate.rs` | Quartet amalgamation `wQFM-rs` (wQFM v1.4 reimplemented), the weighted quartet consistency score, the exhaustive tree enumeration (G8 oracle), wQFM's input format |
 | `bootstrap.rs` | S2 column bootstrap: Poisson(1) column weights from a seeded generator, replicate seeds, weighted pattern counts per weight class with the inclusion–exclusion kernel |
+| `calibration.rs` | Calibration of support values (plan 2.10.5, H4): the support of every split read from internal labels (any scale), the pairs (support, split in the true tree), the reliability table and the expected calibration error |
 | `control.rs` | Data for the controls: Jukes–Cantor sequences evolved along a random tree, Fisher–Yates shuffles that keep the letter composition, nRF of random trees to a reference |
+| `hgt.rs` | Gene trees with horizontal transfer for H5 (Amendment 4): one random subtree prune-and-regraft of the species tree (topology changed, leaves and total length kept), and the seeded choice of the transferred genes |
 | `input.rs` | Input reading and cleaning: FASTA or raw text, cleaning rules, record modes, Newick-safe names, validation findings with their choices, renaming of duplicates |
 | `lib.rs` | Crate root: module list |
 | `sim.rs` | The four-taxon long-branch simulation of H3: per-character simulator, replicate seeds, recovery with ties shared |
@@ -21,10 +23,11 @@ Source code of the science crate. Each module receives data and returns data; no
 | `weight.rs` | Quartet weighting: W1 votes; the two-state model and its pattern probabilities; the conditioned log-likelihood; the branch-length optimiser; W2a, W2b and W2c with per-quartet seeds, SplitMix64 and exact binomial draws |
 | `worksheet.rs` | The worksheet of one quartet: co-occurrence counts, pattern counts by inclusion–exclusion written out, W1 votes, W2 fits with branch lengths, W2a, W2b and W2c (audit samples and `qmaws verify --quartet`) |
 | `metrics.rs` | Tree comparison: normalised quartet distance (every quartet, four-point condition, unresolved quartets of the reference counted apart) and the matching split distance with the Hungarian algorithm |
+| `metrics_check.rs` | Golden test G9: random tree pairs (5 to 60 leaves, some references with polytomies), nQD by enumeration over splits and MSD by brute-force matching as independent oracles |
 | `newick.rs` | Newick parsing and writing; comparison of leaf names with taxon names; splits and normalised Robinson–Foulds distance |
 
 ## Relationships
 Used by `qmaws-data` (reading folders and datasets, reference trees), by `qmaws-engine` for every stage, and by `qmaws-cli` (teaching worksheet, IQ-TREE cross-check).
 
 ## Notes
-Evaluation metrics are added in a later milestone.
+Tree metrics (nRF in `newick.rs`, nQD and MSD in `metrics.rs`) are checked by golden test G9 (`metrics_check.rs`, `qmaws metrics-check`, `scripts/metrics_check.py`).

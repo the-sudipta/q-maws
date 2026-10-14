@@ -1,0 +1,46 @@
+name: Tree metrics check
+
+# Development check, golden test G9 (plan 2.10.4): on 500 random tree pairs
+# (5 to 60 leaves), nQD equals enumeration over splits and MSD equals
+# brute-force matching (inside `qmaws metrics-check`), and nRF equals
+# DendroPy's normalised Robinson-Foulds distance. Python and DendroPy are
+# used here only; neither is part of Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "crates/qmaws-core/src/metrics.rs"
+      - "crates/qmaws-core/src/metrics_check.rs"
+      - "crates/qmaws-core/src/newick.rs"
+      - "crates/qmaws-cli/src/metrics_check_cmd.rs"
+      - "scripts/metrics_check.py"
+      - ".github/workflows/metrics.yml"
+  workflow_dispatch:
+
+jobs:
+  metrics:
+    name: Compare the tree metrics with oracles and DendroPy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Q-MAWS
+        run: cargo build --release
+
+      - name: Check nQD and MSD against the oracles
+        run: ./target/release/qmaws metrics-check --output "$RUNNER_TEMP/g9" --pairs 500 --seed 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+
+      - name: Install DendroPy
+        run: python -m pip install dendropy==5.1.0
+
+      - name: Check nRF against DendroPy
+        run: python scripts/metrics_check.py "$RUNNER_TEMP/g9"

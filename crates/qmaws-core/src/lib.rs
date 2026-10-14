@@ -6,11 +6,14 @@
 
 pub mod amalgamate;
 pub mod bootstrap;
+pub mod calibration;
 pub mod control;
+pub mod hgt;
 pub mod input;
 pub mod matrix;
 pub mod maw;
 pub mod metrics;
+pub mod metrics_check;
 pub mod newick;
 pub mod quartet;
 pub mod sim;

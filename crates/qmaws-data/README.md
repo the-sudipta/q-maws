@@ -1,7 +1,7 @@
 # qmaws-data
 
 ## Purpose
-Benchmark dataset registry, downloads with resume and checksum verification, archive extraction, NCBI datasets fetched by accession, the download log, reference trees, and reading sequence folders from disk (M2). The Open Tree of Life client follows in a later milestone.
+Benchmark dataset registry, downloads with resume and checksum verification, archive extraction, NCBI datasets fetched by accession, the download log, reference trees, and reading sequence folders from disk (M2). The Open Tree of Life client (`src/otl.rs`) gives taxonomic groups for the figures (M10) and reference trees for new runs.
 
 ## Contents
 | Item | Description |

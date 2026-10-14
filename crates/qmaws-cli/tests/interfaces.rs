@@ -106,6 +106,9 @@ fn gui_options(size: Size, chunk: Option<u64>) -> AnalysisOptions {
             weighting: qmaws_engine::analysis::WEIGHTING_SYM.into(),
             replicates: size.replicates,
             bootstrap: size.bootstrap,
+            input_choices: Default::default(),
+            top_lengths: qmaws_core::matrix::TOP_K,
+            matrix: "full".into(),
         },
         chunk_seconds: 3.0,
         chunk_quartets: chunk,
@@ -157,12 +160,15 @@ fn check_interfaces(size: Size) {
     let expected = read_root(&terminal);
     assert_eq!(last_interface(&terminal), "terminal");
 
-    // 2. GUI, uninterrupted.
+    // 2. GUI, uninterrupted. A fixed chunk size gives the live tree chunk
+    // boundaries to update at: with the calibrated size, a fast device
+    // weighs all quartets in one chunk and no provisional tree is due. The
+    // root does not depend on chunk boundaries (OI-4).
     let gui = tmp.0.join("gui");
     let c = Controller::spawn(
         vec![Job::Start {
             dir: gui.clone(),
-            options: gui_options(size, None),
+            options: gui_options(size, Some(CHUNK)),
         }],
         false,
         data(),

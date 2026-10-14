@@ -17,7 +17,8 @@ One report per completed milestone: what was built, how it was verified, measure
 | `M08.md` | M8: support, audit, verification, controls |
 | `M09.md` | M9: GUI, terminal menu, live provisional tree, interface switching |
 | `M10.md` | M10: figures, group bands, nQD and MSD, colour-blind check |
-| `M11.md` | M11: full benchmark, comparison with published results, H1 (in progress) |
+| `M11.md` | M11: full benchmark (14 datasets × 5 seeds), comparison with published results, H1 (not supported); waiting for approval |
+| `M12.md` | M12: calibration (H4, not supported), sensitivity (exploratory) and seed variability; waiting for approval |
 
 ## Relationships
 Reports refer to code in `crates/`, scripts in `scripts/`, and run records in `results/`. Each report corresponds to a milestone tag.

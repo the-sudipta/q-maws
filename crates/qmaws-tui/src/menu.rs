@@ -6,13 +6,17 @@
 //! uses `dialoguer`, and tests answer from a script. In every submenu, the
 //! choice `0. Back` returns to the previous menu.
 
-use qmaws_core::input::RecordMode;
+use qmaws_core::input::{Finding, RecordMode};
 use qmaws_core::newick::{match_names, Tree};
 use qmaws_data::loader;
+use qmaws_data::otl::{self, Poster};
 use qmaws_data::registry::{Layout, Registry};
 use qmaws_data::DataDir;
-use qmaws_engine::analysis::{self, AnalysisConfig};
-use qmaws_engine::launch::{self, Interface, NewRun, RunSummary, Settings, UserConfig};
+use qmaws_engine::analysis::{self, AnalysisConfig, InputChoices};
+use qmaws_engine::clock::UtcDateTime;
+use qmaws_engine::launch::{
+    self, Interface, NewRun, RunReference, RunSummary, Settings, UserConfig,
+};
 use qmaws_engine::rundir::DEFAULT_RUNS_ROOT;
 use qmaws_engine::verify::Mode;
 use std::path::{Path, PathBuf};
@@ -140,6 +144,8 @@ pub struct MenuContext<'a> {
     pub config: UserConfig,
     /// Downloads and verifies a benchmark dataset by id.
     pub download: &'a mut dyn FnMut(&str) -> Result<(), String>,
+    /// The Open Tree of Life service, for reference trees (plan 6.7).
+    pub otl: &'a dyn Poster,
 }
 
 /// Main menu items, in the plan's wording.
@@ -196,6 +202,8 @@ struct Source {
     records: String,
     name: String,
     taxa: usize,
+    reference: Option<RunReference>,
+    choices: InputChoices,
 }
 
 fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
@@ -207,7 +215,7 @@ fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
             0,
         )?;
         let sources = match source {
-            0 => own_folder(p).map(|s| vec![s]),
+            0 => own_folder(p, ctx).map(|s| vec![s]),
             _ => benchmark(p, ctx),
         };
         let Some(sources) = sources else {
@@ -245,6 +253,8 @@ fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
                 records: s.records.clone(),
                 output,
                 settings: settings.clone(),
+                reference: s.reference.clone(),
+                input_choices: s.choices.clone(),
             })
             .collect();
         if let [run] = runs.as_slice() {
@@ -288,7 +298,7 @@ fn new_run(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<MenuAction> {
 
 pub use launch::review_text;
 
-fn own_folder(p: &mut dyn Prompter) -> Option<Source> {
+fn own_folder(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<Source> {
     loop {
         let path = p.input("Enter the path to your sequence folder (0 to go back)", "")?;
         if path.is_empty() {
@@ -298,7 +308,7 @@ fn own_folder(p: &mut dyn Prompter) -> Option<Source> {
             return None;
         }
         let input = PathBuf::from(&path);
-        let loaded = match loader::load(&input, RecordMode::ConcatenatePerFile) {
+        let mut loaded = match loader::load(&input, RecordMode::ConcatenatePerFile) {
             Ok(l) => l,
             Err(e) => {
                 p.say(&format!("This folder cannot be used: {e}"));
@@ -325,29 +335,12 @@ fn own_folder(p: &mut dyn Prompter) -> Option<Source> {
                 p.say(&format!("Note: {}", f.message()));
             }
         }
-        let warnings: Vec<String> = loaded
-            .findings
-            .iter()
-            .filter(|f| f.is_warning())
-            .map(|f| f.message())
-            .collect();
-        if !warnings.is_empty() {
-            for w in &warnings {
-                p.say(&format!("Warning: {w}"));
-            }
-            p.say("This version analyses only inputs without warnings; fix the files and enter the folder again.");
-            match p.choose(
-                "What would you like to do?",
-                &items(&["Choose another folder"]),
-                true,
-                0,
-            ) {
-                Some(_) => continue,
-                None => return None,
-            }
-        }
+        let Some(choices) = answer_warnings(p, &mut loaded)? else {
+            p.say("Please fix the files or choose another folder.");
+            continue;
+        };
         let names: Vec<String> = loaded.taxa.iter().map(|t| t.name.clone()).collect();
-        reference(p, &names)?;
+        let reference = reference(p, ctx.otl, &names)?;
         let name = std::path::absolute(&input)
             .ok()
             .and_then(|a| a.file_stem().map(|n| n.to_string_lossy().into_owned()))
@@ -357,12 +350,87 @@ fn own_folder(p: &mut dyn Prompter) -> Option<Source> {
             records: "per_file".into(),
             name,
             taxa: loaded.taxa.len(),
+            reference,
+            choices,
         });
     }
 }
 
-/// The reference tree step (plan 5.4).
-fn reference(p: &mut dyn Prompter, taxa: &[String]) -> Option<()> {
+fn capitalised(s: &str) -> String {
+    let mut c = s.chars();
+    c.next()
+        .map(|f| f.to_uppercase().collect::<String>() + c.as_str())
+        .unwrap_or_default()
+}
+
+/// Asks what to do about each warning (plan 2.2) and applies the answers
+/// to `loaded`. Empty files and duplicate names come first; identical and
+/// short sequences are asked with the names after renaming.
+/// `Some(None)`: the user chose to abort.
+fn answer_warnings(
+    p: &mut dyn Prompter,
+    loaded: &mut loader::LoadedInput,
+) -> Option<Option<InputChoices>> {
+    let mut c = InputChoices::default();
+    let ask = |p: &mut dyn Prompter, f: &Finding| -> Option<usize> {
+        p.say(&format!("Warning: {}", f.message()));
+        let options: Vec<String> = f.choices().iter().map(|s| capitalised(s)).collect();
+        p.choose("What would you like to do?", &options, false, 0)
+    };
+    for f in loaded.findings.clone() {
+        match &f {
+            Finding::EmptyAfterCleaning { taxon, .. } => match ask(p, &f)? {
+                0 => c.skip.push(taxon.clone()),
+                _ => return Some(None),
+            },
+            Finding::DuplicateName { .. } => match ask(p, &f)? {
+                0 => c.rename_duplicates = true,
+                _ => return Some(None),
+            },
+            _ => {}
+        }
+    }
+    let (renamed, _) = loader::apply_choices(loaded, c.rename_duplicates, &c.skip);
+    for (old, new) in renamed {
+        p.say(&format!("Renamed: a second {old} is used as {new}."));
+    }
+    for f in loaded.findings.clone() {
+        match &f {
+            Finding::IdenticalSequences { second, .. } => match ask(p, &f)? {
+                0 => c.keep.push(second.clone()),
+                1 => c.skip.push(second.clone()),
+                _ => return Some(None),
+            },
+            Finding::ShortSequence { taxon, .. } => match ask(p, &f)? {
+                0 => c.keep.push(taxon.clone()),
+                1 => c.skip.push(taxon.clone()),
+                _ => return Some(None),
+            },
+            _ => {}
+        }
+    }
+    loader::apply_choices(loaded, false, &c.skip);
+    if let Some(e) = loaded.findings.iter().find(|f| f.is_error()) {
+        p.say(&format!("Problem: {}", e.message()));
+        return Some(None);
+    }
+    if !c.skip.is_empty() {
+        p.say(&format!(
+            "Left out: {}. {} taxa remain.",
+            c.skip.join(", "),
+            loaded.taxa.len()
+        ));
+    }
+    Some(Some(c))
+}
+
+/// The reference tree step (plan 5.4): a Newick file, a tree downloaded
+/// from the Open Tree of Life, or none. `None`: the prompt was left.
+fn reference(
+    p: &mut dyn Prompter,
+    otl: &dyn Poster,
+    taxa: &[String],
+) -> Option<Option<RunReference>> {
     loop {
         let path = p.input(
             "Reference tree: enter the path to a Newick file, or press Enter to skip",
@@ -378,32 +446,29 @@ fn reference(p: &mut dyn Prompter, taxa: &[String]) -> Option<()> {
                 false,
                 0,
             )?;
-            if pick == 1 {
-                p.say("Downloading from the Open Tree of Life is not available in this version. Continuing without a reference.");
+            if pick == 0 {
+                return Some(None);
             }
-            return Some(());
+            match otl_reference(p, otl, taxa)? {
+                Some(r) => return Some(Some(r)),
+                None => continue,
+            }
         }
-        let text = match std::fs::read_to_string(&path) {
-            Ok(t) => t,
+        let r = match RunReference::from_file(Path::new(&path)) {
+            Ok(r) => r,
             Err(e) => {
-                p.say(&format!("The file cannot be read: {e}"));
+                p.say(&format!("The file cannot be used as a Newick tree: {e}"));
                 continue;
             }
         };
-        let tree = match Tree::parse(text.trim()) {
-            Ok(t) => t,
-            Err(e) => {
-                p.say(&format!("The file is not a valid Newick tree: {e}"));
-                continue;
-            }
-        };
+        let tree = Tree::parse(r.newick.trim()).expect("checked when read");
         let m = match_names(&tree, taxa);
         if m.is_exact() {
             p.say(&format!(
-                "All {} taxa match the reference tree. Comparison with a reference tree comes in a later version; this run does not use it yet.",
+                "All {} taxa match the reference tree; the result will be compared with it (nRF, nQD, MSD).",
                 taxa.len()
             ));
-            return Some(());
+            return Some(Some(r));
         }
         for (label, list) in [
             ("Taxa missing in the tree", &m.missing_in_tree),
@@ -421,8 +486,78 @@ fn reference(p: &mut dyn Prompter, taxa: &[String]) -> Option<()> {
             0,
         )?;
         if pick == 1 {
-            return Some(());
+            return Some(None);
         }
+    }
+}
+
+/// Downloads a reference tree from the Open Tree of Life (plan 6.7): name
+/// matching report, then the tree induced on the synthetic tree. `Some(None)`:
+/// back to the reference choices.
+fn otl_reference(
+    p: &mut dyn Prompter,
+    otl: &dyn Poster,
+    taxa: &[String],
+) -> Option<Option<RunReference>> {
+    p.say("Searching the Open Tree of Life (api.opentreeoflife.org) for the taxon names ...");
+    let mut search: Vec<(String, String)> = taxa
+        .iter()
+        .map(|t| (t.clone(), otl::search_name(t)))
+        .collect();
+    let mut species_only = false;
+    loop {
+        let m = match otl::reference_match(otl, &search) {
+            Ok(m) => m,
+            Err(e) => {
+                p.say(&format!("The Open Tree of Life could not be reached: {e}"));
+                return Some(None);
+            }
+        };
+        for line in m.report() {
+            p.say(&line);
+        }
+        if !m.is_complete(taxa.len()) {
+            p.say("A comparison needs every taxon matched to its own Open Tree of Life taxon.");
+            let unresolved = !m.names.unmatched.is_empty() || !m.names.ambiguous.is_empty();
+            if unresolved
+                && !species_only
+                && p.confirm(
+                    "Search again with genus and species only (strain or isolate names removed)?",
+                    false,
+                )?
+            {
+                species_only = true;
+                search = search
+                    .into_iter()
+                    .map(|(t, s)| (t, otl::species_name(&s)))
+                    .collect();
+                continue;
+            }
+            return Some(None);
+        }
+        if !p.confirm("Continue with this reference?", true)? {
+            return Some(None);
+        }
+        let date = UtcDateTime::now().iso8601();
+        return match otl::induced_reference(otl, &m, &date) {
+            Ok(r) => {
+                p.say(&format!(
+                    "Reference: the Open Tree of Life synthetic tree {} induced on the {} taxa (it may have unresolved nodes). Results will say \"compared against the Open Tree of Life synthetic tree\".",
+                    r.synth_id,
+                    taxa.len()
+                ));
+                Some(Some(RunReference::from_otl(
+                    r,
+                    taxa.len(),
+                    &date,
+                    species_only,
+                )))
+            }
+            Err(e) => {
+                p.say(&format!("The tree could not be downloaded: {e}"));
+                Some(None)
+            }
+        };
     }
 }
 
@@ -464,6 +599,9 @@ fn benchmark(p: &mut dyn Prompter, ctx: &mut MenuContext) -> Option<Vec<Source>>
             .into(),
             name: ds.id.clone(),
             taxa: ds.taxa,
+            // The AFproject reference tree is attached after the run.
+            reference: None,
+            choices: InputChoices::default(),
         });
     }
     Some(out)
@@ -786,6 +924,38 @@ mod tests {
         }
     }
 
+    /// Open Tree of Life answers for the taxa T0 to T4 (shapes of the live
+    /// API on 2026-10-05).
+    struct OtlAnswers;
+
+    impl Poster for OtlAnswers {
+        fn post_json(&self, url: &str, body: &str) -> Result<String, String> {
+            Ok(if url.ends_with("match_names") {
+                let v: serde_json::Value = serde_json::from_str(body).unwrap();
+                let results: Vec<String> = v["names"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .enumerate()
+                    .map(|(i, n)| {
+                        format!(
+                            r#"{{"name":{n},"matches":[{{"taxon":{{"ott_id":{},"unique_name":{n}}}}}]}}"#,
+                            100 + i
+                        )
+                    })
+                    .collect();
+                format!(
+                    r#"{{"results":[{}],"taxonomy":{{"version":"3.7draft3"}}}}"#,
+                    results.join(",")
+                )
+            } else if url.ends_with("about") {
+                r#"{"synth_id":"opentree16.1","date_created":"2025-12-20","taxonomy_version":"3.7draft3"}"#.into()
+            } else {
+                r#"{"broken":{},"newick":"(((ott100)x,ott101)y,(ott102,ott103)z,ott104)r;"}"#.into()
+            })
+        }
+    }
+
     fn run_menu(script: &mut Script, roots: Vec<String>) -> MenuAction {
         let mut download = |_: &str| -> Result<(), String> { Err("no network in tests".into()) };
         let mut ctx = MenuContext {
@@ -795,6 +965,7 @@ mod tests {
                 queue: Vec::new(),
             },
             download: &mut download,
+            otl: &OtlAnswers,
         };
         main_menu(script, &mut ctx)
     }
@@ -868,7 +1039,7 @@ mod tests {
     }
 
     #[test]
-    fn warnings_are_shown_and_lead_back_to_the_path() {
+    fn abort_at_a_warning_leads_back_to_the_path() {
         let dir = temp("warn");
         let input = dir.join("seqs");
         std::fs::create_dir_all(&input).unwrap();
@@ -878,12 +1049,121 @@ mod tests {
             Pick(Some(0)),
             Pick(Some(0)),
             Text(input_text),
-            Pick(None),    // back from the warning
-            Pick(None),    // back from the data question
+            Pick(Some(2)), // abort at the first warning (keep, skip, abort)
+            Text("0"),     // back to the data question
+            Pick(None),    // back to the main menu
             Pick(Some(3)), // exit
         ]);
         assert_eq!(run_menu(&mut s, vec![]), MenuAction::Exit);
-        assert!(s.shown.iter().any(|l| l.starts_with("Warning:")));
+        assert!(s
+            .shown
+            .iter()
+            .any(|l| l.starts_with("Warning: T0 is only 50 letters")));
+        assert!(s.shown.iter().any(|l| l == "  Keep"));
+        assert!(s
+            .shown
+            .iter()
+            .any(|l| l == "Please fix the files or choose another folder."));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    /// Starts a new run on `input` with the answers in `middle` (after the
+    /// path, up to and including the reference step).
+    fn own_run(dir: &Path, input: &Path, middle: Vec<Answer>) -> (NewRun, Vec<String>) {
+        let input_text: &'static str = Box::leak(input.display().to_string().into_boxed_str());
+        let out_text: &'static str =
+            Box::leak(dir.join("out").display().to_string().into_boxed_str());
+        let mut answers = vec![Pick(Some(0)), Pick(Some(0)), Text(input_text)];
+        answers.extend(middle);
+        answers.extend([Text(out_text), Pick(Some(0)), Yes(true), Pick(Some(1))]);
+        let mut s = Script::new(answers);
+        let action = run_menu(&mut s, vec![]);
+        let MenuAction::NewRuns { mut runs, .. } = action else {
+            panic!("unexpected {action:?}\n{:#?}", s.shown);
+        };
+        (runs.remove(0), s.shown)
+    }
+
+    #[test]
+    fn warning_answers_reach_the_run() {
+        let dir = temp("answers");
+        let input = dir.join("seqs");
+        std::fs::create_dir_all(&input).unwrap();
+        write_taxa(&input, 5, 300);
+        std::fs::write(input.join("Short.fasta"), ">Short\nACGTACGTAC\n").unwrap();
+        let t1 = std::fs::read_to_string(input.join("T1.fasta")).unwrap();
+        std::fs::write(input.join("Twin.fasta"), t1.replace(">T1", ">Twin")).unwrap();
+        let (run, shown) = own_run(
+            &dir,
+            &input,
+            vec![
+                Pick(Some(0)), // identical T1 and Twin: keep both
+                Pick(Some(1)), // Short: skip
+                Text(""),      // no reference
+                Pick(Some(0)), // continue without a reference
+            ],
+        );
+        assert_eq!(run.input_choices.keep, vec!["Twin".to_string()]);
+        assert_eq!(run.input_choices.skip, vec!["Short".to_string()]);
+        assert!(!run.input_choices.rename_duplicates);
+        assert!(run.reference.is_none());
+        assert!(shown.iter().any(|l| l == "Left out: Short. 6 taxa remain."));
+        assert!(shown.iter().any(|l| l.starts_with("6 taxa, 15 quartets")));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn a_reference_file_is_checked_and_kept() {
+        let dir = temp("reffile");
+        let input = dir.join("seqs");
+        std::fs::create_dir_all(&input).unwrap();
+        write_taxa(&input, 5, 300);
+        std::fs::write(dir.join("bad.nwk"), "((T0,T1),T2,(T3,X));").unwrap();
+        std::fs::write(dir.join("ref.nwk"), "((T0,T1),T2,(T3,T4));\n").unwrap();
+        let bad: &'static str =
+            Box::leak(dir.join("bad.nwk").display().to_string().into_boxed_str());
+        let good: &'static str =
+            Box::leak(dir.join("ref.nwk").display().to_string().into_boxed_str());
+        let (run, shown) = own_run(
+            &dir,
+            &input,
+            vec![
+                Text(bad),
+                Pick(Some(0)), // enter another path
+                Text(good),
+            ],
+        );
+        assert!(shown.iter().any(|l| l == "Taxa missing in the tree: T4"));
+        let r = run.reference.expect("reference kept");
+        assert_eq!(r.newick, "((T0,T1),T2,(T3,T4));\n");
+        assert_eq!(r.label, "reference tree ref.nwk");
+        assert!(r.query.is_none());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn an_open_tree_reference_is_downloaded_after_the_report() {
+        let dir = temp("refotl");
+        let input = dir.join("seqs");
+        std::fs::create_dir_all(&input).unwrap();
+        write_taxa(&input, 5, 300);
+        let (run, shown) = own_run(
+            &dir,
+            &input,
+            vec![
+                Text(""),      // no file
+                Pick(Some(1)), // download from the Open Tree of Life
+                Yes(true),     // continue with this reference
+            ],
+        );
+        assert!(shown
+            .iter()
+            .any(|l| l.starts_with("Open Tree of Life taxonomy 3.7draft3: 5 taxa matched.")));
+        assert!(shown.iter().any(|l| l == "  matched: T0 = T0 (ott100)"));
+        let r = run.reference.expect("reference downloaded");
+        assert_eq!(r.newick, "((T0,T1),(T2,T3),T4);");
+        assert_eq!(r.label, "Open Tree of Life synthetic tree (opentree16.1)");
+        assert_eq!(r.query.unwrap()["synth_id"], "opentree16.1");
         let _ = std::fs::remove_dir_all(dir);
     }
 

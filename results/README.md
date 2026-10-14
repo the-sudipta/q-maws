@@ -8,6 +8,7 @@ Committed records of runs and experiments: per-run audit records, trees, reports
 |---|---|
 | `controls/` | Positive and negative control results ([README](controls/README.md)) |
 | `h3/` | Long-branch simulation results for hypothesis H3 ([README](h3/README.md)) |
+| `h4/` | Hypothesis H4: calibration of Q-MAWS support against ML-MAWS UFBoot on the simulated HGT datasets ([README](h4/README.md)) |
 | `runs/` | One folder per run ([README](runs/README.md)) |
 | `sensitivity/` | Sensitivity analysis results ([README](sensitivity/README.md)) |
 | `summary/` | Final comparison tables ([README](summary/README.md)) |

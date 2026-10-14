@@ -36,6 +36,81 @@ fn mode_for(ds: &Dataset) -> RecordMode {
     }
 }
 
+/// `per_file` or `per_record`: how a dataset's files become taxa.
+pub fn records_name(ds: &Dataset) -> &'static str {
+    match ds.layout {
+        Layout::FilePerTaxon => "per_file",
+        Layout::RecordPerTaxon => "per_record",
+    }
+}
+
+/// Downloads a benchmark dataset when it is missing or its check fails
+/// (plan 5.2: "Missing or MD5 mismatch → download, verify MD5, use it").
+pub fn ensure_downloaded(id: &str, data_dir: &Path, mode: DisplayMode) -> Result<(), ExitCode> {
+    let reg = Registry::builtin();
+    let Some(ds) = reg.dataset(id) else {
+        eprintln!("Error: unknown dataset {id}");
+        return Err(ExitCode::from(crate::EXIT_USAGE));
+    };
+    let d = reg.download(&ds.download).expect("registry is checked");
+    let status = qmaws_data::status(&DataDir::new(data_dir), d);
+    if status == qmaws_data::Status::Ready {
+        return Ok(());
+    }
+    if mode == DisplayMode::Normal {
+        println!("{id}: {status}; downloading and checking it first.");
+    }
+    match fetch_selected(id, data_dir, mode, false) {
+        Ok(0) => Ok(()),
+        Ok(n) => {
+            eprintln!("Error: {id}: {n} download problem(s)");
+            Err(ExitCode::from(crate::EXIT_ERROR))
+        }
+        Err(e) => {
+            eprintln!("Error: {id}: {e}");
+            Err(ExitCode::from(crate::EXIT_ERROR))
+        }
+    }
+}
+
+/// Checks that a reference tree's leaves are exactly the taxa of the input
+/// (after the answers to its warnings), as plan 5.4 asks.
+pub fn check_reference_names(
+    input: &Path,
+    records: &str,
+    choices: &qmaws_engine::analysis::InputChoices,
+    reference: &qmaws_engine::launch::RunReference,
+) -> Result<(), String> {
+    let mode = if records == "per_record" {
+        RecordMode::OneTaxonPerRecord
+    } else {
+        RecordMode::ConcatenatePerFile
+    };
+    let mut loaded = loader::load(input, mode).map_err(|e| e.to_string())?;
+    loader::apply_choices(&mut loaded, choices.rename_duplicates, &choices.skip);
+    let names: Vec<String> = loaded.taxa.iter().map(|t| t.name.clone()).collect();
+    let tree =
+        qmaws_core::newick::Tree::parse(reference.newick.trim()).map_err(|e| e.to_string())?;
+    let m = qmaws_core::newick::match_names(&tree, &names);
+    if m.is_exact() {
+        return Ok(());
+    }
+    let mut parts = Vec::new();
+    for (label, list) in [
+        ("taxa missing in the tree", &m.missing_in_tree),
+        ("leaves without a taxon", &m.extra_in_tree),
+        ("leaf names used more than once", &m.duplicated_in_tree),
+    ] {
+        if !list.is_empty() {
+            parts.push(format!("{label}: {}", list.join(", ")));
+        }
+    }
+    Err(format!(
+        "the reference tree's leaves do not match the taxa ({})",
+        parts.join("; ")
+    ))
+}
+
 /// `qmaws datasets`
 pub fn datasets(data_dir: &Path) -> ExitCode {
     let reg = Registry::builtin();

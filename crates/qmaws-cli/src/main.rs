@@ -61,19 +61,51 @@ enum Command {
         data_dir: PathBuf,
     },
 
-    /// Analyse a folder or downloaded dataset (in this version: up to the tree with S1 and S2 support and halo values)
+    /// Analyse a folder or a benchmark dataset: tree, S1 and S2 support, halo values, comparison with a reference tree, figures
     Run {
         /// Folder of sequence files, or one multi-FASTA file
         #[arg(long, conflicts_with = "dataset", required_unless_present = "dataset")]
         input: Option<PathBuf>,
 
-        /// Downloaded benchmark dataset id
+        /// Benchmark dataset id, or "all" (one run per dataset, one after another); missing datasets are downloaded
         #[arg(long)]
         dataset: Option<String>,
 
-        /// Run folder [default: results/runs/<name>_<date>_<time>]
+        /// Run folder [default: results/runs/<name>_<date>_<time>; with --dataset all, one such folder per dataset]
         #[arg(long)]
         output: Option<PathBuf>,
+
+        /// Reference tree (Newick) to compare the result with [default: the benchmark dataset's reference, if any]
+        #[arg(long)]
+        reference: Option<PathBuf>,
+
+        /// Input warning "same name": rename duplicate names by appending _2, _3, ...
+        #[arg(long)]
+        rename_duplicates: bool,
+
+        /// Input warnings: leave out these taxa (empty file, the second of two identical sequences, short sequence)
+        #[arg(long, value_delimiter = ',')]
+        skip: Vec<String>,
+
+        /// Input warnings: keep these taxa (the second of two identical sequences, short sequence)
+        #[arg(long, value_delimiter = ',')]
+        keep: Vec<String>,
+
+        /// Number of CPU cores to use [default: all]
+        #[arg(long)]
+        cores: Option<usize>,
+
+        /// Memory limit in GB [default: 70% of the available memory]
+        #[arg(long)]
+        memory_limit: Option<f64>,
+
+        /// Number of MAW lengths kept by the entropy selection (sensitivity analysis)
+        #[arg(long, default_value_t = qmaws_core::matrix::TOP_K)]
+        top_lengths: usize,
+
+        /// Matrix the quartets are counted on (sensitivity analysis)
+        #[arg(long, value_enum, default_value_t = MatrixChoice::Full)]
+        matrix: MatrixChoice,
 
         /// Do not apply the strand filter
         #[arg(long)]
@@ -397,6 +429,96 @@ enum Command {
         data_dir: PathBuf,
     },
 
+    /// Development (H5): the confirmatory test of Amendment 4 on results/h5
+    #[command(hide = true)]
+    H5 {
+        /// Folder with one subfolder per dataset (qmaws, v2, ml_maws)
+        #[arg(long, default_value = "results/h5")]
+        dir: PathBuf,
+        /// Folder of the species trees
+        #[arg(long, default_value = "data/manifests/simulated/trees")]
+        trees: PathBuf,
+    },
+
+    /// Development (H5): gene trees with horizontal transfer for AliSim partitions
+    #[command(hide = true)]
+    HgtTrees {
+        /// Species tree (Newick with branch lengths)
+        #[arg(long)]
+        species: PathBuf,
+        /// Number of genes
+        #[arg(long, default_value_t = 1000)]
+        genes: usize,
+        /// Sites per gene
+        #[arg(long, default_value_t = 1000)]
+        gene_length: usize,
+        /// Fraction of genes with one transfer
+        #[arg(long)]
+        fraction: f64,
+        /// Seed of the gene choice and the transfers
+        #[arg(long)]
+        seed: u64,
+        /// Output folder
+        #[arg(long)]
+        output: PathBuf,
+    },
+
+    /// Development (M12): the tree of a finished run made again with other quartet weights
+    #[command(hide = true)]
+    Variant {
+        /// Finished run folder (with its work folder)
+        #[arg(long)]
+        run: PathBuf,
+        /// Weights for the tree
+        #[arg(long, value_enum)]
+        weights: sensitivity_cmd::WeightChoice,
+        /// Output folder
+        #[arg(long)]
+        output: PathBuf,
+    },
+
+    /// Development (H4): reliability table and ECE of support values against true trees
+    #[command(hide = true)]
+    Calibration {
+        /// ESTIMATE=TRUTH tree files (repeat; the edges are pooled)
+        #[arg(long = "pair", required = true)]
+        pairs: Vec<String>,
+        /// Divisor of the support labels (1 for S1 and S2, 100 for UFBoot)
+        #[arg(long, default_value_t = 1.0)]
+        scale: f64,
+        /// Number of equal-width bins
+        #[arg(long, default_value_t = 10)]
+        bins: usize,
+        /// Also write the table to this file (with its SHA-256)
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Development: nRF, nQD and MSD of a tree file against a reference tree file
+    #[command(hide = true)]
+    TreeCompare {
+        /// Tree to compare (Newick; support labels and branch lengths are allowed)
+        #[arg(long)]
+        tree: PathBuf,
+        /// Reference tree (Newick)
+        #[arg(long)]
+        reference: PathBuf,
+    },
+
+    /// Development: golden test G9, the tree metrics against independent oracles (nRF values for DendroPy)
+    #[command(hide = true)]
+    MetricsCheck {
+        /// Folder for pairs.tsv
+        #[arg(long)]
+        output: PathBuf,
+        /// Number of tree pairs
+        #[arg(long, default_value_t = 500)]
+        pairs: usize,
+        /// Seed of the random trees
+        #[arg(long, default_value_t = 1)]
+        seed: u64,
+    },
+
     /// Development: comparison tables of the benchmark (milestone M11)
     #[command(hide = true)]
     Summary {
@@ -465,15 +587,20 @@ enum Command {
     },
 }
 
+mod compare_cmd;
 mod controls_cmd;
 mod data_cmd;
 mod figure_check_cmd;
 mod figures_cmd;
 mod h3_cmd;
+mod h5_cmd;
+mod hgt_cmd;
 mod iqtree_cmd;
 mod matrix_cmd;
 mod menu_cmd;
+mod metrics_check_cmd;
 mod s2_cmd;
+mod sensitivity_cmd;
 mod summary_cmd;
 mod teach_cmd;
 mod verify_cmd;
@@ -615,6 +742,41 @@ fn main() -> ExitCode {
             return data_cmd::download(&dataset, &data_dir, mode, color)
         }
         Command::Gui { data_dir } => return menu_cmd::gui(Vec::new(), false, &data_dir),
+        Command::MetricsCheck {
+            output,
+            pairs,
+            seed,
+        } => return metrics_check_cmd::run(&output, pairs, seed),
+        Command::TreeCompare { tree, reference } => return compare_cmd::run(&tree, &reference),
+        Command::H5 { dir, trees } => return h5_cmd::run(&dir, &trees),
+        Command::HgtTrees {
+            species,
+            genes,
+            gene_length,
+            fraction,
+            seed,
+            output,
+        } => {
+            return hgt_cmd::run(hgt_cmd::HgtArgs {
+                species: &species,
+                genes,
+                gene_length,
+                fraction,
+                seed,
+                output: &output,
+            })
+        }
+        Command::Variant {
+            run,
+            weights,
+            output,
+        } => return sensitivity_cmd::variant(&run, weights, &output),
+        Command::Calibration {
+            pairs,
+            scale,
+            bins,
+            output,
+        } => return sensitivity_cmd::calibration(&pairs, scale, bins.max(1), output.as_ref()),
         Command::FigureCheck {
             dataset,
             output,
@@ -721,7 +883,77 @@ fn main() -> ExitCode {
             terminal: _,
             records,
             data_dir,
+            reference,
+            rename_duplicates,
+            skip,
+            keep,
+            cores,
+            memory_limit,
+            top_lengths,
+            matrix,
         } => {
+            let input_choices = qmaws_engine::analysis::InputChoices {
+                rename_duplicates,
+                skip,
+                keep,
+            };
+            let memory_limit = match memory_limit {
+                Some(gb) if gb.is_finite() && gb > 0.0 => Some((gb * 1e9) as u64),
+                Some(gb) => {
+                    eprintln!("Error: --memory-limit must be a positive number of GB, not {gb}");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                None => None,
+            };
+            if cores == Some(0) {
+                eprintln!("Error: --cores must be at least 1");
+                return ExitCode::from(EXIT_USAGE);
+            }
+            let reg = qmaws_data::registry::Registry::builtin();
+            if dataset.as_deref() == Some("all") {
+                if output.is_some() || reference.is_some() {
+                    eprintln!("Error: with --dataset all, every dataset gets its own folder and its own reference tree; --output and --reference cannot be used");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if top_lengths != qmaws_core::matrix::TOP_K || matrix != MatrixChoice::Full {
+                    eprintln!("Error: --top-lengths and --matrix are for single sensitivity runs, not --dataset all");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                let mut runs = Vec::new();
+                for ds in &reg.datasets {
+                    if let Err(code) = data_cmd::ensure_downloaded(&ds.id, &data_dir, mode) {
+                        return code;
+                    }
+                    runs.push(qmaws_engine::launch::NewRun {
+                        input: qmaws_data::DataDir::new(&data_dir).dataset_path(&reg, ds),
+                        records: data_cmd::records_name(ds).to_string(),
+                        output: new_run_dir(
+                            Path::new(DEFAULT_RUNS_ROOT),
+                            &run_id(&ds.id, UtcDateTime::now()),
+                        ),
+                        settings: qmaws_engine::launch::Settings {
+                            weighting: weighting.config_name().to_string(),
+                            lengths: lengths.clone(),
+                            strand: !no_strand,
+                            live_tree: !no_live_tree,
+                            seed,
+                            cores,
+                            memory_limit,
+                            replicates,
+                            bootstrap,
+                        },
+                        reference: None,
+                        input_choices: input_choices.clone(),
+                    });
+                }
+                if mode != DisplayMode::Json {
+                    println!(
+                        "Queue: {} datasets, one after another (resume an interrupted queue with: qmaws resume --all).",
+                        runs.len()
+                    );
+                }
+                return menu_cmd::run_new(&runs, gui, &display, &cancel, mode, &data_dir);
+            }
             let (path, records, name) = match (input, dataset) {
                 (Some(p), _) => {
                     let name = p
@@ -735,20 +967,18 @@ fn main() -> ExitCode {
                     (p, r, name)
                 }
                 (None, Some(id)) => {
-                    let reg = qmaws_data::registry::Registry::builtin();
                     let Some(ds) = reg.dataset(&id) else {
                         eprintln!(
-                            "Error: unknown dataset {id}; run 'qmaws datasets' to see the list"
+                            "Error: unknown dataset {id}; run 'qmaws datasets' to see the list (or use --dataset all)"
                         );
                         return ExitCode::from(EXIT_USAGE);
                     };
-                    let r = match ds.layout {
-                        qmaws_data::registry::Layout::FilePerTaxon => "per_file",
-                        qmaws_data::registry::Layout::RecordPerTaxon => "per_record",
-                    };
+                    if let Err(code) = data_cmd::ensure_downloaded(&ds.id, &data_dir, mode) {
+                        return code;
+                    }
                     (
                         qmaws_data::DataDir::new(&data_dir).dataset_path(&reg, ds),
-                        r,
+                        data_cmd::records_name(ds),
                         id,
                     )
                 }
@@ -761,6 +991,40 @@ fn main() -> ExitCode {
                     &run_id(&name, UtcDateTime::now()),
                 )
             });
+            // A reference tree of the user: checked against the taxa, then
+            // stored in the run folder (plan 5.4).
+            if let Some(path) = &reference {
+                let r = match qmaws_engine::launch::RunReference::from_file(path) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!(
+                            "Error: the reference tree {} cannot be used: {e}",
+                            path.display()
+                        );
+                        return ExitCode::from(EXIT_USAGE);
+                    }
+                };
+                if let Err(e) =
+                    data_cmd::check_reference_names(&absolute, records, &input_choices, &r)
+                {
+                    eprintln!("Error: {e}");
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if qmaws_engine::analysis::run_exists(&run_dir) {
+                    eprintln!("Error: {} already holds a run; resume it with qmaws resume, or choose another --output", run_dir.display());
+                    return ExitCode::from(EXIT_USAGE);
+                }
+                if let Err(e) = qmaws_engine::evaluation::store_reference(
+                    &run_dir,
+                    r.newick.as_bytes(),
+                    &r.label,
+                    &r.source,
+                    None,
+                ) {
+                    eprintln!("Error: {e}");
+                    return ExitCode::from(EXIT_ERROR);
+                }
+            }
             let options = qmaws_engine::analysis::AnalysisOptions {
                 config: qmaws_engine::analysis::AnalysisConfig {
                     input: absolute.display().to_string(),
@@ -772,12 +1036,15 @@ fn main() -> ExitCode {
                     weighting: weighting.config_name().to_string(),
                     replicates,
                     bootstrap,
+                    input_choices: input_choices.clone(),
+                    top_lengths,
+                    matrix: matrix.config_name().into(),
                 },
                 chunk_seconds,
                 chunk_quartets,
-                memory_limit: None,
+                memory_limit,
                 live_tree: !no_live_tree,
-                cores: None,
+                cores,
             };
             let mut config = UserConfig::load();
             if config.remember_run(&run_dir) {
@@ -866,6 +1133,12 @@ fn main() -> ExitCode {
         | Command::Gui { .. }
         | Command::Figures { .. }
         | Command::FigureCheck { .. }
+        | Command::MetricsCheck { .. }
+        | Command::TreeCompare { .. }
+        | Command::H5 { .. }
+        | Command::HgtTrees { .. }
+        | Command::Variant { .. }
+        | Command::Calibration { .. }
         | Command::Verify { .. } => {
             unreachable!("data commands return above")
         }
@@ -979,6 +1252,24 @@ mod tests {
     #[test]
     fn unknown_commands_are_rejected() {
         assert!(Cli::try_parse_from(["qmaws", "frobnicate"]).is_err());
+    }
+}
+
+/// Matrix of the quartets in `qmaws run` (sensitivity analysis, M12).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
+enum MatrixChoice {
+    /// M_full: every MAW column (primary)
+    Full,
+    /// M_ml: constant columns removed, capped at 50,000 (as ML-MAWS)
+    Ml,
+}
+
+impl MatrixChoice {
+    fn config_name(self) -> &'static str {
+        match self {
+            Self::Full => qmaws_engine::analysis::MATRIX_FULL,
+            Self::Ml => qmaws_engine::analysis::MATRIX_ML,
+        }
     }
 }
 

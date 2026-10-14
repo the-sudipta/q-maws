@@ -1,6 +1,5 @@
 //! `qmaws figures`, and the figures drawn after every finished analysis run.
 
-use qmaws_core::newick::Tree;
 use qmaws_engine::figures::{self, FigureOptions, ReferenceTree, SupportChoice};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
@@ -19,20 +18,8 @@ pub struct FiguresArgs<'a> {
 pub fn run(args: FiguresArgs) -> ExitCode {
     let mut opts = figures::auto_options(args.output, args.data_dir);
     if let Some(path) = args.reference {
-        match std::fs::read_to_string(path)
-            .map_err(|e| e.to_string())
-            .and_then(|t| Tree::parse(t.trim()).map_err(|e| e.to_string()))
-        {
-            Ok(tree) => {
-                opts.reference = Some(ReferenceTree {
-                    label: format!(
-                        "reference tree {}",
-                        path.file_name()
-                            .map_or(String::new(), |n| n.to_string_lossy().into_owned())
-                    ),
-                    tree,
-                })
-            }
+        match read_reference(path) {
+            Ok(r) => opts.reference = Some(r),
             Err(e) => {
                 eprintln!(
                     "Error: the reference tree {} cannot be used: {e}",
@@ -53,6 +40,19 @@ pub fn run(args: FiguresArgs) -> ExitCode {
         true => ExitCode::SUCCESS,
         false => ExitCode::from(1),
     }
+}
+
+/// Reads a user's reference tree file (`--reference`).
+pub fn read_reference(path: &Path) -> Result<ReferenceTree, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let name = path
+        .file_name()
+        .map_or(String::new(), |n| n.to_string_lossy().into_owned());
+    let source = std::path::absolute(path)
+        .unwrap_or_else(|_| path.to_path_buf())
+        .display()
+        .to_string();
+    ReferenceTree::parse(&text, &format!("reference tree {name}"), &source)
 }
 
 /// Draws the figures and prints what was written; false on an error.

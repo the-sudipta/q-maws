@@ -48,10 +48,13 @@ External tools, services and repositories used during development or by the prog
 
 ### Open Tree of Life web API v3 (https://api.opentreeoflife.org/v3)
 
-- **Used for:** taxonomic groups of the Halo Tree's group bands, on request (`qmaws figures --otl`; plan 4.8.1, 6.7). Not used for reference trees yet.
+- **Used for:** taxonomic groups of the Halo Tree's group bands, on request (`qmaws figures --otl`; plan 4.8.1, 6.7), and reference trees, on request in the menu and the GUI (plan 5.2, 6.7).
 - **Documentation read on 2026-10-03:** the TNRS API v3 and Taxonomy API v3 pages of the OpenTreeOfLife/germinator wiki on GitHub. `POST /v3/tnrs/match_names` takes `{"names": [...], "do_approximate_matching": false}` and answers `results[i].name` with `results[i].matches[j].taxon.ott_id`, `.name`, `.rank`, `.unique_name`, plus a `taxonomy` object with `version`. `POST /v3/taxonomy/taxon_info` takes `{"ott_id": n, "include_lineage": true}` and answers `lineage`, the higher taxa from the least inclusive, each with `rank` and `name`. `POST /v3/taxonomy/about` gives the taxonomy version.
 - **Verified by live calls on 2026-10-03:** taxonomy `ott3.7draft3`, version `3.7`. `Astronotus ocellatus` matched OTT 952936, whose lineage reads genus Astronotus, family Cichlidae, order Cichliformes, and so on. `Oreochromis sp-KM2006` had no match. For the 25 Fish mtDNA species names of the AFproject name table, 23 matched once, 1 had no match and 1 more than one; the family rank gave 5 groups.
 - **Rules applied:** names are searched with underscores read as spaces and nothing else changed (strain suffixes are kept); no approximate matching; a name with several matches gets no group. The queries are recorded in the run's `audit/otl_taxonomy.json`.
+- **Reference trees, documentation read on 2026-10-05:** the Synthetic Tree API v3 page of the germinator wiki. `POST /v3/tree_of_life/induced_subtree` takes `{"ott_ids": [...], "label_format": "id"}` (also `"name"` or `"name_and_id"`) and answers `newick` (tips labelled `ott<id>`, internal nodes labelled, single-child nodes kept) and `broken`, which maps an `ott<id>` not in the synthetic tree to the `mrca...` node standing for it; an unknown id gives HTTP 400. `POST /v3/tree_of_life/about` with `{}` answers `synth_id`, `date_created` and `taxonomy_version`.
+- **Verified by live calls on 2026-10-05:** `about` gave synthetic tree `opentree16.1` of 2025-12-20, taxonomy `3.7draft3`. `match_names` for Homo sapiens, Pan troglodytes, Gorilla gorilla, Pongo abelii and Mus musculus gave one match each (OTT 770315, 417950, 417965, 770295, 542509; `unmatched_names` empty); `induced_subtree` on these ids answered a tree with tips `ott<id>`, long chains of single-child nodes with `mrcaott...` and `ott...` labels, and an empty `broken` object. The unit tests use answers of this shape.
+- **Rules for reference trees:** exact matching only; the report lists matched, not found, ambiguous (with candidates) and taxa sharing an OTT id; a tree is downloaded only when every taxon has its own OTT id and the user agrees; names are searched by genus and species only when the user agrees; the record (both queries, SHA-256 of every answer, synthetic tree id, dates) goes to the run's `audit/reference.json`.
 
 ### GitHub raw file service
 
@@ -98,6 +101,29 @@ External tools, services and repositories used during development or by the prog
   - **Of the 14 rows, 12 were shown:** 11 are fits of a topology that is not the best for its quartet; the other is quartet 4, W2-emp, ac|bd, which is 0.000196 lower.
   - Since then the script writes one notice per quartet.
 
-### Not used yet
+### IQ-TREE 2.4.0, the program ML-MAWS calls (https://github.com/iqtree/iqtree2)
 
-wQFM and Open Tree of Life are added when each is first consulted, including its license.
+- **Used for:** running ML-MAWS for hypotheses H4 and H2 (decision D8, docs/PREREGISTRATION.md Amendment 3). ML-MAWS (commit `0c38db1`, `main.cpp`) runs `iqtree2 -s <matrix> -st BIN -m MFP+ASC -bb 1000 -nt <threads> --prefix <out>/ml_maws_iqtree -redo` when given `--iqtree`; its default thread count is 4 (`--threads`). The version 2 program is used because that is the command name ML-MAWS calls; the ML-MAWS README names IQ-TREE without a version.
+- **Version:** 2.4.0, the latest release of the iqtree2 repository (read on 2026-10-06): assets `iqtree-2.4.0-Linux-intel.tar.gz` (4,766,818 bytes, for H4 on GitHub runners) and `iqtree-2.4.0-Windows.zip` (10,274,929 bytes, for H2 on the development laptop). The GitHub releases API lists no digest for these assets, so their SHA-256 is computed on first download, recorded with the outputs (`provenance.txt`) and pinned in the scripts afterwards.
+- **License:** GNU General Public License v2.0. The program is only run; no code is used or distributed.
+- **Seed:** ML-MAWS passes no `-seed`; IQ-TREE then chooses one and writes it to its log (`Seed:`), which is recorded so that a run can be repeated.
+
+### ML-MAWS built natively on the development laptop (for H2)
+
+- **Tools (in `D:_external	ools`, outside the repository; owner's approval 2026-10-06):** w64devkit 2.10.0 (`w64devkit-x64-2.10.0.7z.exe`, 67,127,496 bytes, SHA-256 `18d0a4c71a166f8401ab6305781bec5882b40b5e06ba9807c61cb5f3b3c6325e`, equal to the digest GitHub lists; a portable GCC 16.2.0 toolchain, self-extracting, nothing installed) and IQ-TREE 2.4.0 for Windows (`iqtree-2.4.0-Windows.zip`, 10,274,929 bytes, SHA-256 `93f488a6cfef96ef664b23fefe5be97c2c80ebcae9cd2031c0cac92b467278be`, computed on download; GitHub lists no digest).
+- **Build:** in the ML-MAWS clone at commit `0c38db1`: `g++ -O2 -std=c++17 -fopenmp -include cstdint -o ml-maws.exe ./*.cpp -lpsapi` (sources unchanged; ML-MAWS has Windows code for its memory measurement, which needs `psapi`). Runs with `D:_external	oolsw64devkitin` and `D:_external	oolsiqtree-2.4.0-Windowsin` on `PATH`.
+- **Checked on 2026-10-06:** Fish mtDNA with `--strand --no-raxml` gives selected lengths {7, 8, 9} and the same 25 × 36,217 PHYLIP matrix as Q-MAWS's `M_ml`, apart from Windows line endings. With `--strand --iqtree --threads 4`: Fish mtDNA in 20 s, nRF 0.409091 (reported 0.409), nQD 0.152253 (reported 0.185; IQ-TREE chose seed 893327 by itself, and ML-MAWS passes none, so its tree search differs between runs); Yersinia HGT in 62 s, nRF 1.000000 and nQD 0.671429 (reported 1.000 and 0.671). Comparisons made with `qmaws tree-compare`.
+
+### wQFM (https://github.com/Mahim1997/wQFM-2020)
+
+- **Used for:** the development-only comparison of `wQFM-rs` with the original program (plan 2.8, milestone M7), run by `.github/workflows/wqfm.yml` and `scripts/wqfm_check.sh` on a GitHub Linux runner with the runner's Java (the owner chose GitHub Actions on 2026-10-02). Java and the jar are not part of Q-MAWS or its releases.
+- **License:** Apache License 2.0 (`LICENSE.md` in the repository, checked before any code was read). `wQFM-rs` reimplements the algorithm of the paper (Mahbub et al., Bioinformatics 37(21):3734–3743, 2021) and of wQFM v1.4; the design and the places in the paper and code it follows are in `docs/DESIGN.md` ("Quartet amalgamation: wQFM-rs"); the notice is in `THIRD_PARTY_NOTICES`.
+- **Version:** commit `7bfdf8e77bd9079c708c831f1fb8404cc6821809` (a clone outside the repository, `../_external/wQFM-2020`), jar `wQFM-v1.4.jar`, SHA-256 `f2e7e66cd92ad4266de8dae2abb307cdf131b41eda032e405db383900aadac4c`.
+- **Read in its README:** input is one weighted quartet per line in Newick, followed by a space and its weight (for example `((A,B),(C,D)); 34`); the default run is `java -jar wQFM-v1.4.jar -i <input> -o <output>`, which uses the partition score `[s] - [v]`; the output is one Newick tree. `qmaws wqfm-export` writes this format and the check runs exactly this command.
+- **Result (M7):** run 37027626900 on commit `0aee29a`: 23 inputs, the same topology as the jar (nRF 0) and a quartet score ratio of 1.000000 on every one (`docs/milestones/M07.md`).
+
+### DendroPy (https://github.com/jeetsukumaran/DendroPy)
+
+- **Used for:** golden test G9, the check of nRF on 500 random tree pairs (plan 2.10.4), run by `.github/workflows/metrics.yml` and `scripts/metrics_check.py` on a GitHub Linux runner with Python 3.12. Development only; not part of Q-MAWS or its releases.
+- **Version and license:** 5.1.0 from PyPI (latest on 2026-10-05), BSD license (PyPI metadata).
+- **Read on 2026-10-05:** `src/dendropy/calculate/treecompare.py`: `symmetric_difference(tree1, tree2)` returns the unweighted Robinson–Foulds distance; both trees must share one `TaxonNamespace`. `src/dendropy/dataio/newickreader.py`: `rooting` is one of `default-unrooted` (default), `default-rooted`, `force-unrooted`, `force-rooted`. ML-MAWS (`run_baselines.sh`, commit `0c38db1`) reads both trees with `rooting='default-unrooted'` in one namespace and divides by 2(n − 3); the check does the same.

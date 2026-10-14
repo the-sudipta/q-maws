@@ -1,0 +1,77 @@
+name: ML-MAWS runs for H4
+
+# Development experiment (docs/PREREGISTRATION.md, Amendment 3): ML-MAWS
+# with IQ-TREE 2.4.0 on the five simulated HGT datasets, for the calibration
+# comparison of hypothesis H4. Support values do not depend on the computer;
+# run times measured here are not used. The outputs are committed to a new
+# branch `h4-mlmaws-results-<run id>` so that they can be fetched with git;
+# they are reviewed before they are copied into results/h4/.
+# ML-MAWS and IQ-TREE are not part of Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "scripts/mlmaws_h4.sh"
+      - ".github/workflows/mlmaws_h4.yml"
+
+jobs:
+  mlmaws:
+    name: ML-MAWS on ${{ matrix.dataset }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      matrix:
+        dataset: [sim_hgt_0, sim_hgt_250, sim_hgt_500, sim_hgt_750, sim_hgt_1000]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Build Q-MAWS (for the checked download)
+        run: cargo build --release -p qmaws-cli
+
+      - name: Run ML-MAWS
+        run: sh scripts/mlmaws_h4.sh ${{ matrix.dataset }} "$RUNNER_TEMP/out/${{ matrix.dataset }}" "$RUNNER_TEMP/external"
+
+      - name: Keep the outputs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mlmaws-${{ matrix.dataset }}
+          path: ${{ runner.temp }}/out/${{ matrix.dataset }}
+
+  results:
+    name: Commit the outputs to a results branch
+    needs: mlmaws
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Collect the outputs
+        uses: actions/download-artifact@v8
+        with:
+          path: ${{ runner.temp }}/collected
+
+      - name: Commit to a new branch
+        run: |
+          branch="h4-mlmaws-results-${{ github.run_id }}"
+          git checkout --orphan "$branch"
+          git rm -rq --cached .
+          rm -rf ./*
+          mkdir -p mlmaws
+          cp -r "$RUNNER_TEMP"/collected/* mlmaws/
+          printf 'ML-MAWS outputs of workflow run %s on commit %s (%s).\n' \
+            "${{ github.run_id }}" "${{ github.sha }}" "$(date -u +%FT%TZ)" > ABOUT.txt
+          git add ABOUT.txt mlmaws
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "ML-MAWS outputs of workflow run ${{ github.run_id }}"
+          git push -q origin "$branch"
+          echo "::notice title=Results branch::$branch"
