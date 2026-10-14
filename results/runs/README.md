@@ -22,7 +22,60 @@ One folder per run, named `<dataset-or-folder-name>_<YYYY-MM-DD>_<HHMMSS>`, cont
 | `sim_hgt_750_seed2/` | Simulated HGT = 750 (33), seed 2, primary configuration, S1 only (M11) |
 | `sim_hgt_1000_seed2/` | Simulated HGT = 1000 (33), seed 2, primary configuration, S1 only (M11) |
 | `yersinia_hgt_seed3/` | Yersinia HGT, seed 3, primary configuration, S1 only (M11) |
+| `ecoli_shigella_hgt_seed3/` | E. coli/Shigella HGT, seed 3, primary configuration, S1 only (M11) |
+| `sim_hgt_0_seed3/` | Simulated HGT = 0 (33), seed 3, primary configuration, S1 only (M11) |
+| `sim_hgt_250_seed3/` | Simulated HGT = 250 (33), seed 3, primary configuration, S1 only (M11) |
+| `sim_hgt_500_seed3/` | Simulated HGT = 500 (33), seed 3, primary configuration, S1 only (M11) |
+| `sim_hgt_750_seed3/` | Simulated HGT = 750 (33), seed 3, primary configuration, S1 only (M11) |
+| `sim_hgt_1000_seed3/` | Simulated HGT = 1000 (33), seed 3, primary configuration, S1 only (M11) |
+| `yersinia_hgt_seed4/` | Yersinia HGT, seed 4, primary configuration, S1 only (M11) |
+| `ecoli_shigella_hgt_seed4/` | E. coli/Shigella HGT, seed 4, primary configuration, S1 only (M11) |
+| `sim_hgt_0_seed4/` | Simulated HGT = 0 (33), seed 4, primary configuration, S1 only (M11) |
+| `sim_hgt_250_seed4/` | Simulated HGT = 250 (33), seed 4, primary configuration, S1 only (M11) |
+| `sim_hgt_500_seed4/` | Simulated HGT = 500 (33), seed 4, primary configuration, S1 only (M11) |
+| `sim_hgt_750_seed4/` | Simulated HGT = 750 (33), seed 4, primary configuration, S1 only (M11) |
+| `sim_hgt_1000_seed4/` | Simulated HGT = 1000 (33), seed 4, primary configuration, S1 only (M11) |
+| `yersinia_hgt_seed5/` | Yersinia HGT, seed 5, primary configuration, S1 only (M11) |
+| `ecoli_shigella_hgt_seed5/` | E. coli/Shigella HGT, seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_0_seed5/` | Simulated HGT = 0 (33), seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_250_seed5/` | Simulated HGT = 250 (33), seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_500_seed5/` | Simulated HGT = 500 (33), seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_750_seed5/` | Simulated HGT = 750 (33), seed 5, primary configuration, S1 only (M11) |
+| `sim_hgt_1000_seed5/` | Simulated HGT = 1000 (33), seed 5, primary configuration, S1 only (M11) |
+| `fish_mito_seed2/` | Fish mtDNA (25), seed 2, primary configuration, S1 only (M11) |
+| `ecoli_seed2/` | E. coli/Shigella (29), seed 2, primary configuration, S1 only (M11) |
+| `fish_mito_seed3/` | Fish mtDNA (25), seed 3, primary configuration, S1 only (M11) |
+| `ecoli_seed3/` | E. coli/Shigella (29), seed 3, primary configuration, S1 only (M11) |
+| `fish_mito_seed4/` | Fish mtDNA (25), seed 4, primary configuration, S1 only (M11) |
+| `ecoli_seed4/` | E. coli/Shigella (29), seed 4, primary configuration, S1 only (M11) |
+| `fish_mito_seed5/` | Fish mtDNA (25), seed 5, primary configuration, S1 only (M11) |
+| `ecoli_seed5/` | E. coli/Shigella (29), seed 5, primary configuration, S1 only (M11) |
+| `influenza_a_seed1/` | Influenza A, segment 6 (38), seed 1, primary configuration, S2 100 replicates (M11) |
+| `coronavirus_seed1/` | Coronavirus (34), seed 1, primary configuration, S2 100 replicates (M11) |
+| `mammal_mtdna_seed1/` | Mammal mtDNA (41), seed 1, primary configuration, S2 100 replicates (M11) |
+| `ebolavirus_seed1/` | Ebolavirus (59), seed 1, primary configuration, S2 100 replicates (M11) |
+| `influenza_a_seed2/` | Influenza A, segment 6 (38), seed 2, primary configuration, S1 only (M11) |
+| `coronavirus_seed2/` | Coronavirus (34), seed 2, primary configuration, S1 only (M11) |
+| `mammal_mtdna_seed2/` | Mammal mtDNA (41), seed 2, primary configuration, S1 only (M11) |
+| `ebolavirus_seed2/` | Ebolavirus (59), seed 2, primary configuration, S1 only (M11) |
+| `influenza_a_seed3/` | Influenza A, segment 6 (38), seed 3, primary configuration, S1 only (M11) |
 | `yersinia_hgt_seed1/` | Yersinia HGT (8), seed 1, primary configuration, S2 100 replicates (M11) |
+| `coronavirus_seed3/` | Coronavirus (34), seed 3, primary configuration, S1 only (M11) |
+| `mammal_mtdna_seed3/` | Mammal mtDNA (41), seed 3, primary configuration, S1 only (M11) |
+| `ebolavirus_seed3/` | Ebolavirus (59), seed 3, primary configuration, S1 only (M11) |
+| `influenza_a_seed4/` | Influenza A, segment 6 (38), seed 4, primary configuration, S1 only (M11) |
+| `coronavirus_seed4/` | Coronavirus (34), seed 4, primary configuration, S1 only (M11) |
+| `mammal_mtdna_seed4/` | Mammal mtDNA (41), seed 4, primary configuration, S1 only (M11) |
+| `ebolavirus_seed4/` | Ebolavirus (59), seed 4, primary configuration, S1 only (M11) |
+| `influenza_a_seed5/` | Influenza A, segment 6 (38), seed 5, primary configuration, S1 only (M11) |
+| `coronavirus_seed5/` | Coronavirus (34), seed 5, primary configuration, S1 only (M11) |
+| `mammal_mtdna_seed5/` | Mammal mtDNA (41), seed 5, primary configuration, S1 only (M11) |
+| `ebolavirus_seed5/` | Ebolavirus (59), seed 5, primary configuration, S1 only (M11) |
+| `rhinovirus_seed1/` | Human rhinovirus (116), seed 1, primary configuration, S1 only (M11) |
+| `rhinovirus_seed2/` | Human rhinovirus (116), seed 2, primary configuration, S1 only (M11) |
+| `rhinovirus_seed3/` | Human rhinovirus (116), seed 3, primary configuration, S1 only (M11) |
+| `rhinovirus_seed4/` | Human rhinovirus (116), seed 4, primary configuration, S1 only (M11) |
+| `rhinovirus_seed5/` | Human rhinovirus (116), seed 5, primary configuration, S1 only (M11) |
 
 ## Relationships
 Written by `crates/qmaws-engine`; checked by `qmaws verify`.
