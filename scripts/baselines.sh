@@ -7,7 +7,8 @@
 # Usage: sh scripts/baselines.sh <tool> <dataset> <output folder> [work folder]
 #   tool:    mash | cdmaws | peafowl
 #   dataset: fish_mito | ecoli | ecoli_shigella_hgt | yersinia_hgt |
-#            sim_hgt_0 ... sim_hgt_1000 | hgt_h000_r1 ... hgt_h040_r5 (H5)
+#            sim_hgt_0 ... sim_hgt_1000 | hgt_h000_r1 ... hgt_h040_r5 (H5, from
+#            the branch h5-data, checked by SHA-256)
 # Writes to <output folder>: tree.nwk, comparison.tsv (qmaws tree-compare
 # against the reference or species tree), the tool's messages and
 # provenance.txt. Exit 0 also when the tool fails: the failure is recorded in
@@ -21,8 +22,6 @@ CDMAWS_REPO=https://github.com/TamimEhsan/cd-maws-sa
 CDMAWS_COMMIT=8bfe7d55412af0f211e969f85adf9d20f0d3af53
 PEAFOWL_REPO=https://github.com/hasin-abrar/Peafowl-repo
 PEAFOWL_COMMIT=89ed477bba1072cef891b7304896891d233edd91
-IQ_VERSION=2.4.0
-IQ_URL="https://github.com/iqtree/iqtree2/releases/download/v$IQ_VERSION/iqtree-$IQ_VERSION-Linux-intel.tar.gz"
 BIOPYTHON=1.84
 LIMIT_MINUTES=330
 
@@ -59,29 +58,16 @@ rm -rf "$inp"
 mkdir -p "$inp"
 case "$dataset" in
     hgt_h*)
-        # H5 data, made again with the committed script and checked by SHA-256.
-        archive="$work/iqtree-$IQ_VERSION.tar.gz"
-        [ -f "$archive" ] || curl -sSfL -o "$archive" "$IQ_URL" || exit 1
-        tar -xzf "$archive" -C "$work" || exit 1
-        iq=$(find "$work" -type f -name iqtree2 | head -n 1)
-        chmod +x "$iq"
-        level=${dataset#hgt_}; level=${level%_r*}; rep=${dataset##*_r}
-        case "$level" in h000) h=0; li=0 ;; h010) h=0.1; li=1 ;; h020) h=0.2; li=2 ;; h040) h=0.4; li=3 ;; esac
-        seed=$((7000 + 100 * li + rep))
+        # H5 data: the files made on the development laptop, stored compressed
+        # on the branch h5-data and checked against the committed manifest.
+        # (AliSim does not give the same data on Linux from the same seeds.)
         sim="$work/sim_$dataset"
         rm -rf "$sim"; mkdir -p "$sim"
-        (cd "$sim" && "$iq" --alisim species -t "RANDOM{yh/30}" -rlen 0.001 0.01 0.1 -m JC --length 10 -seed "$seed" > species.log 2>&1 \
-            && "$qmaws" hgt-trees --species species.treefile --genes 1000 --gene-length 1000 --fraction "$h" --seed "$seed" --output genes > genes.log 2>&1 \
-            && "$iq" --alisim genome -Q genes/partitions.nex -t genes/gene_trees.nwk --out-format fasta -seed $((seed + 50000)) > genome.log 2>&1) || exit 1
-        sed 's/[[:space:]]*$//' "$sim/genome.fa" > "$sim/sequences.fasta"
-        want=$(awk -F'\t' -v d="$dataset" '$1 == d { print $8 }' "$root/data/manifests/simulated/hgt.tsv")
+        git -C "$root" fetch -q --depth 1 origin h5-data || die "cannot fetch the branch h5-data"
+        git -C "$root" show "FETCH_HEAD:h5data/$dataset.fasta.gz" | gzip -dc > "$sim/sequences.fasta" || die "h5data/$dataset.fasta.gz not found on h5-data"
+        want=$(awk -F'	' -v d="$dataset" '$1 == d { print $8 }' "$root/data/manifests/simulated/hgt.tsv")
         got=$(sha256sum "$sim/sequences.fasta" | cut -d' ' -f1)
-        if [ "$got" != "$want" ]; then
-            want_tree=$(awk -F'	' -v d="$dataset" '$1 == d { print $9 }' "$root/data/manifests/simulated/hgt.tsv")
-            got_tree=$(sha256sum "$sim/species.treefile" | cut -d' ' -f1)
-            same_tree=no; [ "$got_tree" = "$want_tree" ] && same_tree=yes
-            fail "not run (data differ)" "sequences.fasta SHA-256 $got differs from the manifest value $want (species tree identical: $same_tree)"
-        fi
+        [ "$got" = "$want" ] || fail "not run (data differ)" "sequences.fasta SHA-256 $got differs from the manifest value $want"
         awk -v d="$inp" '/^>/ { f = d "/" substr($1, 2) ".fasta" } { print > f }' "$sim/sequences.fasta"
         reference="$root/data/manifests/simulated/trees/$dataset.nwk"
         ;;

@@ -41,11 +41,14 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        # Third run: CD-MAWS on the AFproject data, which did not build in
-        # runs 38546099791 and 38563555960.
-        tool: [cdmaws]
-        dataset: [fish_mito, ecoli, ecoli_shigella_hgt, yersinia_hgt,
-                  sim_hgt_0, sim_hgt_250, sim_hgt_500, sim_hgt_750, sim_hgt_1000]
+        # Fourth run: the 20 H5 datasets, now taken from the branch h5-data
+        # (AliSim on Linux does not give the laptop's data). The AFproject jobs
+        # finished in runs 38546099791 (Mash, Peafowl) and 38564176984 (CD-MAWS).
+        tool: [mash, cdmaws, peafowl]
+        dataset: [hgt_h000_r1, hgt_h000_r2, hgt_h000_r3, hgt_h000_r4, hgt_h000_r5,
+                  hgt_h010_r1, hgt_h010_r2, hgt_h010_r3, hgt_h010_r4, hgt_h010_r5,
+                  hgt_h020_r1, hgt_h020_r2, hgt_h020_r3, hgt_h020_r4, hgt_h020_r5,
+                  hgt_h040_r1, hgt_h040_r2, hgt_h040_r3, hgt_h040_r4, hgt_h040_r5]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
