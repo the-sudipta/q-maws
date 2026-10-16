@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quartet Halo Tree: qmaws</title>
+<style>
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fff;color:#222}
+header{padding:8px 14px;border-bottom:1px solid #ddd}
+h1{font-size:18px;margin:2px 0}
+.sub{margin:2px 0 6px;color:#555;font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:13px}
+button,select,input{font:inherit;font-size:13px}
+main{position:relative}
+#view{display:block;width:100%;height:calc(100vh - 150px);min-height:400px;cursor:grab;background:#fff}
+#view.drag{cursor:grabbing}
+#tip{position:absolute;pointer-events:none;background:#222;color:#fff;padding:5px 8px;border-radius:4px;font-size:12px;display:none;white-space:pre}
+footer{padding:6px 14px;font-size:12px;color:#444;border-top:1px solid #ddd}
+.leaf text{font-size:11px}
+.hit .nm{font-weight:bold;fill:#d55e00}
+.hit .mark{stroke:#d55e00;stroke-width:2}
+.sw{display:inline-block;width:12px;height:10px;margin:0 4px 0 10px;border:1px solid #666;vertical-align:middle}
+.bar{display:inline-block;width:110px;height:10px;border:1px solid #666;vertical-align:middle;margin:0 4px}
+</style>
+</head>
+<body>
+<header>
+<h1>Quartet Halo Tree: qmaws</h1>
+<p class="sub">100 taxa, 3,921,225 quartets; W2-sym, W2c 100 resamples, S2 0 replicates, strand filter on, MAW lengths by entropy, seed 1 · Run of 2026-10-15 (UTC), Q-MAWS 0.0.0</p>
+<div class="controls">
+<button id="layout" type="button">Rectangular layout</button>
+<label>Branch colour <select id="support"></select></label>
+<label>Find taxon <input id="search" type="search" placeholder="name"></label>
+<span id="hits"></span>
+<button id="zin" type="button">Zoom in</button><button id="zout" type="button">Zoom out</button><button id="reset" type="button">Reset view</button>
+</div>
+</header>
+<main><svg id="view" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Tree"></svg><div id="tip" role="status"></div></main>
+<footer id="legend"></footer>
+<script id="tree-data" type="application/json">{"nodes":[{"p":null,"c":[1,106],"n":null,"a":2.896892,"d":0,"k":100,"s":[null]},{"p":0,"c":[2,37],"n":null,"a":1.363402,"d":1,"k":53,"s":[0.3406]},{"p":1,"c":[3,22],"n":null,"a":0.585122,"d":2,"k":18,"s":[0.3532]},{"p":2,"c":[4,15],"n":null,"a":0.322013,"d":3,"k":10,"s":[0.3671]},{"p":3,"c":[5,10],"n":null,"a":0.172788,"d":4,"k":6,"s":[0.4309]},{"p":4,"c":[6,9],"n":null,"a":0.078540,"d":5,"k":3,"s":[0.5580]},{"p":5,"c":[7,8],"n":null,"a":0.031416,"d":6,"k":2,"s":[1.0000]},{"p":6,"c":[],"n":"T78","a":0.000000,"d":7,"k":1,"h":0.3586,"g":"Clade A","s":[null]},{"p":6,"c":[],"n":"T94","a":0.062832,"d":7,"k":1,"h":0.3586,"g":"Clade A","s":[null]},{"p":5,"c":[],"n":"T71","a":0.125664,"d":6,"k":1,"h":0.3388,"g":"Clade A","s":[null]},{"p":4,"c":[11,14],"n":null,"a":0.267035,"d":5,"k":3,"s":[0.5934]},{"p":10,"c":[12,13],"n":null,"a":0.219911,"d":6,"k":2,"s":[0.9796]},{"p":11,"c":[],"n":"T88","a":0.188496,"d":7,"k":1,"h":0.3579,"g":"Clade A","s":[null]},{"p":11,"c":[],"n":"T80","a":0.251327,"d":7,"k":1,"h":0.3610,"g":"Clade A","s":[null]},{"p":10,"c":[],"n":"T8","a":0.314159,"d":6,"k":1,"h":0.3413,"g":"Clade A","s":[null]},{"p":3,"c":[16,19],"n":null,"a":0.471239,"d":4,"k":4,"s":[0.3353]},{"p":15,"c":[17,18],"n":null,"a":0.408407,"d":5,"k":2,"s":[0.3354]},{"p":16,"c":[],"n":"T2","a":0.376991,"d":6,"k":1,"h":0.3388,"g":"Clade A","s":[null]},{"p":16,"c":[],"n":"T97","a":0.439823,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":15,"c":[20,21],"n":null,"a":0.534071,"d":5,"k":2,"s":[0.3353]},{"p":19,"c":[],"n":"T24","a":0.502655,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":19,"c":[],"n":"T43","a":0.565487,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":2,"c":[23,30],"n":null,"a":0.848230,"d":3,"k":8,"s":[0.3820]},{"p":22,"c":[24,27],"n":null,"a":0.722566,"d":4,"k":4,"s":[0.5533]},{"p":23,"c":[25,26],"n":null,"a":0.659734,"d":5,"k":2,"s":[0.9791]},{"p":24,"c":[],"n":"T19","a":0.628319,"d":6,"k":1,"h":0.3578,"g":"Clade A","s":[null]},{"p":24,"c":[],"n":"T75","a":0.691150,"d":6,"k":1,"h":0.3578,"g":"Clade A","s":[null]},{"p":23,"c":[28,29],"n":null,"a":0.785398,"d":5,"k":2,"s":[1.0000]},{"p":27,"c":[],"n":"T6","a":0.753982,"d":6,"k":1,"h":0.3584,"g":"Clade A","s":[null]},{"p":27,"c":[],"n":"T66","a":0.816814,"d":6,"k":1,"h":0.3584,"g":"Clade A","s":[null]},{"p":22,"c":[31,34],"n":null,"a":0.973894,"d":4,"k":4,"s":[0.3356]},{"p":30,"c":[32,33],"n":null,"a":0.911062,"d":5,"k":2,"s":[0.3356]},{"p":31,"c":[],"n":"T26","a":0.879646,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":31,"c":[],"n":"T99","a":0.942478,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":30,"c":[35,36],"n":null,"a":1.036726,"d":5,"k":2,"s":[0.3358]},{"p":34,"c":[],"n":"T47","a":1.005310,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":34,"c":[],"n":"T92","a":1.068142,"d":6,"k":1,"h":0.3387,"g":"Clade A","s":[null]},{"p":1,"c":[38,69],"n":null,"a":2.141683,"d":2,"k":35,"s":[0.3401]},{"p":37,"c":[39,54],"n":null,"a":1.602212,"d":3,"k":16,"s":[0.3359]},{"p":38,"c":[40,47],"n":null,"a":1.350885,"d":4,"k":8,"s":[0.3356]},{"p":39,"c":[41,44],"n":null,"a":1.225221,"d":5,"k":4,"s":[0.3355]},{"p":40,"c":[42,43],"n":null,"a":1.162389,"d":6,"k":2,"s":[0.3367]},{"p":41,"c":[],"n":"T27","a":1.130973,"d":7,"k":1,"h":0.3388,"g":"Clade B","s":[null]},{"p":41,"c":[],"n":"T89","a":1.193805,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":40,"c":[45,46],"n":null,"a":1.288053,"d":6,"k":2,"s":[0.3352]},{"p":44,"c":[],"n":"T39","a":1.256637,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":44,"c":[],"n":"T42","a":1.319469,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":39,"c":[48,51],"n":null,"a":1.476549,"d":5,"k":4,"s":[0.3354]},{"p":47,"c":[49,50],"n":null,"a":1.413717,"d":6,"k":2,"s":[0.3356]},{"p":48,"c":[],"n":"T59","a":1.382301,"d":7,"k":1,"h":0.3388,"g":"Clade B","s":[null]},{"p":48,"c":[],"n":"T28","a":1.445133,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":47,"c":[52,53],"n":null,"a":1.539380,"d":6,"k":2,"s":[0.3355]},{"p":51,"c":[],"n":"T10","a":1.507964,"d":7,"k":1,"h":0.3388,"g":"Clade B","s":[null]},{"p":51,"c":[],"n":"T44","a":1.570796,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":38,"c":[55,62],"n":null,"a":1.853540,"d":4,"k":8,"s":[0.3354]},{"p":54,"c":[56,59],"n":null,"a":1.727876,"d":5,"k":4,"s":[0.3353]},{"p":55,"c":[57,58],"n":null,"a":1.665044,"d":6,"k":2,"s":[0.3353]},{"p":56,"c":[],"n":"T25","a":1.633628,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":56,"c":[],"n":"T34","a":1.696460,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":55,"c":[60,61],"n":null,"a":1.790708,"d":6,"k":2,"s":[0.3352]},{"p":59,"c":[],"n":"T79","a":1.759292,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":59,"c":[],"n":"T30","a":1.822124,"d":7,"k":1,"h":0.3388,"g":"Clade B","s":[null]},{"p":54,"c":[63,66],"n":null,"a":1.979203,"d":5,"k":4,"s":[0.3353]},{"p":62,"c":[64,65],"n":null,"a":1.916372,"d":6,"k":2,"s":[0.3352]},{"p":63,"c":[],"n":"T50","a":1.884956,"d":7,"k":1,"h":0.3385,"g":"Clade B","s":[null]},{"p":63,"c":[],"n":"T48","a":1.947787,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":62,"c":[67,68],"n":null,"a":2.042035,"d":6,"k":2,"s":[0.3352]},{"p":66,"c":[],"n":"T56","a":2.010619,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":66,"c":[],"n":"T76","a":2.073451,"d":7,"k":1,"h":0.3387,"g":"Clade B","s":[null]},{"p":37,"c":[70,85],"n":null,"a":2.681153,"d":3,"k":19,"s":[0.3472]},{"p":69,"c":[71,78],"n":null,"a":2.356194,"d":4,"k":8,"s":[0.3356]},{"p":70,"c":[72,75],"n":null,"a":2.230531,"d":5,"k":4,"s":[0.3354]},{"p":71,"c":[73,74],"n":null,"a":2.167699,"d":6,"k":2,"s":[0.3352]},{"p":72,"c":[],"n":"T83","a":2.136283,"d":7,"k":1,"h":0.3388,"g":"Clade C","s":[null]},{"p":72,"c":[],"n":"T100","a":2.199115,"d":7,"k":1,"h":0.3387,"g":"Clade C","s":[null]},{"p":71,"c":[76,77],"n":null,"a":2.293363,"d":6,"k":2,"s":[0.3353]},{"p":75,"c":[],"n":"T87","a":2.261947,"d":7,"k":1,"h":0.3387,"g":"Clade C","s":[null]},{"p":75,"c":[],"n":"T40","a":2.324779,"d":7,"k":1,"h":0.3388,"g":"Clade C","s":[null]},{"p":70,"c":[79,82],"n":null,"a":2.481858,"d":5,"k":4,"s":[0.3356]},{"p":78,"c":[80,81],"n":null,"a":2.419026,"d":6,"k":2,"s":[0.3356]},{"p":79,"c":[],"n":"T82","a":2.387610,"d":7,"k":1,"h":0.3387,"g":"Clade C","s":[null]},{"p":79,"c":[],"n":"T81","a":2.450442,"d":7,"k":1,"h":0.3388,"g":"Clade C","s":[null]},{"p":78,"c":[83,84],"n":null,"a":2.544690,"d":6,"k":2,"s":[0.3365]},{"p":82,"c":[],"n":"T37","a":2.513274,"d":7,"k":1,"h":0.3388,"g":"Clade C","s":[null]},{"p":82,"c":[],"n":"T69","a":2.576106,"d":7,"k":1,"h":0.3387,"g":"Clade C","s":[null]},{"p":69,"c":[86,99],"n":null,"a":3.006111,"d":4,"k":11,"s":[0.3715]},{"p":85,"c":[87,92],"n":null,"a":2.839214,"d":5,"k":7,"s":[0.3986]},{"p":86,"c":[88,91],"n":null,"a":2.717478,"d":6,"k":3,"s":[0.5585]},{"p":87,"c":[89,90],"n":null,"a":2.670354,"d":7,"k":2,"s":[0.9863]},{"p":88,"c":[],"n":"T36","a":2.638938,"d":8,"k":1,"h":0.3581,"g":"Clade C","s":[null]},{"p":88,"c":[],"n":"T95","a":2.701770,"d":8,"k":1,"h":0.3581,"g":"Clade C","s":[null]},{"p":87,"c":[],"n":"T72","a":2.764602,"d":7,"k":1,"h":0.3385,"g":"Clade C","s":[null]},{"p":86,"c":[93,98],"n":null,"a":2.960951,"d":6,"k":4,"s":[0.4446]},{"p":92,"c":[94,97],"n":null,"a":2.905973,"d":7,"k":3,"s":[0.5477]},{"p":93,"c":[95,96],"n":null,"a":2.858849,"d":8,"k":2,"s":[0.9556]},{"p":94,"c":[],"n":"T35","a":2.827433,"d":9,"k":1,"h":0.3574,"g":"Clade C","s":[null]},{"p":94,"c":[],"n":"T52","a":2.890265,"d":9,"k":1,"h":0.3573,"g":"Clade C","s":[null]},{"p":93,"c":[],"n":"T68","a":2.953097,"d":8,"k":1,"h":0.3385,"g":"Clade C","s":[null]},{"p":92,"c":[],"n":"T84","a":3.015929,"d":7,"k":1,"h":0.3385,"g":"Clade C","s":[null]},{"p":85,"c":[100,103],"n":null,"a":3.173009,"d":5,"k":4,"s":[0.4472]},{"p":99,"c":[101,102],"n":null,"a":3.110177,"d":6,"k":2,"s":[0.3423]},{"p":100,"c":[],"n":"T90","a":3.078761,"d":7,"k":1,"h":0.3389,"g":"Clade C","s":[null]},{"p":100,"c":[],"n":"T96","a":3.141593,"d":7,"k":1,"h":0.3390,"g":"Clade C","s":[null]},{"p":99,"c":[104,105],"n":null,"a":3.235840,"d":6,"k":2,"s":[1.0000]},{"p":103,"c":[],"n":"T32","a":3.204425,"d":7,"k":1,"h":0.3584,"g":"Clade C","s":[null]},{"p":103,"c":[],"n":"T67","a":3.267256,"d":7,"k":1,"h":0.3585,"g":"Clade C","s":[null]},{"p":0,"c":[107,126],"n":null,"a":4.430382,"d":1,"k":47,"s":[0.3406]},{"p":106,"c":[108,119],"n":null,"a":3.659955,"d":2,"k":10,"s":[0.3642]},{"p":107,"c":[109,116],"n":null,"a":3.518584,"d":3,"k":6,"s":[0.4219]},{"p":108,"c":[110,113],"n":null,"a":3.424336,"d":4,"k":4,"s":[0.5523]},{"p":109,"c":[111,112],"n":null,"a":3.361504,"d":5,"k":2,"s":[1.0000]},{"p":110,"c":[],"n":"T13","a":3.330088,"d":6,"k":1,"h":0.3584,"g":"Clade D","s":[null]},{"p":110,"c":[],"n":"T54","a":3.392920,"d":6,"k":1,"h":0.3584,"g":"Clade D","s":[null]},{"p":109,"c":[114,115],"n":null,"a":3.487168,"d":5,"k":2,"s":[0.9742]},{"p":113,"c":[],"n":"T4","a":3.455752,"d":6,"k":1,"h":0.3577,"g":"Clade D","s":[null]},{"p":113,"c":[],"n":"T45","a":3.518584,"d":6,"k":1,"h":0.3577,"g":"Clade D","s":[null]},{"p":108,"c":[117,118],"n":null,"a":3.612832,"d":4,"k":2,"s":[0.3352]},{"p":116,"c":[],"n":"T53","a":3.581416,"d":5,"k":1,"h":0.3387,"g":"Clade D","s":[null]},{"p":116,"c":[],"n":"T12","a":3.644247,"d":5,"k":1,"h":0.3386,"g":"Clade D","s":[null]},{"p":107,"c":[120,123],"n":null,"a":3.801327,"d":3,"k":4,"s":[0.3353]},{"p":119,"c":[121,122],"n":null,"a":3.738495,"d":4,"k":2,"s":[0.3352]},{"p":120,"c":[],"n":"T61","a":3.707079,"d":5,"k":1,"h":0.3387,"g":"Clade D","s":[null]},{"p":120,"c":[],"n":"T9","a":3.769911,"d":5,"k":1,"h":0.3387,"g":"Clade D","s":[null]},{"p":119,"c":[124,125],"n":null,"a":3.864159,"d":4,"k":2,"s":[0.3352]},{"p":123,"c":[],"n":"T60","a":3.832743,"d":5,"k":1,"h":0.3386,"g":"Clade D","s":[null]},{"p":123,"c":[],"n":"T49","a":3.895575,"d":5,"k":1,"h":0.3387,"g":"Clade D","s":[null]},{"p":106,"c":[127,168],"n":null,"a":5.200808,"d":2,"k":37,"s":[0.3406]},{"p":126,"c":[128,149],"n":null,"a":4.652502,"d":3,"k":21,"s":[0.3482]},{"p":127,"c":[129,142],"n":null,"a":4.315763,"d":4,"k":11,"s":[0.3714]},{"p":128,"c":[130,135],"n":null,"a":4.139048,"d":5,"k":7,"s":[0.4301]},{"p":129,"c":[131,134],"n":null,"a":4.036947,"d":6,"k":3,"s":[0.5579]},{"p":130,"c":[132,133],"n":null,"a":3.989823,"d":7,"k":2,"s":[1.0000]},{"p":131,"c":[],"n":"T15","a":3.958407,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":131,"c":[],"n":"T77","a":4.021239,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":130,"c":[],"n":"T31","a":4.084070,"d":7,"k":1,"h":0.3388,"g":"Clade E","s":[null]},{"p":129,"c":[136,139],"n":null,"a":4.241150,"d":6,"k":4,"s":[0.5566]},{"p":135,"c":[137,138],"n":null,"a":4.178318,"d":7,"k":2,"s":[0.9999]},{"p":136,"c":[],"n":"T29","a":4.146902,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":136,"c":[],"n":"T74","a":4.209734,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":135,"c":[140,141],"n":null,"a":4.303982,"d":7,"k":2,"s":[1.0000]},{"p":139,"c":[],"n":"T70","a":4.272566,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":139,"c":[],"n":"T51","a":4.335398,"d":8,"k":1,"h":0.3585,"g":"Clade E","s":[null]},{"p":128,"c":[143,146],"n":null,"a":4.492477,"d":5,"k":4,"s":[0.3354]},{"p":142,"c":[144,145],"n":null,"a":4.429646,"d":6,"k":2,"s":[0.3368]},{"p":143,"c":[],"n":"T55","a":4.398230,"d":7,"k":1,"h":0.3388,"g":"Clade E","s":[null]},{"p":143,"c":[],"n":"T64","a":4.461062,"d":7,"k":1,"h":0.3388,"g":"Clade E","s":[null]},{"p":142,"c":[147,148],"n":null,"a":4.555309,"d":6,"k":2,"s":[0.3350]},{"p":146,"c":[],"n":"T63","a":4.523893,"d":7,"k":1,"h":0.3387,"g":"Clade E","s":[null]},{"p":146,"c":[],"n":"T17","a":4.586725,"d":7,"k":1,"h":0.3384,"g":"Clade E","s":[null]},{"p":127,"c":[150,161],"n":null,"a":4.989242,"d":4,"k":10,"s":[0.3510]},{"p":149,"c":[151,158],"n":null,"a":4.857688,"d":5,"k":6,"s":[0.3820]},{"p":150,"c":[152,157],"n":null,"a":4.783075,"d":6,"k":4,"s":[0.4501]},{"p":151,"c":[153,156],"n":null,"a":4.728097,"d":7,"k":3,"s":[0.5640]},{"p":152,"c":[154,155],"n":null,"a":4.680973,"d":8,"k":2,"s":[1.0000]},{"p":153,"c":[],"n":"T21","a":4.649557,"d":9,"k":1,"h":0.3586,"g":"Clade F","s":[null]},{"p":153,"c":[],"n":"T58","a":4.712389,"d":9,"k":1,"h":0.3590,"g":"Clade F","s":[null]},{"p":152,"c":[],"n":"T93","a":4.775221,"d":8,"k":1,"h":0.3394,"g":"Clade F","s":[null]},{"p":151,"c":[],"n":"T57","a":4.838053,"d":7,"k":1,"h":0.3387,"g":"Clade F","s":[null]},{"p":150,"c":[159,160],"n":null,"a":4.932300,"d":6,"k":2,"s":[0.3483]},{"p":158,"c":[],"n":"T38","a":4.900885,"d":7,"k":1,"h":0.3392,"g":"Clade F","s":[null]},{"p":158,"c":[],"n":"T62","a":4.963716,"d":7,"k":1,"h":0.3391,"g":"Clade F","s":[null]},{"p":149,"c":[162,165],"n":null,"a":5.120796,"d":5,"k":4,"s":[0.3355]},{"p":161,"c":[163,164],"n":null,"a":5.057964,"d":6,"k":2,"s":[0.3359]},{"p":162,"c":[],"n":"T14","a":5.026548,"d":7,"k":1,"h":0.3388,"g":"Clade F","s":[null]},{"p":162,"c":[],"n":"T23","a":5.089380,"d":7,"k":1,"h":0.3387,"g":"Clade F","s":[null]},{"p":161,"c":[166,167],"n":null,"a":5.183628,"d":6,"k":2,"s":[0.3362]},{"p":165,"c":[],"n":"T3","a":5.152212,"d":7,"k":1,"h":0.3388,"g":"Clade F","s":[null]},{"p":165,"c":[],"n":"T41","a":5.215044,"d":7,"k":1,"h":0.3387,"g":"Clade F","s":[null]},{"p":126,"c":[169,184],"n":null,"a":5.749115,"d":3,"k":16,"s":[0.3359]},{"p":168,"c":[170,177],"n":null,"a":5.497787,"d":4,"k":8,"s":[0.3355]},{"p":169,"c":[171,174],"n":null,"a":5.372123,"d":5,"k":4,"s":[0.3353]},{"p":170,"c":[172,173],"n":null,"a":5.309292,"d":6,"k":2,"s":[0.3354]},{"p":171,"c":[],"n":"T22","a":5.277876,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":171,"c":[],"n":"T65","a":5.340708,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":170,"c":[175,176],"n":null,"a":5.434955,"d":6,"k":2,"s":[0.3352]},{"p":174,"c":[],"n":"T11","a":5.403539,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":174,"c":[],"n":"T5","a":5.466371,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":169,"c":[178,181],"n":null,"a":5.623451,"d":5,"k":4,"s":[0.3356]},{"p":177,"c":[179,180],"n":null,"a":5.560619,"d":6,"k":2,"s":[0.3353]},{"p":178,"c":[],"n":"T16","a":5.529203,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":178,"c":[],"n":"T20","a":5.592035,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":177,"c":[182,183],"n":null,"a":5.686283,"d":6,"k":2,"s":[0.3358]},{"p":181,"c":[],"n":"T73","a":5.654867,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":181,"c":[],"n":"T98","a":5.717699,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":168,"c":[185,192],"n":null,"a":6.000442,"d":4,"k":8,"s":[0.3356]},{"p":184,"c":[186,189],"n":null,"a":5.874778,"d":5,"k":4,"s":[0.3354]},{"p":185,"c":[187,188],"n":null,"a":5.811946,"d":6,"k":2,"s":[0.3353]},{"p":186,"c":[],"n":"T7","a":5.780530,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":186,"c":[],"n":"T18","a":5.843362,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":185,"c":[190,191],"n":null,"a":5.937610,"d":6,"k":2,"s":[0.3353]},{"p":189,"c":[],"n":"T46","a":5.906194,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":189,"c":[],"n":"T33","a":5.969026,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":184,"c":[193,196],"n":null,"a":6.126106,"d":5,"k":4,"s":[0.3355]},{"p":192,"c":[194,195],"n":null,"a":6.063274,"d":6,"k":2,"s":[0.3366]},{"p":193,"c":[],"n":"T1","a":6.031858,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":193,"c":[],"n":"T91","a":6.094690,"d":7,"k":1,"h":0.3388,"g":"Clade G","s":[null]},{"p":192,"c":[197,198],"n":null,"a":6.188938,"d":6,"k":2,"s":[0.3353]},{"p":196,"c":[],"n":"T85","a":6.157522,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]},{"p":196,"c":[],"n":"T86","a":6.220353,"d":7,"k":1,"h":0.3387,"g":"Clade G","s":[null]}],"maxDepth":9,"supports":["S1"],"groupColours":{"Clade A":"#e69f00","Clade B":"#56b4e9","Clade C":"#009e73","Clade D":"#f0e442","Clade E":"#0072b2","Clade F":"#d55e00","Clade G":"#cc79a7"},"groupSource":"automatic: clades of the tree","haloScale":["#b35806","#bf6712","#cc761d","#d88529","#e59434","#f1a340","#f2b465","#f3c589","#f5d5ae","#f6e6d2","#f7f7f7","#e4e2ed","#d1cde2","#bfb8d8","#aca3cd","#998ec3","#8b79b7","#7d65ab","#7050a0","#623c94","#542788"],"supportScale":["#9cd83b","#81d24c","#67cb5c","#52c368","#3cba75","#2fb07d","#27a783","#1f9d89","#22938b","#25888d","#287d8e","#2c748e","#306a8e","#355e8c","#3a528a","#3f4688","#433981","#472d7b","#471f70","#461062","#440154"]}</script>
+<script>
+(function(){
+"use strict";
+var D=JSON.parse(document.getElementById("tree-data").textContent);
+var NS="http://www.w3.org/2000/svg";
+var svg=document.getElementById("view"),tip=document.getElementById("tip");
+var circular=true,supportIndex=D.supports.length?0:-1,query="";
+var view=null,base=null;
+function el(name,attrs,parent){var e=document.createElementNS(NS,name);for(var k in attrs){e.setAttribute(k,attrs[k]);}if(parent){parent.appendChild(e);}return e;}
+function scale(list,v){if(v===null||v===undefined){return "#969696";}v=Math.max(0,Math.min(1,v));return list[Math.round(v*(list.length-1))];}
+function supportColour(v){if(v===null||v===undefined){return "#969696";}return scale(D.supportScale,v);}
+function supportWidth(v){return 1+3*(v===null||v===undefined?0:Math.max(0,Math.min(1,v)));}
+var leaves=[];(function walk(v){var n=D.nodes[v];if(!n.c.length){leaves.push(v);}else{for(var i=0;i<n.c.length;i++){walk(n.c[i]);}}})(0);
+var longest=0;leaves.forEach(function(l){longest=Math.max(longest,D.nodes[l].n.length);});
+function fmt(v){return v===null||v===undefined?"no value":v.toFixed(3);}
+function info(v){var n=D.nodes[v];var lines=[];
+ if(!n.c.length){lines.push(n.n);lines.push("Halo value: "+fmt(n.h));if(n.g){lines.push("Group: "+n.g);}}
+ else{lines.push("Internal branch above "+n.k+" taxa");for(var i=0;i<D.supports.length;i++){lines.push(D.supports[i]+": "+fmt(n.s[i]));}}
+ return lines.join("\n");}
+function hover(e,v){tip.textContent=info(v);tip.style.display="block";var r=svg.getBoundingClientRect();tip.style.left=(e.clientX-r.left+14)+"px";tip.style.top=(e.clientY-r.top+14)+"px";}
+function unhover(){tip.style.display="none";}
+function bind(e,v){e.addEventListener("mousemove",function(ev){hover(ev,v);});e.addEventListener("mouseleave",unhover);}
+function draw(){
+ while(svg.firstChild){svg.removeChild(svg.firstChild);}
+ var g=el("g",{},svg);var nL=leaves.length;
+ var pos={};
+ if(circular){
+  var R=Math.max(260,nL*5.5),lab=longest*6.2+20,size=2*(R+lab+60);
+  var c=size/2;
+  base=[0,0,size,size];
+  D.nodes.forEach(function(n,v){var r=n.c.length?R*n.d/Math.max(1,D.maxDepth):R;pos[v]={a:n.a,r:r};});
+  function P(a,r){return [c+r*Math.cos(a),c+r*Math.sin(a)];}
+  D.nodes.forEach(function(n,v){n.c.forEach(function(ch){
+   var col="#555",w=1.2,sv=supportIndex>=0?D.nodes[ch].s[supportIndex]:null;
+   if(D.nodes[ch].c.length&&supportIndex>=0){col=supportColour(sv);w=supportWidth(sv);}
+   var r=pos[v].r,a0=n.a,a1=D.nodes[ch].a,p0=P(a0,r),p1=P(a1,r),p2=P(a1,pos[ch].r);
+   var d="M"+p0[0]+","+p0[1];
+   if(r>0&&Math.abs(a1-a0)>1e-9){d+=" A"+r+","+r+" 0 "+(Math.abs(a1-a0)>Math.PI?1:0)+" "+(a1>a0?1:0)+" "+p1[0]+","+p1[1];}else{d+=" L"+p1[0]+","+p1[1];}
+   d+=" L"+p2[0]+","+p2[1];
+   var e=el("path",{d:d,fill:"none",stroke:col,"stroke-width":w,"stroke-linecap":"round"},g);
+   var hit=el("path",{d:d,fill:"none",stroke:"transparent","stroke-width":8},g);bind(hit,ch);});});
+  var half=Math.PI/nL;
+  leaves.forEach(function(l){var n=D.nodes[l],a=n.a,deg=a*180/Math.PI,left=Math.cos(a)<0;
+   var grp=el("g",{"class":"leaf","data-name":n.n.toLowerCase()},g);
+   var p=P(a,R+6);var t=el("text",{"class":"nm",x:p[0],y:p[1],"text-anchor":left?"end":"start","dominant-baseline":"central",transform:"rotate("+(left?deg+180:deg)+" "+p[0]+" "+p[1]+")"},grp);t.textContent=n.n;
+   var ro=R+lab+16,ri=ro-12;var q0=P(a-half*0.88,ro),q1=P(a+half*0.88,ro),q2=P(a+half*0.88,ri),q3=P(a-half*0.88,ri);
+   el("path",{"class":"mark",d:"M"+q0+" A"+ro+","+ro+" 0 0 1 "+q1+" L"+q2+" A"+ri+","+ri+" 0 0 0 "+q3+" Z",fill:scale(D.haloScale,n.h),stroke:"#666","stroke-width":0.5},grp);
+   if(n.g){var go=ro+16,gi=go-8;var r0=P(a-half,go),r1=P(a+half,go),r2=P(a+half,gi),r3=P(a-half,gi);el("path",{d:"M"+r0+" A"+go+","+go+" 0 0 1 "+r1+" L"+r2+" A"+gi+","+gi+" 0 0 0 "+r3+" Z",fill:D.groupColours[n.g]||"#999"},grp);}
+   bind(grp,l);});
+ }else{
+  var row=16,W=Math.max(600,D.maxDepth*40),labw=longest*6.6+40,H=nL*row+40;
+  base=[0,0,W+labw+200,H];
+  var y={},x={};leaves.forEach(function(l,i){y[l]=20+row*(i+0.5);});
+  (function post(v){var n=D.nodes[v];if(n.c.length){var s=0;n.c.forEach(function(ch){post(ch);s+=y[ch];});y[v]=s/n.c.length;}x[v]=20+W*(n.c.length?n.d/Math.max(1,D.maxDepth):1);})(0);
+  D.nodes.forEach(function(n,v){n.c.forEach(function(ch){
+   var col="#444",w=1.2,sv=supportIndex>=0?D.nodes[ch].s[supportIndex]:null;
+   if(D.nodes[ch].c.length&&supportIndex>=0){col=supportColour(sv);w=supportWidth(sv);}
+   var d="M"+x[v]+","+y[v]+" V"+y[ch]+" H"+x[ch];
+   el("path",{d:d,fill:"none",stroke:col,"stroke-width":w},g);
+   var hit=el("path",{d:d,fill:"none",stroke:"transparent","stroke-width":8},g);bind(hit,ch);});});
+  leaves.forEach(function(l){var n=D.nodes[l];var grp=el("g",{"class":"leaf","data-name":n.n.toLowerCase()},g);
+   el("rect",{"class":"mark",x:x[l]+4,y:y[l]-5,width:10,height:10,fill:scale(D.haloScale,n.h),stroke:"#666","stroke-width":0.5},grp);
+   var t=el("text",{"class":"nm",x:x[l]+18,y:y[l],"dominant-baseline":"central"},grp);t.textContent=n.n;
+   if(n.g){el("rect",{x:x[l]+labw,y:y[l]-row/2,width:12,height:row,fill:D.groupColours[n.g]||"#999"},grp);var gt=el("text",{x:x[l]+labw+16,y:y[l],"dominant-baseline":"central","font-style":"italic","font-size":10},grp);gt.textContent=n.g;}
+   bind(grp,l);});
+ }
+ view=base.slice();setView();applySearch();
+}
+function setView(){svg.setAttribute("viewBox",view.join(" "));}
+function zoom(f,cx,cy){if(cx===undefined){cx=view[0]+view[2]/2;cy=view[1]+view[3]/2;}view=[cx-(cx-view[0])*f,cy-(cy-view[1])*f,view[2]*f,view[3]*f];setView();}
+svg.addEventListener("wheel",function(e){e.preventDefault();var r=svg.getBoundingClientRect();var p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;var m=svg.getScreenCTM();if(!m){return;}var q=p.matrixTransform(m.inverse());zoom(e.deltaY<0?0.85:1/0.85,q.x,q.y);},{passive:false});
+var dragging=null;
+svg.addEventListener("mousedown",function(e){dragging={x:e.clientX,y:e.clientY,v:view.slice()};svg.classList.add("drag");});
+window.addEventListener("mousemove",function(e){if(!dragging){return;}var r=svg.getBoundingClientRect();var sx=dragging.v[2]/r.width,sy=dragging.v[3]/r.height,s=Math.max(sx,sy);view=[dragging.v[0]-(e.clientX-dragging.x)*s,dragging.v[1]-(e.clientY-dragging.y)*s,dragging.v[2],dragging.v[3]];setView();});
+window.addEventListener("mouseup",function(){dragging=null;svg.classList.remove("drag");});
+document.getElementById("zin").onclick=function(){zoom(0.8);};
+document.getElementById("zout").onclick=function(){zoom(1.25);};
+document.getElementById("reset").onclick=function(){view=base.slice();setView();};
+var lb=document.getElementById("layout");lb.onclick=function(){circular=!circular;lb.textContent=circular?"Rectangular layout":"Circular layout";draw();};
+var sel=document.getElementById("support");
+D.supports.forEach(function(s,i){var o=document.createElement("option");o.value=i;o.textContent=s;sel.appendChild(o);});
+var none=document.createElement("option");none.value=-1;none.textContent="none";sel.appendChild(none);
+sel.value=supportIndex;sel.onchange=function(){supportIndex=parseInt(sel.value,10);draw();legend();};
+function applySearch(){var n=0;var items=svg.querySelectorAll(".leaf");for(var i=0;i<items.length;i++){var on=query.length>0&&items[i].getAttribute("data-name").indexOf(query)>=0;items[i].classList.toggle("hit",on);if(on){n++;}}
+ document.getElementById("hits").textContent=query.length?(n+(n===1?" match":" matches")):"";}
+document.getElementById("search").addEventListener("input",function(e){query=e.target.value.trim().toLowerCase();applySearch();});
+function bar(list){return "linear-gradient(to right,"+list.join(",")+")";}
+function legend(){var f=document.getElementById("legend");f.innerHTML="";
+ function add(html){var s=document.createElement("span");s.innerHTML=html;f.appendChild(s);}
+ add("Halo value: 0<span class=\"bar\" style=\"background:"+bar(D.haloScale)+"\"></span>1 ");
+ if(supportIndex>=0){add(" &middot; "+D.supports[supportIndex]+" support (branch colour and width): 0<span class=\"bar\" style=\"background:"+bar(D.supportScale)+"\"></span>1 ");}
+ var gs=Object.keys(D.groupColours);if(gs.length){var t=document.createElement("span");t.textContent=" · Groups ("+D.groupSource+"):";f.appendChild(t);gs.forEach(function(gname){var s=document.createElement("span");var sw=document.createElement("span");sw.className="sw";sw.style.background=D.groupColours[gname];s.appendChild(sw);s.appendChild(document.createTextNode(gname));f.appendChild(s);});}
+ var u=document.createElement("div");u.textContent="Unrooted tree, drawn rooted at the midpoint of its longest path; branch lengths are not drawn. Wheel or buttons to zoom, drag to pan, hover for values.";f.appendChild(u);}
+draw();legend();
+})();
+</script>
+</body>
+</html>

@@ -36,4 +36,4 @@ The peer-reviewed tools on the same 20 datasets are in `results/baselines/` (Ame
 
 ## Verification
 
-The 20 Q-MAWS runs are verified with `qmaws verify --quick` after M13, whose timing runs started on the same laptop when H5 finished (verification during M13 would change its measured times).
+All 20 Q-MAWS runs passed `qmaws verify --quick` on 2026-10-16, after M13 (verification during M13 would have changed its measured times); the reports are in each run's `qmaws/report/verify_*.txt`.

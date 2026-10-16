@@ -16,6 +16,8 @@ Tables and reports of the run.
 | `support.tsv.sha256` | SHA-256 of `support.tsv`, written after it (validity check) |
 | `tree.nwk` | The tree of wQFM-rs (Newick, unrooted) |
 | `tree.nwk.sha256` | SHA-256 of `tree.nwk`, written after it (validity check) |
+| `verify_2026-10-16_011931.txt` | Report of `qmaws verify`: every comparison and the verdict |
+| `verify_2026-10-16_011931.txt.sha256` | SHA-256 of `verify_2026-10-16_011931.txt`, written after it (validity check) |
 
 ## Relationships
 Written by `crates/qmaws-engine` (analysis run and `qmaws verify`).
