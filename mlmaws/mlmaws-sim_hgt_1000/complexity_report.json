@@ -1,0 +1,71 @@
+{
+  "parameters": {
+    "num_species": 33,
+    "avg_sequence_length": 2213191,
+    "num_characters": 50000,
+    "maw_length": 10,
+    "strand_aware": true,
+    "alphabet_size": 4
+  },
+  "steps": [
+    {
+      "name": "Read FASTA",
+      "time_seconds": 0.298640,
+      "peak_memory_kb": 80088,
+      "memory_delta_kb": 76176,
+      "peak_memory_mb": 78.21,
+      "complexity": "O(m * n)",
+      "parameters": ""
+    },
+    {
+      "name": "MAW Extraction",
+      "time_seconds": 97.514133,
+      "peak_memory_kb": 1051300,
+      "memory_delta_kb": 971020,
+      "peak_memory_mb": 1026.66,
+      "complexity": "O(m * n * sigma)",
+      "parameters": "m=33, n_avg=2213191, sigma=4"
+    },
+    {
+      "name": "Entropy Selection",
+      "time_seconds": 9.934421,
+      "peak_memory_kb": 1129296,
+      "memory_delta_kb": 77996,
+      "peak_memory_mb": 1102.83,
+      "complexity": "O(L * m * |U_max|)",
+      "parameters": "L_range=[5..14]"
+    },
+    {
+      "name": "Matrix Construction",
+      "time_seconds": 13.743984,
+      "peak_memory_kb": 2109436,
+      "memory_delta_kb": 980140,
+      "peak_memory_mb": 2060.00,
+      "complexity": "O(m * |U|)",
+      "parameters": "lengths={10,11,12}"
+    },
+    {
+      "name": "ML Inference",
+      "time_seconds": 6186.302674,
+      "peak_memory_kb": 2163688,
+      "memory_delta_kb": 54252,
+      "peak_memory_mb": 2112.98,
+      "complexity": "NP-hard (heuristic)",
+      "parameters": "m=33, |U|=50000"
+    }
+  ],
+  "totals": {
+    "total_time_seconds": 6307.793853,
+    "peak_memory_kb": 2163688,
+    "peak_memory_mb": 2112.98
+  },
+  "theoretical_complexity": {
+    "time": "O(m * n * sigma) + ML(m, |U|)",
+    "space": "O(n * sigma) for SA + O(m * |U|) for matrix",
+    "step1_read": "O(m * n)",
+    "step2_maw_extract": "O(m * n * sigma)",
+    "step3_entropy": "O(L_range * m * |U_max|)",
+    "step4_matrix": "O(m * |U|)",
+    "step5_ml": "NP-hard (heuristic)"
+  }
+}
