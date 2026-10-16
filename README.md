@@ -5,7 +5,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: early development (milestone M11, the full benchmark, in progress).** An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, is compared with a reference tree (your own, a benchmark dataset's, or one from the Open Tree of Life), can be verified, and ends with its figures; the benchmark results and the releases come in later milestones. This README is a draft and is completed as features are added.
+> **Status: version 1.0.0.** All milestones (M0 to M14) are complete. An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, is compared with a reference tree (your own, a benchmark dataset's, or one from the Open Tree of Life), can be verified, and ends with its figures. The pre-registered evaluation is finished; its results are summarised below and recorded in `results/` and `docs/milestones/`.
 
 License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge is added when the first release is archived on Zenodo.
 
@@ -26,6 +26,20 @@ The project tests the following research questions. None of them is claimed as a
 5. Does a per-taxon quartet concordance display (the Quartet Halo Tree) reveal conflicting taxa?
 
 What is **not** new: MAW extraction, the MAW matrix itself (ML-MAWS), quartet amalgamation as a concept (wQFM and others), and alignment-free bootstrapping.
+
+### Results of the pre-registered evaluation
+
+All hypotheses, tests and criteria were committed before the experiments (`docs/PREREGISTRATION.md`, with seven dated amendments). Results are reported whatever they show.
+
+| Hypothesis | Result |
+|---|---|
+| H1: lower tree error than ML-MAWS under horizontal gene transfer | Not supported: comparable nRF (lower on 4 of 7 datasets, equal on 3), higher nQD on all 7 (`results/summary/`) |
+| H2: faster than ML-MAWS for many taxa (same computer) | Not supported: about 30× faster at 25 taxa and 5–12× at 50, but 2–9× slower at 100 (`results/scaling/`) |
+| H3: the conditioned quartet likelihood resists long-branch attraction where simple voting fails | Supported: 100%, 100% and 98.5% recovery against 0% for voting (`results/h3/`) |
+| H4: support at least as well calibrated as ML-MAWS's UFBoot | Not supported by 0.00004 (ECE 0.200240 against 0.200200); the column bootstrap S2 has ECE 0.086 (`results/h4/`) |
+| H5: the vote-weight variant (v2) beats ML-MAWS on new simulated data | Not supported; the primary configuration was more accurate than ML-MAWS on the same 20 new datasets (pre-registered descriptive comparison; `results/h5/`) |
+
+Against peer-reviewed tools run on the same 29 datasets (`results/baselines/`), Q-MAWS was more accurate than CD-MAWS on the new data, while the k-mer tools Mash and Peafowl were more accurate than every MAW-based method. ML-MAWS as released stops without a tree above 50 taxa with IQ-TREE 2.4.0 (Amendment 6), and Q-MAWS needs about 12 GB of memory at 200 taxa (Amendment 7).
 
 ## Quick start
 
@@ -118,9 +132,9 @@ qmaws verify --output "<run folder>" --inputs              # only the input chec
 
 The committed control runs in `results/controls/runs/` can be checked this way.
 
-## Reproducing the paper's results
+## Reproducing the results
 
-To be written (milestones M11 to M13).
+Every result folder in `results/` has a README naming the command and the build that made it, and every run folder keeps its complete record. To check a committed run without recomputing it all: `qmaws verify --output results/runs/<run>` (quick) or `--full` (recomputes the whole run and compares the root fingerprint). To make a run again, use the settings recorded in its `run.json` (for example `qmaws run --dataset <id> --seed <n> --bootstrap <b> --output <folder>`): the result has the same root fingerprint as the committed run, on Windows, macOS or Linux (golden test G12). The summary tables are rebuilt from the run folders with the hidden development commands `qmaws summary`, `qmaws h5`, `qmaws h2`, `qmaws baselines` and `qmaws calibration`; the experiments that need other programs (ML-MAWS, Mash, CD-MAWS, Peafowl, IQ-TREE) have their scripts in `scripts/` and workflows in `.github/workflows/`. Milestone reports: `docs/milestones/`.
 
 ## Repository map
 

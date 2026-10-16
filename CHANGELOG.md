@@ -6,8 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-16
+
+The first public release: all milestones (M0 to M14) complete, with the finished pre-registered evaluation.
+
 ### Added
 
+- M13: the scaling runs and H2 (not supported: Q-MAWS about 30 times faster than ML-MAWS at 25 taxa and 5 to 12 times at 50, but 2 to 9 times slower at 100), with the hidden `qmaws h2` command (`results/scaling/`, `docs/milestones/M13.md`). Amendment 6 (ML-MAWS as released stops without a tree above 50 taxa with IQ-TREE 2.4.0; its runs were completed with the IQ-TREE command of its normal mode) and Amendment 7 (the 200-taxa dataset left out: about 12 GB of memory needed).
+- H5 on 20 new simulated datasets with horizontal transfer (not supported for the vote-weight variant v2; the primary configuration was more accurate than ML-MAWS in the pre-registered descriptive comparison), with the hidden `qmaws h5` command (`results/h5/`).
+- The comparison with peer-reviewed tools (Amendment 5): Mash, CD-MAWS and Peafowl run on the nine AFproject datasets and the 20 H5 datasets (`scripts/baselines.sh`, workflow `baselines.yml`, hidden `qmaws baselines`; `results/baselines/`).
 - M12: the 24 sensitivity runs (K = 1, 2, 4; strand filter off; `M_ml`; W2-emp) with `results/sensitivity/settings.tsv`, beside the weight variants; H4 (not supported: ECE of S1 0.200240 against 0.200200 for ML-MAWS UFBoot); seed variability. Report: `docs/milestones/M12.md`.
 - The full benchmark of M11: 14 datasets × 5 seeds in the primary configuration (S2 on seed 1), every run verified; comparison tables in `results/summary/` and the H1 test (not supported: nRF median difference −0.133, Holm-adjusted p = 0.156; nQD higher than ML-MAWS on all seven HGT datasets); AFproject upload files in `baselines/afproject_submission/`. Report: `docs/milestones/M11.md`.
 - The comparison with the reference tree is part of the verification record (OI-19): `audit/reference.nwk`, `audit/reference.json` and `audit/evaluation.json`, each with its SHA-256; `qmaws verify` (quick and full) recomputes nRF, nQD and MSD and compares them.
