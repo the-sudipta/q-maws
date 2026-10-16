@@ -1,0 +1,108 @@
+name: Peer-reviewed tools for the comparison
+
+# Development experiment (docs/PREREGISTRATION.md, Amendment 5): Mash,
+# CD-MAWS (suffix-automaton implementation) and Peafowl on the nine AFproject
+# datasets with a reference tree and the 20 H5 datasets. Accuracy only; run
+# times measured here are not compared. The outputs are committed to a new
+# branch `baselines-results-<run id>` so that they can be fetched with git;
+# they are reviewed before they are copied into results/baselines/.
+# None of these tools is part of Q-MAWS.
+
+on:
+  push:
+    paths:
+      - "scripts/baselines.sh"
+      - "scripts/nj_tree.py"
+      - ".github/workflows/baselines.yml"
+
+jobs:
+  build:
+    name: Build Q-MAWS (download, H5 data, tree comparison)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+      - name: Build
+        run: cargo build --release -p qmaws-cli
+      - name: Keep the program
+        uses: actions/upload-artifact@v7
+        with:
+          name: qmaws-linux
+          path: target/release/qmaws
+
+  tool:
+    name: ${{ matrix.tool }} on ${{ matrix.dataset }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        # Fourth run: the 20 H5 datasets, now taken from the branch h5-data
+        # (AliSim on Linux does not give the laptop's data). The AFproject jobs
+        # finished in runs 38546099791 (Mash, Peafowl) and 38564176984 (CD-MAWS).
+        tool: [mash, cdmaws, peafowl]
+        dataset: [hgt_h000_r1, hgt_h000_r2, hgt_h000_r3, hgt_h000_r4, hgt_h000_r5,
+                  hgt_h010_r1, hgt_h010_r2, hgt_h010_r3, hgt_h010_r4, hgt_h010_r5,
+                  hgt_h020_r1, hgt_h020_r2, hgt_h020_r3, hgt_h020_r4, hgt_h020_r5,
+                  hgt_h040_r1, hgt_h040_r2, hgt_h040_r3, hgt_h040_r4, hgt_h040_r5]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Get the program
+        uses: actions/download-artifact@v8
+        with:
+          name: qmaws-linux
+          path: target/release
+      - name: Prepare
+        run: |
+          chmod +x target/release/qmaws
+          python3 -m pip install --quiet "biopython==1.84"
+          if [ "${{ matrix.tool }}" = peafowl ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q jellyfish raxml
+          fi
+      - name: Run
+        run: sh scripts/baselines.sh ${{ matrix.tool }} ${{ matrix.dataset }} "$RUNNER_TEMP/out/${{ matrix.tool }}/${{ matrix.dataset }}" "$RUNNER_TEMP/external"
+      - name: Keep the outputs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: baseline-${{ matrix.tool }}-${{ matrix.dataset }}
+          path: ${{ runner.temp }}/out
+
+  results:
+    name: Commit the outputs to a results branch
+    needs: tool
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+      - name: Collect the outputs
+        uses: actions/download-artifact@v8
+        with:
+          pattern: baseline-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/collected
+      - name: Commit to a new branch
+        run: |
+          branch="baselines-results-${{ github.run_id }}"
+          git checkout --orphan "$branch"
+          git rm -rq --cached .
+          rm -rf ./*
+          mkdir -p baselines
+          cp -r "$RUNNER_TEMP"/collected/* baselines/
+          printf 'Outputs of the peer-reviewed tools, workflow run %s on commit %s (%s).\n' \
+            "${{ github.run_id }}" "${{ github.sha }}" "$(date -u +%FT%TZ)" > ABOUT.txt
+          git add ABOUT.txt baselines
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Outputs of the peer-reviewed tools, workflow run ${{ github.run_id }}"
+          git push -q origin "$branch"
+          echo "::notice title=Results branch::$branch"
