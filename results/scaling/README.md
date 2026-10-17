@@ -9,6 +9,18 @@ Hypothesis H2 (`docs/PREREGISTRATION.md`, Amendments 3, 6 and 7): on the same co
 | `times.tsv` | Every attempt of either program, as written by the M13 queue and the ML-MAWS completion script of Amendment 6 |
 | `memory.tsv` | Peak working set of each program (descriptive), from the memory recorders beside the queue |
 | `h2_values.tsv`, `h2_test.txt`, `scaling.svg` | The evaluation, made by `qmaws h2` |
+| `scaling_m100_r1/` | Dataset scaling_m100_r1: Q-MAWS run and ML-MAWS run |
+| `scaling_m100_r2/` | Dataset scaling_m100_r2: Q-MAWS run and ML-MAWS run |
+| `scaling_m100_r3/` | Dataset scaling_m100_r3: Q-MAWS run and ML-MAWS run |
+| `scaling_m25_r1/` | Dataset scaling_m25_r1: Q-MAWS run and ML-MAWS run |
+| `scaling_m25_r2/` | Dataset scaling_m25_r2: Q-MAWS run and ML-MAWS run |
+| `scaling_m25_r3/` | Dataset scaling_m25_r3: Q-MAWS run and ML-MAWS run |
+| `scaling_m50_r1/` | Dataset scaling_m50_r1: Q-MAWS run and ML-MAWS run |
+| `scaling_m50_r2/` | Dataset scaling_m50_r2: Q-MAWS run and ML-MAWS run |
+| `scaling_m50_r3/` | Dataset scaling_m50_r3: Q-MAWS run and ML-MAWS run |
+| `h2_values.tsv.sha256` | SHA-256 of `h2_values.tsv` |
+| `h2_test.txt.sha256` | SHA-256 of `h2_test.txt` |
+| `scaling.svg.sha256` | SHA-256 of `scaling.svg` |
 
 ## Result
 

@@ -9,6 +9,28 @@ Confirmatory test of hypothesis H5 (`docs/PREREGISTRATION.md`, Amendment 4) on t
 | `<dataset>/ml_maws/` | ML-MAWS tree with UFBoot support, IQ-TREE log and report |
 | `h5_values.tsv` | nRF and nQD of v2, the primary configuration and ML-MAWS against the species tree, every dataset |
 | `h5_test.tsv` | The pre-registered test (v2 minus ML-MAWS) and the descriptive comparison of the primary configuration, made by `qmaws h5` |
+| `hgt_h000_r1/` | Dataset hgt_h000_r1: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h000_r2/` | Dataset hgt_h000_r2: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h000_r3/` | Dataset hgt_h000_r3: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h000_r4/` | Dataset hgt_h000_r4: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h000_r5/` | Dataset hgt_h000_r5: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h010_r1/` | Dataset hgt_h010_r1: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h010_r2/` | Dataset hgt_h010_r2: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h010_r3/` | Dataset hgt_h010_r3: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h010_r4/` | Dataset hgt_h010_r4: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h010_r5/` | Dataset hgt_h010_r5: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h020_r1/` | Dataset hgt_h020_r1: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h020_r2/` | Dataset hgt_h020_r2: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h020_r3/` | Dataset hgt_h020_r3: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h020_r4/` | Dataset hgt_h020_r4: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h020_r5/` | Dataset hgt_h020_r5: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h040_r1/` | Dataset hgt_h040_r1: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h040_r2/` | Dataset hgt_h040_r2: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h040_r3/` | Dataset hgt_h040_r3: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h040_r4/` | Dataset hgt_h040_r4: Q-MAWS run, v2 tree and ML-MAWS run |
+| `hgt_h040_r5/` | Dataset hgt_h040_r5: Q-MAWS run, v2 tree and ML-MAWS run |
+| `h5_values.tsv.sha256` | SHA-256 of `h5_values.tsv` |
+| `h5_test.tsv.sha256` | SHA-256 of `h5_test.tsv` |
 
 ## Result
 

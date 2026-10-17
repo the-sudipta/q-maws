@@ -7,6 +7,11 @@ Mash 2.3, CD-MAWS (suffix-automaton implementation `cd-maws-sa`, commit `8bfe7d5
 | `<tool>/<dataset>/` | `tree.nwk`, `comparison.tsv` (`qmaws tree-compare` against the reference or species tree), `provenance.txt` (status, versions and settings, Peafowl's chosen k, runner), the tool's messages; Mash and CD-MAWS also their distance matrix |
 | `values.tsv` | nRF and nQD of every tool on every dataset, with its status (made by `qmaws baselines`) |
 | `paired.tsv` | Q-MAWS minus each tool: counts of lower/equal/higher, median difference, Hodges–Lehmann estimate and the exact one-sided Wilcoxon p-values in both directions, as descriptive numbers (made by `qmaws baselines`; the H5 rows appear when H5 is complete) |
+| `mash/` | Mash 2.3: one folder per dataset |
+| `cdmaws/` | CD-MAWS (suffix-automaton implementation, `cd-maws-sa`): one folder per dataset |
+| `peafowl/` | Peafowl: one folder per dataset |
+| `values.tsv.sha256` | SHA-256 of `values.tsv` |
+| `paired.tsv.sha256` | SHA-256 of `paired.tsv` |
 
 Where each folder comes from (workflow `baselines.yml`, results branches `baselines-results-<run id>`):
 
