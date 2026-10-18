@@ -5,7 +5,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Version 1.0.0** · all milestones (M0–M14) complete · pre-registered evaluation finished · [Get the tool](#get-the-tool) · [Reproduce the results](#reproduce-or-check-the-results) · [Where the code is](docs/ARCHITECTURE.md)
+> **Version 1.0.0** · all milestones (M0–M14) complete · pre-registered evaluation finished · [Get the tool](#get-the-tool) · [For reviewers and examiners](#for-reviewers-and-examiners) · [Where the code is](docs/ARCHITECTURE.md)
 
 ## What Q-MAWS does
 
@@ -41,14 +41,119 @@ Ready-to-run bundles for **Windows, macOS (Apple silicon and Intel) and Linux** 
 
 How to use the window and the commands: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
-## Reproduce or check the results
+## For reviewers and examiners
 
-1. Clone this repository. It holds the source code, every run record, the result tables and the reports.
-2. Build: `cargo build --release` (the Rust version is pinned in `rust-toolchain.toml`), or use the release program.
-3. Check any committed run without recomputing it: `qmaws verify --output results/runs/<run>`. Add `--full` to recompute the whole run and compare its root fingerprint.
-4. Make a run again with the settings in its `run.json`, for example `qmaws run --dataset <id> --seed <n> --bootstrap <b> --output <folder>`. The root fingerprint is the same on Windows, macOS and Linux (golden test G12).
+### Which download do you need?
 
-Every folder in `results/` has a README naming the command and the build that made it. The experiments that use other programs (ML-MAWS, IQ-TREE, Mash, CD-MAWS, Peafowl) have their scripts in `scripts/` and their workflows in `.github/workflows/`.
+| You want to… | Download | Notes |
+|---|---|---|
+| Use Q-MAWS on your own genomes, or try the window | **The release** ([Releases page](https://github.com/the-sudipta/q-maws/releases/latest)) | Ready to run; nothing to install |
+| Read the results, tables and figures | Nothing: browse this page, `results/` and `figures/paper/` | |
+| Check that no result was altered (SHA-256) | **The whole repository** (`git clone https://github.com/the-sudipta/q-maws`) | About 1 GB, mostly run records; Python 3 for the checker |
+| Verify runs, check one part, or reproduce everything | **The whole repository** plus the release program (or build it with `cargo build --release`) | Verification and reproduction also need the input data (section 2) |
+
+Clone with `git` rather than downloading a ZIP: the repository's `.gitattributes` keeps the hashed files byte for byte on every system.
+
+### 1. Check that nothing was altered (SHA-256)
+
+Every result file `X` has a companion `X.sha256` holding its SHA-256 hash.
+
+- **All files at once** (Windows, macOS, Linux):
+  ```
+  python scripts/check_hashes.py
+  ```
+  Expected: `2499 files checked, 2499 match, 0 differ or are missing`. Give a folder to check only that part, for example `python scripts/check_hashes.py results/h5`.
+- **One file by hand:**
+  - Linux or macOS: run `sha256sum results/runs/fish_mito_seed2/report/tree.nwk` and compare it with `cat results/runs/fish_mito_seed2/report/tree.nwk.sha256`.
+  - Windows PowerShell: run `(Get-FileHash results\runs\fish_mito_seed2\report\tree.nwk -Algorithm SHA256).Hash.ToLower()` and compare it with `Get-Content results\runs\fish_mito_seed2\report\tree.nwk.sha256`.
+- **The release downloads:**
+  - Linux or macOS: `sha256sum -c SHA256SUMS.txt` in the download folder.
+  - Windows: `Get-FileHash <file> -Algorithm SHA256`, compared with the line in `SHA256SUMS.txt`.
+- **The root fingerprint** (`audit/root.txt` in every run) summarises the whole run: the settings and the content hash of every stage (listed in `audit/stages.json`). It is recomputed from the inputs by `qmaws verify --full` (section 2).
+- **The input sequences:** each one's hash is in the run's `audit/inputs.json`, and `qmaws verify --inputs` checks them.
+
+### 2. Verify results (minutes to hours)
+
+Verification recomputes parts of a run from its inputs and compares them with the record. The inputs are not stored in the repository, so get them first:
+
+- **AFproject and NCBI datasets:** `qmaws download --dataset <id>` (or `all`). Every archive is checked against its published checksum.
+- **H5 datasets:** the branch `h5-data`: `git fetch origin h5-data` and `git checkout origin/h5-data -- h5data`, then unpack `h5data/<id>.fasta.gz` to `data/raw/simulated/<id>/sequences.fasta`. The SHA-256 values are in `data/manifests/simulated/hgt.tsv`.
+- **Scaling datasets (H2):** `sh scripts/simulate_scaling.sh <path to iqtree2>`, with the hashes in `data/manifests/simulated/scaling.tsv`. AliSim gives identical data only with the same build (IQ-TREE 2.4.0 for Windows was used).
+
+**In the window (GUI):** open the program, choose **Verify** in the sidebar, then **Browse…** to a run folder, for example `results/runs/fish_mito_seed2`. Choose the kind of check, then **Verify**:
+
+| Kind | What it does | Time |
+|---|---|---|
+| Quick | The input check, then a random sample of 20 chunks per stage recomputed and compared | Minutes for most runs |
+| Full | The whole run recomputed; the root fingerprint compared | As long as the run took |
+| One quartet | The full worksheet of four taxa you name, compared with the stored decision | Seconds |
+| Inputs only | The sequence files checked against their hashes | Seconds |
+
+The report is shown in the window and saved as `report/verify_<time>.txt` in the run folder. The **Results** library shows each run's Quartet Halo Tree with its nRF, nQD and MSD.
+
+**On the command line (CLI):**
+```
+qmaws verify --output results/runs/fish_mito_seed2                     # quick check (the default)
+qmaws verify --output results/runs/fish_mito_seed2 --full              # recompute everything
+qmaws verify --output results/runs/fish_mito_seed2 --quartet A,B,C,D   # one quartet's worksheet
+qmaws verify --output results/runs/fish_mito_seed2 --inputs            # only the inputs
+qmaws verify --output <run> --input <folder>                           # if the data are elsewhere
+```
+A verdict `PASS` means every comparison agrees; the exit status is 1 if anything differs. Every committed run already has its own PASS report in `report/`.
+
+### 3. Check one part
+
+| To check… | GUI | CLI |
+|---|---|---|
+| One quartet's calculation (16 pattern counts, W1, likelihoods, W2c) | Verify → One quartet | `qmaws verify --output <run> --quartet A,B,C,D`; 50 sample worksheets are also in each run's `audit/sample_worksheets.txt` |
+| The hand-worked teaching example | — | `qmaws teach --example` |
+| The tree error of any tree against a reference | Results library | `qmaws tree-compare --tree <tree.nwk> --reference <reference.nwk>` |
+| A run's figures, drawn again | — | `qmaws figures --output <run>` |
+| The M11 tables and the H1 test | — | `qmaws summary --h1-pairs mean --h1-zeros wilcoxon --output <folder>`, compared with `results/summary/` |
+| H3 (long-branch simulation) | — | `qmaws simulate-h3 --output <folder>`, compared with `results/h3/` |
+| H4 (calibration) | — | `qmaws calibration --pair TREE=TRUTH ... --scale 1` (Q-MAWS) or `--scale 100` (UFBoot); the pairs are in `results/h4/README.md` |
+| H5 | — | `qmaws h5`, which rebuilds `results/h5/h5_test.tsv` from the run folders |
+| H2 (speed) | — | `qmaws h2`, which rebuilds `results/scaling/h2_test.txt` from `times.tsv` |
+| The comparison with Mash, CD-MAWS and Peafowl | — | `qmaws baselines`; each tool's own outputs and versions are in `results/baselines/<tool>/<dataset>/` |
+| The result charts | — | `python scripts/paper_figures.py`, which redraws `figures/paper/` |
+| Equality with ML-MAWS's matrix, wQFM, IQ-TREE and DendroPy | — | `scripts/equivalence.sh`, `scripts/wqfm_check.sh`, `scripts/iqtree_check.sh`, `scripts/metrics_check.py` (they need those programs) |
+
+### 4. Reproduce everything (weeks)
+
+The same inputs, settings and seed give the same **root fingerprint** on Windows, macOS and Linux. A reproduced run can therefore be compared with the committed one by its `audit/root.txt`, and every table and chart built from such runs is identical. The settings of every committed run are in its `run.json`.
+
+<details>
+<summary><b>Step by step, with the times measured on the development laptop</b> (Intel Core 5 210H, 12 threads, 8 GB memory)</summary>
+
+1. **Data:** `qmaws download --dataset all` (219 MB to download).
+2. **M11 benchmark** (14 datasets × 5 seeds):
+   - Seed 1 with the S2 bootstrap: `qmaws run --dataset <id> --seed 1 --bootstrap 100`.
+   - Seeds 2 to 5 without it: `qmaws run --dataset <id> --seed <n> --bootstrap 0`.
+   - Rhinovirus seed 1 was also run with `--bootstrap 0`.
+   - The mean time per run was 89 s (Yersinia HGT) to about 14.6 h (rhinovirus), about 8 days in total; much of it was measured before a Windows speed fix, so it is likely less now.
+   - Then the tables and H1: `qmaws summary --h1-pairs mean --h1-zeros wilcoxon`.
+3. **H3:** `qmaws simulate-h3 --output results/h3`.
+4. **M12 sensitivity:**
+   - The weight variants: `qmaws variant --run <seed-1 run> --weights w1|w2a|w2b --output <folder>`.
+   - The setting variants: `qmaws run --dataset <id> --seed 1 --bootstrap 0` with `--top-lengths 1|2|4`, `--no-strand`, `--matrix ml` or `--weighting w2-emp`.
+   - Every run is listed in `results/sensitivity/settings.tsv`.
+5. **H4:** ML-MAWS with IQ-TREE on the five simulated HGT datasets (`scripts/mlmaws_h4.sh`, workflow `mlmaws_h4.yml`), then `qmaws calibration` as in `results/h4/README.md`.
+6. **H5** (20 datasets, about one day): for each dataset:
+   - `qmaws run --input data/raw/simulated/<id>/sequences.fasta --reference data/manifests/simulated/trees/<id>.nwk --seed 1 --bootstrap 0`;
+   - then `qmaws variant --run <run> --weights w1 --output <folder>`;
+   - then ML-MAWS (`--strand --iqtree`).
+   - Then `qmaws h5`.
+7. **Comparison tools:** `sh scripts/baselines.sh mash|cdmaws|peafowl <dataset> <output>` on Linux (workflow `baselines.yml`), then `qmaws baselines`.
+8. **M13 speed** (about 1.5 days, one run at a time, nothing else running):
+   - `qmaws run --input <scaling data> --seed 1 --bootstrap 0` and ML-MAWS on each scaling dataset.
+   - Above 50 taxa, the IQ-TREE command of Amendment 6.
+   - Then `qmaws h2`.
+   - Run times depend on the computer; the H2 comparison is only meaningful on one computer.
+9. **Charts:** `python scripts/paper_figures.py`.
+
+Every result folder's README names the exact command and build. In the window, runs are started with **New run**: choose a benchmark dataset or a folder, a reference tree, the output folder and the settings (seed, S2 replicates), then **Start the run**. A queue of datasets runs one after another and survives restarts (**Resume**). The hypothesis tables are made by the development commands above.
+
+</details>
 
 ## Where things are
 
