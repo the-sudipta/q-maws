@@ -5,9 +5,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Status: version 1.0.0.** All milestones (M0 to M14) are complete. An analysis runs from sequences to the tree with S1 and S2 support and halo values, in the terminal or in a window, is compared with a reference tree (your own, a benchmark dataset's, or one from the Open Tree of Life), can be verified, and ends with its figures. The pre-registered evaluation is finished; its results are summarised below and recorded in `results/` and `docs/milestones/`.
-
-License: Q-MAWS Source-Available License v1.0 (see [License](#license)). Continuous integration runs on Windows, macOS and Linux (`.github/workflows/ci.yml`). A DOI badge is added when the first release is archived on Zenodo.
+> **Version 1.0.0** · all milestones (M0–M14) complete · pre-registered evaluation finished · [Get the tool](#get-the-tool) · [Reproduce the results](#reproduce-or-check-the-results) · [Where the code is](docs/ARCHITECTURE.md)
 
 ## What Q-MAWS does
 
@@ -17,17 +15,9 @@ Q-MAWS keeps the MAW character matrix used by ML-MAWS (one row per genome, one c
 2. scores the three possible quartet topologies with a small two-state likelihood model that uses every pattern except 0000, conditioned on the pattern not being 0000;
 3. combines the weighted quartets into one species tree with a re-implementation of the wQFM amalgamation algorithm.
 
-The project tests the following research questions. None of them is claimed as a result before it is tested.
-
-1. Is quartet amalgamation on MAW characters a useful alternative to global maximum-likelihood search, particularly under horizontal gene transfer?
-2. Does a conditioned quartet likelihood that excludes the 0000 pattern, and uses one-taxon-differs patterns, avoid the long-branch errors of simple informative-pattern voting?
-3. Can all quartet pattern counts be computed exactly and quickly by inclusion–exclusion on bitset popcounts?
-4. Are the support values of MAW-based phylogeny well calibrated?
-5. Does a per-taxon quartet concordance display (the Quartet Halo Tree) reveal conflicting taxa?
-
 What is **not** new: MAW extraction, the MAW matrix itself (ML-MAWS), quartet amalgamation as a concept (wQFM and others), and alignment-free bootstrapping.
 
-### Results of the pre-registered evaluation
+## What we found
 
 All hypotheses, tests and criteria were committed before the experiments (`docs/PREREGISTRATION.md`, with seven dated amendments). Results are reported whatever they show.
 
@@ -41,107 +31,42 @@ All hypotheses, tests and criteria were committed before the experiments (`docs/
 
 Against peer-reviewed tools run on the same 29 datasets (`results/baselines/`), Q-MAWS was more accurate than CD-MAWS on the new data, while the k-mer tools Mash and Peafowl were more accurate than every MAW-based method. ML-MAWS as released stops without a tree above 50 taxa with IQ-TREE 2.4.0 (Amendment 6), and Q-MAWS needs about 12 GB of memory at 200 taxa (Amendment 7).
 
-## Quick start
+## Get the tool
 
-Each published release has ready-to-run bundles for Windows, macOS (Apple silicon and Intel) and Linux on the Releases page, also unpacked in `standalone/` (no release has been published yet). Unpack one and:
+Ready-to-run bundles for **Windows, macOS (Apple silicon and Intel) and Linux** are on the [Releases page](https://github.com/the-sudipta/q-maws/releases/latest) (current version: **v1.0.0**, with `SHA256SUMS.txt`). Nothing else needs to be installed. Unpack the bundle and:
 
 - **Windows:** double-click `Q-MAWS.exe` for the window, or `run.bat` for the terminal menu.
 - **macOS:** double-click `Q-MAWS.app`, or run `./run.sh`.
 - **Linux:** double-click `Q-MAWS`, or run `./run.sh`.
 
-Developers can build from source with a Rust toolchain (the version is pinned in `rust-toolchain.toml`):
+How to use the window and the commands: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
-```
-cargo build --release
-./run.sh --version        # or: run.bat --version
-```
+## Reproduce or check the results
 
-## GUI mode
+1. Clone this repository. It holds the source code, every run record, the result tables and the reports.
+2. Build: `cargo build --release` (the Rust version is pinned in `rust-toolchain.toml`), or use the release program.
+3. Check any committed run without recomputing it: `qmaws verify --output results/runs/<run>`. Add `--full` to recompute the whole run and compare its root fingerprint.
+4. Make a run again with the settings in its `run.json`, for example `qmaws run --dataset <id> --seed <n> --bootstrap <b> --output <folder>`. The root fingerprint is the same on Windows, macOS and Linux (golden test G12).
 
-![A run in the Q-MAWS window](docs/images/gui_run.png)
+Every folder in `results/` has a README naming the command and the build that made it. The experiments that use other programs (ML-MAWS, IQ-TREE, Mash, CD-MAWS, Peafowl) have their scripts in `scripts/` and their workflows in `.github/workflows/`.
 
-`qmaws gui` (or a double-click on the program, or `--gui` on `run` and `resume`) opens the window: a sidebar with Home, New run, Resume, Verify, the Results library and About. A new run goes through the steps Data, Reference, Output, Settings and Review, with Browse buttons for folders and files. While it runs, most of the window shows the live Halo Tree in the style of the final figure (zoom and pan; branches that changed since the previous update in blue), beside the progress with the time left and the expected finish in local time, and the live worksheet of the quartet just weighed with the taxon names (its 16 word patterns, the three trees, W1, W2 and the weight). Details shows the stage, the speed on this computer, the times left, every stage and the full log; Pause and Stop work at any time. The final Halo Tree is shown at the end. A run started in the window can be resumed in the terminal and the other way round, with the same result. Screenshots and details: `docs/USER_GUIDE.md`.
+## Where things are
 
-## Terminal mode
-
-`qmaws menu` (also `run.bat` or `./run.sh` without arguments) shows the interactive main menu: start a new run, resume an unfinished run (one, or all one after another), verify a run, exit. Every long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume` (`--all` for every unfinished run).
-
-An example session: Yersinia HGT (8 genomes of about 4.6 million letters) without the S2 bootstrap, then its quick verification. The output is copied from a real run on the development laptop; lines marked `…` are left out.
-
-```
-$ qmaws --no-color run --dataset yersinia_hgt --bootstrap 0 --data-dir 'D:\q-maws\data' --output yersinia_example
-Starting run yersinia_example in yersinia_example
-Started analysis of D:\q-maws\data\raw\yersinia_hgt\unsimulated-yersinia.
-Ingest: 8 taxa, average length 4605552; MAW lengths 5 to 14.
-MAW extraction: 8 taxa to do, 1 at a time, strand filter on.
-  AAKT020000: 1466539 MAWs
-Stage 2 of 10 (maw_extract): 12% | overall 1% | elapsed 0:00:23, remaining estimating | 1 of 8 taxa
-…
-Selected MAW lengths: [11, 12, 13]
-Full matrix: 8 taxa x 2921358 columns, estimated 41 MB (memory limit 558 MB).
-…
-Quartet weighting: 70 quartets, 1 chunks of up to 70 (calibration 24 quartets per second; model pi1 = 0.500000, 100 resamples).
-Stage 6 of 10 (quartet_weight): 100% | overall 100% | elapsed 0:02:58, remaining 0:00:00 | all 1 chunks done
-Amalgamation (wQFM-rs, w2c weights): 96 weighted quartets, consistency score 60.8967 of 70.0000, in 0.0 s.
-Support: 5 internal edges, S1 from 0.830000 to 0.971111; 0 taxa with a halo value below 0.6; in 0.1 s.
-Run finished. Root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
-…
-Figure: tanglegram against the AFproject reference tree (yersinia_hgt): nRF 1.000 (10 of 10 splits differ); nQD 0.729 (51 of 70 quartets differ); MSD 13 (raw, 8 taxa).
-
-$ qmaws --no-color verify --output yersinia_example --seed 1
-Verifying yersinia_example (quick check)...
-Stored root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
-[PASS] 8 taxa read, 8 recorded
-[PASS] every taxon name and cleaned sequence hash agrees with audit/inputs.json
-[PASS] quartet_count chunk 0 (positions 0 to 69): SHA-256 of the counts
-[PASS] quartet_weight chunk 0 (positions 0 to 69): SHA-256 of the weights rounded to 9 significant digits; the raw bytes agree too
-[PASS] nRF recomputed: 1.000000 (10 of 10 splits differ); stored 1.000000
-…
-Verdict: PASS (every comparison agrees)
-```
-
-nRF 1.000 against the AFproject reference is what this dataset gives (ML-MAWS also reports 1.000 on it); the M11 results compare every dataset.
-
-## Direct commands
-
-Available in this build: `qmaws menu`, `qmaws gui`, `qmaws figures`, `qmaws run` (from sequences to the tree with S1 and S2 support and halo values; `--gui` or `--terminal`), `qmaws resume`, `qmaws verify`, `qmaws datasets`, `qmaws download --dataset <id or all>`, `qmaws inspect --input "<folder>"`, `qmaws matrix`, `qmaws teach`, `qmaws simulate-h3`, `qmaws toy-run` (exercises checkpoints, resume and the progress display), `qmaws --help` and `qmaws --version`. The full command list is in `docs/USER_GUIDE.md`.
-
-## Figures
-
-Every finished run gets its figures in `figures/`: the Quartet Halo Tree (support-coloured branches, the halo ring that shows how well each taxon agrees with the tree, group bands), a rectangular tree, a tanglegram against the reference tree when there is one (with nRF, nQD and MSD), an interactive HTML tree that works offline, an animation of the live provisional trees and a convergence chart. Formats: SVG, PDF and PNG at 300 dots per inch. `qmaws figures --output "<run folder>"` draws them again, optionally with a group file or the Open Tree of Life taxonomy for the group bands. Details: `docs/USER_GUIDE.md`.
-
-## Benchmark datasets
-
-Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch them (218,853,951 bytes to download; about 660 MB on disk after extraction, measured on 2026-10-02). Nine datasets come from AFproject (https://afproject.org): Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT, and five simulated HGT levels, each with a reference tree. Five more (coronavirus, ebolavirus, influenza A neuraminidase segments, mammal mtDNA, rhinovirus) are built from NCBI with the accession lists published by Li et al. (2017), without reference trees; their sequences are identical to the data ML-MAWS used. Every download is verified by checksum and recorded in `data/manifests/download_log.json`; sequences are never stored in this repository. Sources and name matching: `data/manifests/README.md`, `data/manifests/accessions/README.md`, `data/references/SOURCE.md`.
-
-## Verifying a run
-
-Every finished run keeps a small verification record in `audit/` (inputs, stage and chunk hashes, the root fingerprint, quartet decisions, 50 sample worksheets, the environment). `qmaws verify` checks a run against it and writes every comparison to `report/verify_<time>.txt`; the exit status is 1 if anything differs.
-
-```
-qmaws verify --output "<run folder>"                       # quick check (default)
-qmaws verify --output "<run folder>" --full                # recompute everything, compare the root
-qmaws verify --output "<run folder>" --quartet A,B,C,D     # one quartet with its worksheet
-qmaws verify --output "<run folder>" --inputs              # only the input check
-```
-
-- The input check always runs first: it recomputes the hash of every input file and cleaned sequence.
-- The quick check recomputes 20 chunks of each chunked stage and 3 bootstrap replicates, drawn with a printed seed (`--seed` repeats the draw).
-- If the data were moved, give their new place with `--input "<folder>"`; the root fingerprint does not depend on where the data are.
-- A reviewer needs only the run's `run.json`, its `audit/` folder and the raw data: without the `work/` folder the matrix is rebuilt from the inputs.
-
-The committed control runs in `results/controls/runs/` can be checked this way.
-
-## Reproducing the results
-
-Every result folder in `results/` has a README naming the command and the build that made it, and every run folder keeps its complete record. To check a committed run without recomputing it all: `qmaws verify --output results/runs/<run>` (quick) or `--full` (recomputes the whole run and compares the root fingerprint). To make a run again, use the settings recorded in its `run.json` (for example `qmaws run --dataset <id> --seed <n> --bootstrap <b> --output <folder>`): the result has the same root fingerprint as the committed run, on Windows, macOS or Linux (golden test G12). The summary tables are rebuilt from the run folders with the hidden development commands `qmaws summary`, `qmaws h5`, `qmaws h2`, `qmaws baselines` and `qmaws calibration`; the experiments that need other programs (ML-MAWS, Mash, CD-MAWS, Peafowl, IQ-TREE) have their scripts in `scripts/` and workflows in `.github/workflows/`. Milestone reports: `docs/milestones/`.
+| Looking for | Go to |
+|---|---|
+| **The method in the code** (each step mapped to its file and functions), the GUI, the CLI, the terminal menu, the CI | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) |
+| The mathematics of the method | [docs/METHOD.md](docs/METHOD.md) |
+| Hypotheses, tests and criteria fixed before the experiments, with seven dated amendments | [docs/PREREGISTRATION.md](docs/PREREGISTRATION.md) |
+| The report of every milestone, M0 to M14 | [docs/milestones/](docs/milestones/README.md) |
+| All results and run records | [results/](results/README.md) |
+| All documentation | [docs/](docs/README.md) |
 
 ## Repository map
 
 | Item | Description |
 |---|---|
 | `.gitattributes` | Line-ending rules: LF for shell scripts and hooks, CRLF for Windows batch files, no conversion in run folders and control inputs (they are checked byte for byte) |
-| `.github/` | GitHub configuration: continuous integration workflows ([ABOUT](.github/ABOUT.md)) |
+| `.github/` | Continuous integration, the release workflow and the experiment workflows ([ABOUT](.github/ABOUT.md)) |
 | `.zenodo.json` | Metadata for the Zenodo archive of each release (title, author, ORCID, description, keywords); the license is set on Zenodo when the archive is made |
 | `.gitignore` | Paths never committed: build output, raw data, run work folders, temporary files |
 | `assets/` | The Q-MAWS logo and program icon ([README](assets/README.md)) |
@@ -155,14 +80,13 @@ Every result folder in `results/` has a README naming the command and the build 
 | `deny.toml` | Dependency policy (allowed licenses and sources) checked by `cargo deny` in CI |
 | `data/` | Dataset manifests and reference trees; raw data is downloaded, not committed ([README](data/README.md)) |
 | `docs/` | Design, method, user and milestone documentation ([README](docs/README.md)) |
-| `figures/` | Final publication figures ([README](figures/README.md)) |
+| `figures/` | The result charts of the thesis and paper, drawn from `results/` ([README](figures/README.md)) |
 | `LICENSE` | Q-MAWS Source-Available License v1.0 |
 | `results/` | Run records, experiment results and summary tables ([README](results/README.md)) |
 | `run.bat` | Launcher for Windows |
 | `run.sh` | Launcher for macOS and Linux |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
-| `standalone/` | Ready-to-run bundles of the latest release for Windows, macOS and Linux, written by the release workflow (from the first release on) |
-| `scripts/` | Development scripts: pre-commit guard and hook installers ([README](scripts/README.md)) |
+| `scripts/` | Scripts for the experiments that use other programs, the checks and the commit guard ([README](scripts/README.md)) |
 | `tests/` | Golden test files and small test inputs ([README](tests/README.md)) |
 | `THIRD_PARTY_NOTICES` | Licenses and notices of third-party components |
 

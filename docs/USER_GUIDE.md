@@ -4,7 +4,7 @@ How to use Q-MAWS: starting it, the commands, the terminal menu and the window, 
 
 ## Starting Q-MAWS
 
-The ready-to-run bundles on the Releases page of the repository (and in `standalone/`) need no installation:
+The ready-to-run bundles on the Releases page of the repository need no installation:
 
 | System | Window | Terminal |
 |---|---|---|
@@ -176,3 +176,65 @@ Runs are stored in `results/runs/<name>_<YYYY-MM-DD>_<HHMMSS>` (time in UTC) unl
 ## Launch scripts
 
 `run.bat` (Windows) and `run.sh` (macOS, Linux) look for the program next to themselves (`Q-MAWS.exe`, `Q-MAWS` or `Q-MAWS.app` in a release bundle), then in `bin/`, then in `target/release/`. If it is missing and Rust's `cargo` is installed, they build it; otherwise they explain where to download a release. With no arguments they start the interactive menu (`qmaws menu`); with arguments they pass them to the program unchanged. Both work when the folder path contains spaces.
+
+## Example terminal session
+
+`qmaws menu` (also `run.bat` or `./run.sh` without arguments) shows the interactive main menu: start a new run, resume an unfinished run (one, or all one after another), verify a run, exit. Every long command shows its stage, progress and time estimate, can be stopped with Ctrl+C and continued with `qmaws resume` (`--all` for every unfinished run).
+
+An example session: Yersinia HGT (8 genomes of about 4.6 million letters) without the S2 bootstrap, then its quick verification. The output is copied from a real run on the development laptop; lines marked `…` are left out.
+
+```
+$ qmaws --no-color run --dataset yersinia_hgt --bootstrap 0 --data-dir 'D:\q-maws\data' --output yersinia_example
+Starting run yersinia_example in yersinia_example
+Started analysis of D:\q-maws\data\raw\yersinia_hgt\unsimulated-yersinia.
+Ingest: 8 taxa, average length 4605552; MAW lengths 5 to 14.
+MAW extraction: 8 taxa to do, 1 at a time, strand filter on.
+  AAKT020000: 1466539 MAWs
+Stage 2 of 10 (maw_extract): 12% | overall 1% | elapsed 0:00:23, remaining estimating | 1 of 8 taxa
+…
+Selected MAW lengths: [11, 12, 13]
+Full matrix: 8 taxa x 2921358 columns, estimated 41 MB (memory limit 558 MB).
+…
+Quartet weighting: 70 quartets, 1 chunks of up to 70 (calibration 24 quartets per second; model pi1 = 0.500000, 100 resamples).
+Stage 6 of 10 (quartet_weight): 100% | overall 100% | elapsed 0:02:58, remaining 0:00:00 | all 1 chunks done
+Amalgamation (wQFM-rs, w2c weights): 96 weighted quartets, consistency score 60.8967 of 70.0000, in 0.0 s.
+Support: 5 internal edges, S1 from 0.830000 to 0.971111; 0 taxa with a halo value below 0.6; in 0.1 s.
+Run finished. Root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
+…
+Figure: tanglegram against the AFproject reference tree (yersinia_hgt): nRF 1.000 (10 of 10 splits differ); nQD 0.729 (51 of 70 quartets differ); MSD 13 (raw, 8 taxa).
+
+$ qmaws --no-color verify --output yersinia_example --seed 1
+Verifying yersinia_example (quick check)...
+Stored root fingerprint: 23976b3ae9e03d4e4744c9253e113be9236c64cd7ae7b1d1d6834feff656bb5a
+[PASS] 8 taxa read, 8 recorded
+[PASS] every taxon name and cleaned sequence hash agrees with audit/inputs.json
+[PASS] quartet_count chunk 0 (positions 0 to 69): SHA-256 of the counts
+[PASS] quartet_weight chunk 0 (positions 0 to 69): SHA-256 of the weights rounded to 9 significant digits; the raw bytes agree too
+[PASS] nRF recomputed: 1.000000 (10 of 10 splits differ); stored 1.000000
+…
+Verdict: PASS (every comparison agrees)
+```
+
+nRF 1.000 against the AFproject reference is what this dataset gives (ML-MAWS also reports 1.000 on it); the M11 results compare every dataset.
+
+## Benchmark datasets
+
+Run `qmaws datasets` for the list and `qmaws download --dataset all` to fetch them (218,853,951 bytes to download; about 660 MB on disk after extraction, measured on 2026-10-02). Nine datasets come from AFproject (https://afproject.org): Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT, and five simulated HGT levels, each with a reference tree. Five more (coronavirus, ebolavirus, influenza A neuraminidase segments, mammal mtDNA, rhinovirus) are built from NCBI with the accession lists published by Li et al. (2017), without reference trees; their sequences are identical to the data ML-MAWS used. Every download is verified by checksum and recorded in `data/manifests/download_log.json`; sequences are never stored in this repository. Sources and name matching: `data/manifests/README.md`, `data/manifests/accessions/README.md`, `data/references/SOURCE.md`.
+
+## Verifying a run
+
+Every finished run keeps a small verification record in `audit/` (inputs, stage and chunk hashes, the root fingerprint, quartet decisions, 50 sample worksheets, the environment). `qmaws verify` checks a run against it and writes every comparison to `report/verify_<time>.txt`; the exit status is 1 if anything differs.
+
+```
+qmaws verify --output "<run folder>"                       # quick check (default)
+qmaws verify --output "<run folder>" --full                # recompute everything, compare the root
+qmaws verify --output "<run folder>" --quartet A,B,C,D     # one quartet with its worksheet
+qmaws verify --output "<run folder>" --inputs              # only the input check
+```
+
+- The input check always runs first: it recomputes the hash of every input file and cleaned sequence.
+- The quick check recomputes 20 chunks of each chunked stage and 3 bootstrap replicates, drawn with a printed seed (`--seed` repeats the draw).
+- If the data were moved, give their new place with `--input "<folder>"`; the root fingerprint does not depend on where the data are.
+- A reviewer needs only the run's `run.json`, its `audit/` folder and the raw data: without the `work/` folder the matrix is rebuilt from the inputs.
+
+The committed control runs in `results/controls/runs/` can be checked this way.
