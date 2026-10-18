@@ -5,7 +5,7 @@
 
 **Q-MAWS: Quartet-based phylogeny from Minimal Absent Word Sets.** Q-MAWS estimates a species tree from whole genomes without sequence alignment, by scoring every four-taxon subset (quartet) of a minimal absent word (MAW) character matrix and combining the weighted quartets into one tree.
 
-> **Version 1.0.0** · all milestones (M0–M14) complete · pre-registered evaluation finished · [Get the tool](#get-the-tool) · [For reviewers and examiners](#for-reviewers-and-examiners) · [Where the code is](docs/ARCHITECTURE.md)
+> **Version 1.0.0** · all milestones (M0–M14) complete · pre-registered evaluation finished · [Get the tool](#get-the-tool) · [For reviewers and examiners](#for-reviewers-and-examiners) · [Where the code is](docs/ARCHITECTURE.md) · **[Project website](https://the-sudipta.github.io/q-maws/)**
 
 ## What Q-MAWS does
 
@@ -192,6 +192,7 @@ Every result folder's README names the exact command and build. In the window, r
 | `run.sh` | Launcher for macOS and Linux |
 | `rust-toolchain.toml` | Pinned Rust toolchain version and components |
 | `scripts/` | Scripts for the experiments that use other programs, the checks and the commit guard ([README](scripts/README.md)) |
+| `site/` | The project website (published on GitHub Pages, rebuilt from the results on every push) ([README](site/README.md)) |
 | `tests/` | Golden test files and small test inputs ([README](tests/README.md)) |
 | `THIRD_PARTY_NOTICES` | Licenses and notices of third-party components |
 

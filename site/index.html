@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q-MAWS: quartet-based phylogeny from minimal absent words</title>
+<meta name="description" content="Q-MAWS builds species trees from whole genomes without alignment, using the words missing from each genome. A pre-registered study with every result verifiable.">
+<link rel="icon" href="https://img.icons8.com/ios/100/1f4e79/tree-structure.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top"><img class="brand-mark" src="https://img.icons8.com/ios/100/1f4e79/tree-structure.png" alt="">Q-MAWS</a>
+    <button class="nav-toggle" aria-label="Menu">&#9776;</button>
+    <div class="nav-links">
+      <a href="#overview">Overview</a>
+      <a href="#plan">The plan</a>
+      <a href="#journey">What we did</a>
+      <a href="#workflow">Workflow</a>
+      <a href="#results">Results H1–H5</a>
+      <a href="#comparison">Comparison</a>
+      <a href="#figures">Figures</a>
+      <a href="#proof">Proof</a>
+      <a href="#get">Get &amp; reproduce</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <canvas id="helix" aria-hidden="true"></canvas>
+  <div class="wrap">
+    <div class="kicker">Alignment-free phylogenetics · pre-registered study</div>
+    <h1>Family trees of living things from the <span>words missing</span> in their DNA</h1>
+    <p class="lead">Q-MAWS builds a species tree from whole genomes without lining them up. It looks at the short DNA words each genome <em>lacks</em>, solves thousands of small four-species puzzles, and joins them into one tree. Every result can be checked by anyone.</p>
+    <div class="badges">
+      <span class="badge" id="b-version">Version</span>
+      <span class="badge">Windows · macOS · Linux</span>
+      <span class="badge">Rust</span>
+      <span class="badge">Pre-registered hypotheses H1–H5</span>
+    </div>
+    <div class="btns">
+      <a class="btn primary" href="#results">See the results</a>
+      <a class="btn ghost" href="https://github.com/the-sudipta/q-maws/releases/latest"><img src="https://img.icons8.com/ios/100/1f4e79/download.png" alt="">Download the tool</a>
+      <a class="btn ghost" href="https://github.com/the-sudipta/q-maws"><img src="https://img.icons8.com/ios/100/1f4e79/github.png" alt="">Source code</a>
+    </div>
+    <div class="stats">
+      <div class="stat"><b data-count="14">0</b><span>benchmark datasets</span></div>
+      <div class="stat"><b data-count="29">0</b><span>datasets in the tool comparison</span></div>
+      <div class="stat"><b id="s-runs" data-count="0">0</b><span>runs verified (PASS)</span></div>
+      <div class="stat"><b id="s-hashes" data-count="0">0</b><span>files with a SHA-256 hash</span></div>
+      <div class="stat"><b data-count="5">0</b><span>hypotheses tested as planned</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ OVERVIEW ============================ -->
+<section id="overview">
+  <div class="wrap">
+    <div class="kicker">In one minute</div>
+    <h2>What this project is about</h2>
+    <p class="lead">A phylogenetic tree shows which species are close relatives. Building one from whole genomes usually needs an alignment, which is slow and fragile. Q-MAWS skips alignment and asks honest questions about how well that works.</p>
+    <div class="grid g3 reveal">
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/dna-helix.png" alt="">The problem</h3>
+        <p>ML-MAWS (Saha et al., 2026) describes each genome by its <b>minimal absent words</b>: short words that do not occur although their parts do. It then searches all trees at once with maximum likelihood. That search is slow, and its statistical correction does not match how the data were filtered.</p>
+      </div>
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/d9731a/tree-structure.png" alt="">The idea</h3>
+        <p>Keep the same data, but split the big problem into small ones. Four species have only <b>three</b> possible trees, so each group of four can be solved exactly. A small likelihood model, corrected for how absent-word data arise, weighs the three trees; then all groups are joined into one tree.</p>
+      </div>
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/23877a/checked.png" alt="">What we found</h3>
+        <p>On new simulated data, Q-MAWS was the most accurate of the absent-word methods. Tools based on <b>present</b> words (Mash, Peafowl) were more accurate still. Q-MAWS is much faster for small and medium datasets but not for large ones. All of this was tested as planned and is reported openly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ PLAN ============================ -->
+<section id="plan" class="alt">
+  <div class="wrap">
+    <div class="kicker">The plan, written before any experiment</div>
+    <h2>Five hypotheses, fixed in advance</h2>
+    <p class="lead">Every hypothesis, test and success criterion was committed to the repository <b>before</b> the experiments (<code>docs/PREREGISTRATION.md</code>). So the goal could not be moved after seeing the answer. When a plan had to change, the change was written down with its date first, as an amendment.</p>
+    <div class="table-wrap reveal">
+      <table class="t" id="hyp-table">
+        <thead><tr><th>ID</th><th>Question in plain words</th><th>How it was tested</th><th>Success meant</th><th>Outcome</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="src">Outcomes are read from the result files when this page is built.</p>
+  </div>
+</section>
+
+<!-- ============================ JOURNEY ============================ -->
+<section id="journey">
+  <div class="wrap">
+    <div class="kicker">What we did, step by step</div>
+    <h2>From the first line of code to the release</h2>
+    <p class="lead">The work was split into 15 milestones. Each one has a report in <code>docs/milestones/</code> and a tag in the repository, so the exact state of every step can be opened. Amendments to the plan are shown in orange.</p>
+    <div class="grid g2">
+      <div>
+        <h3>Milestones</h3>
+        <div class="timeline" id="tl-milestones"></div>
+      </div>
+      <div>
+        <h3>Amendments to the plan</h3>
+        <div class="timeline" id="tl-amendments"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ WORKFLOW ============================ -->
+<section id="workflow" class="alt">
+  <div class="wrap">
+    <div class="kicker">How Q-MAWS works</div>
+    <h2>The workflow, from genomes to a verified tree</h2>
+    <p class="lead">The first part is identical to ML-MAWS and was checked byte for byte. Everything after the matrix is new. Click a step to see what it does, the formula behind it and where it is in the code.</p>
+    <div class="flow" id="flow"></div>
+    <div class="detail" id="flow-detail"></div>
+  </div>
+</section>
+
+<!-- ============================ RESULTS ============================ -->
+<section id="results">
+  <div class="wrap">
+    <div class="kicker">Actual results</div>
+    <h2>Hypotheses H1 to H5: what happened</h2>
+    <p class="lead">Each tab shows the question, the result in plain words, the formal outcome as planned, and an interactive chart. Hover over a chart for exact values.</p>
+    <div class="tabs" id="res-tabs">
+      <button class="tab on" data-p="p-h1">H1 · gene transfer</button>
+      <button class="tab" data-p="p-h2">H2 · speed</button>
+      <button class="tab" data-p="p-h3">H3 · long branches</button>
+      <button class="tab" data-p="p-h4">H4 · calibration</button>
+      <button class="tab" data-p="p-h5">H5 · new data</button>
+    </div>
+
+    <div class="panel on" id="p-h1">
+      <div class="grid g2">
+        <div>
+          <h3>Fewer tree errors than ML-MAWS under gene transfer? <span class="verdict" id="v-h1"></span></h3>
+          <p>When bacteria pass genes to each other, parts of a genome tell a different story. We compared Q-MAWS with ML-MAWS on the seven datasets with known gene transfer, using two error measures: <b>nRF</b> counts wrong branches and <b>nQD</b> counts wrong four-species relationships (lower is better for both).</p>
+          <p><b>In plain words:</b> on wrong branches Q-MAWS was <b>comparable or better</b>: lower on the four simulated datasets with transfer and equal on the other three. On four-species relationships it was <b>worse on all seven</b>.</p>
+          <div class="outcome no" id="o-h1"></div>
+        </div>
+        <div>
+          <div class="toggle" data-chart="h1"><button class="on" data-m="nRF">nRF</button><button data-m="nQD">nQD</button></div>
+          <div class="chart-box"><canvas id="c-h1"></canvas></div>
+          <p class="src">Source: <code>results/summary/h1_pairs.tsv</code>, <code>h1.tsv</code>. ML-MAWS values are those reported in its paper, as planned.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="p-h2">
+      <div class="grid g2">
+        <div>
+          <h3>Faster than ML-MAWS with many species? <span class="verdict" id="v-h2"></span></h3>
+          <p>Both programs ran on the same laptop, one run at a time, on simulated genomes with 25, 50 and 100 species (three of each). The rule: Q-MAWS must be faster in every run with 100 or more species.</p>
+          <p><b>In plain words:</b> Q-MAWS was much faster for small and medium datasets, but its time grows with the number of four-species groups (about m⁴), while ML-MAWS works on a fixed number of columns. By 100 species ML-MAWS was faster.</p>
+          <div class="kv" id="kv-h2"></div>
+          <div class="outcome no" id="o-h2"></div>
+          <p class="small muted">Two things found on the way: ML-MAWS as released stops without a tree above 50 species with IQ-TREE 2.4.0, so its runs were completed with the IQ-TREE command of its own normal mode (Amendment 6); and 200 species would need about 12 GB of memory for Q-MAWS, so that size was left out before it ran (Amendment 7).</p>
+        </div>
+        <div>
+          <div class="chart-box"><canvas id="c-h2"></canvas></div>
+          <p class="src">Source: <code>results/scaling/h2_values.tsv</code>. Time axis is logarithmic.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="p-h3">
+      <div class="grid g2">
+        <div>
+          <h3>Is the likelihood safe from long-branch attraction? <span class="verdict" id="v-h3"></span></h3>
+          <p>If two species change fast, they look alike by chance and simple counting groups them wrongly. We simulated four-species data where two species change fast and asked how often each weighting finds the true tree: <b>W1</b> (simple voting) and <b>W2</b> (the conditioned likelihood).</p>
+          <p><b>In plain words:</b> with more data, voting becomes <b>surer of the wrong answer</b> (0% at 100,000 characters), while the likelihood finds the right one (100%, 100% and 98.5%). It is the one hypothesis that was clearly supported.</p>
+          <div class="outcome yes" id="o-h3"></div>
+        </div>
+        <div>
+          <div class="chart-box"><canvas id="c-h3"></canvas></div>
+          <p class="src">Source: <code>results/h3/recovery.csv</code>; 200 replicates per point. Solid lines: W2; dashed lines: W1.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="p-h4">
+      <div class="grid g2">
+        <div>
+          <h3>Are the support values trustworthy? <span class="verdict" id="v-h4"></span></h3>
+          <p>A support value of 0.8 should mean the branch is right about 80% of the time. On 150 branches with known truth we measured the calibration error (ECE, lower is better) of Q-MAWS's quartet support S1, its bootstrap support S2, and ML-MAWS's UFBoot.</p>
+          <div class="kv" id="kv-h4"></div>
+          <p><b>In plain words:</b> S1 and UFBoot are <b>practically equal</b>, but fail in opposite ways: S1 is too cautious at the top, UFBoot too confident. S2 has less than half their error.</p>
+          <div class="outcome no" id="o-h4"></div>
+        </div>
+        <div>
+          <div class="chart-box"><canvas id="c-h4"></canvas></div>
+          <p class="src">Source: <code>results/h4/calibration_*.tsv</code>. Dot size = number of branches; dashed line = perfect calibration.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="p-h5">
+      <div class="grid g2">
+        <div>
+          <h3>Does the "improved" version win on new data? <span class="verdict" id="v-h5"></span></h3>
+          <p>An exploratory analysis suggested that simple vote weights (Q-MAWS v2) might be better. Before testing it, we wrote the test down and made <b>20 new simulated datasets</b> (30 species; 0, 10, 20 and 40% of genes transferred) that no part of the method had seen.</p>
+          <p><b>In plain words:</b> the improvement <b>did not replicate</b>: v2 was not better than ML-MAWS. But the <b>original</b> Q-MAWS method beat ML-MAWS on 15 of the 20 datasets. This is exactly why the plan was fixed in advance.</p>
+          <div class="kv" id="kv-h5"></div>
+          <div class="outcome no" id="o-h5"></div>
+        </div>
+        <div>
+          <div class="toggle" data-chart="h5"><button class="on" data-m="nrf">nRF</button><button data-m="nqd">nQD</button></div>
+          <div class="chart-box"><canvas id="c-h5"></canvas></div>
+          <p class="src">Source: <code>results/h5/h5_values.tsv</code>, <code>results/baselines/values.tsv</code>. Median over the 5 datasets of each transfer level.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ COMPARISON ============================ -->
+<section id="comparison" class="alt">
+  <div class="wrap">
+    <div class="kicker">Comparisons</div>
+    <h2>Q-MAWS beside other methods</h2>
+    <p class="lead">Because ML-MAWS is a preprint, three peer-reviewed tools were also run on the same data with their default settings: <b>Mash</b> (k-mer distances), <b>CD-MAWS</b> (cosine distance on absent words) and <b>Peafowl</b> (likelihood on present k-mers). All runs finished, and the published values of Peafowl and CD-MAWS were reproduced.</p>
+    <div class="toggle" data-chart="tools"><button class="on" data-m="nrf">nRF</button><button data-m="nqd">nQD</button></div>
+    <div class="chart-box tall reveal"><canvas id="c-tools"></canvas></div>
+    <p class="src">Nine AFproject datasets with reference trees. Source: <code>results/baselines/values.tsv</code>, <code>results/summary/qmaws.tsv</code>.</p>
+    <h3 style="margin-top:2rem">Head to head: how often Q-MAWS has lower error</h3>
+    <div class="table-wrap"><table class="t" id="paired-table"><thead><tr><th>Data</th><th>Q-MAWS</th><th>Against</th><th>Metric</th><th class="num">Q-MAWS better</th><th class="num">Equal</th><th class="num">Q-MAWS worse</th><th class="num">Median difference</th></tr></thead><tbody></tbody></table></div>
+    <p class="src">Source: <code>results/baselines/paired.tsv</code> (descriptive comparison, Amendment 5). Negative median difference = Q-MAWS lower (better).</p>
+    <div class="grid g2" style="margin-top:2rem">
+      <div class="card">
+        <h3>Sensitivity: which settings matter?</h3>
+        <div class="chart-box"><canvas id="c-sens"></canvas></div>
+        <p class="src">nRF of each setting, seed 1, on four datasets (<code>results/sensitivity/</code>). Exploratory: the W1 result led to H5.</p>
+      </div>
+      <div class="card">
+        <h3>Stability across five random seeds</h3>
+        <div class="chart-box"><canvas id="c-seeds"></canvas></div>
+        <p class="src">Mean ± one standard deviation over seeds 1–5 (<code>results/summary/qmaws.tsv</code>). The trees barely depend on the seed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FIGURES ============================ -->
+<section id="figures">
+  <div class="wrap">
+    <div class="kicker">Visual proof</div>
+    <h2>Figures and charts</h2>
+    <p class="lead">The Quartet Halo Tree is new in this project: branch colour shows how much four-species evidence supports each branch, and a ring around the leaves shows how well each species agrees with its place. Click any figure to enlarge it.</p>
+    <div class="chips" id="fig-chips"></div>
+    <div class="gallery" id="gallery"></div>
+  </div>
+</section>
+
+<!-- ============================ PROOF ============================ -->
+<section id="proof" class="alt">
+  <div class="wrap">
+    <div class="kicker">Don't trust us: check</div>
+    <h2>Logs, hashes and verification of a real run</h2>
+    <p class="lead">Every run leaves a complete record. Below is the real record of one run (<span id="proof-run"></span>). Every file has a SHA-256 fingerprint, the whole run has one root fingerprint, and one command recomputes the run and compares.</p>
+    <div class="grid g2">
+      <div>
+        <h3>The run log</h3>
+        <div class="term" id="term-log"></div>
+      </div>
+      <div>
+        <h3>The verification report</h3>
+        <div class="term" id="term-verify"></div>
+      </div>
+    </div>
+    <div class="grid g2" style="margin-top:1.4rem">
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/fingerprint.png" alt="">Root fingerprint</h3>
+        <p class="hash" id="proof-root"></p>
+        <p class="small muted">One hash over the settings and the content of every stage. It is the same on Windows, macOS and Linux, and after any number of stops and resumes.</p>
+        <h3 style="margin-top:1rem">File hashes (SHA-256)</h3>
+        <div id="proof-hashes"></div>
+      </div>
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/shield.png" alt="">Check it yourself</h3>
+        <p class="small">Clone the repository, then:</p>
+        <div class="term"><button class="copy" data-copy="python scripts/check_hashes.py">copy</button><span class="dim"># every result file against its .sha256</span>
+python scripts/check_hashes.py
+<span class="ok" id="proof-expect"></span>
+
+<span class="dim"># recompute a run and compare with its record</span>
+qmaws verify --output results/runs/fish_mito_seed2
+qmaws verify --output results/runs/fish_mito_seed2 --full</div>
+        <p class="small muted" style="margin-top:.8rem">The window offers the same checks under <b>Verify</b>: Quick, Full, One quartet and Inputs only.</p>
+      </div>
+    </div>
+    <details>
+      <summary>A real quartet, recomputed step by step (Fish mtDNA, seed 2)</summary>
+      <div class="term" id="term-worksheet" style="margin-top:.8rem"></div>
+    </details>
+  </div>
+</section>
+
+<!-- ============================ GET ============================ -->
+<section id="get">
+  <div class="wrap">
+    <div class="kicker">Use it, check it, reproduce it</div>
+    <h2>Get the tool or the whole project</h2>
+    <div class="grid g3 reveal">
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/download.png" alt="">Just use the tool</h3>
+        <p>Download a ready-to-run bundle for Windows, macOS or Linux from the Releases page. Nothing else to install: double-click to open the window.</p>
+        <a class="btn primary" href="https://github.com/the-sudipta/q-maws/releases/latest">Releases page</a>
+      </div>
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/test-tube.png" alt="">Verify the results</h3>
+        <p>Clone the whole repository (about 1 GB, mostly run records). Check every hash in one command, or recompute any run in the window or on the command line.</p>
+        <a class="btn ghost" href="https://github.com/the-sudipta/q-maws#for-reviewers-and-examiners">Verification guide</a>
+      </div>
+      <div class="card">
+        <h3><img class="icon" src="https://img.icons8.com/ios/100/1f4e79/code.png" alt="">Read the code</h3>
+        <p>Every step of the method is mapped to its file and function, with the window, the command line, the terminal menu and the automatic checks.</p>
+        <a class="btn ghost" href="https://github.com/the-sudipta/q-maws/blob/main/docs/ARCHITECTURE.md">Where the code is</a>
+      </div>
+    </div>
+    <div class="card" style="margin-top:1.4rem">
+      <h3>Cite</h3>
+      <p class="small">Das, S. K. <em>Q-MAWS: quartet-based phylogeny from minimal absent word sets</em>, version <span class="m-version"></span>, 2026. <a href="https://github.com/the-sudipta/q-maws">github.com/the-sudipta/q-maws</a>. Citation metadata: <code>CITATION.cff</code>.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 Sudipta Kumar Das. Q-MAWS is distributed under the Q-MAWS Source-Available License v1.0 (not open source); see <a href="https://github.com/the-sudipta/q-maws/blob/main/LICENSE">LICENSE</a>.</div>
+    <div>Built from commit <code id="m-commit"></code> on <span id="m-built"></span> · <a href="https://icons8.com" target="_blank" rel="noopener">Icons by Icons8</a></div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
+<script type="module" src="assets/helix.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
