@@ -22,6 +22,8 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `simulate_benchmark.sh` | The new simulated datasets of the extended benchmark (Amendment 8), in the H5 design: divergence (mean branch length 0.005, 0.02, 0.05), number of species (15, 60), 6 tuning datasets and fragmented assemblies of the H5 datasets with h = 0.2; fixed seeds from 9000; writes `data/manifests/simulated/benchmark.tsv`, species trees and transfer tables |
 | `benchmark_queue.sh` | The restartable job queue of the extended benchmark (Amendments 8 and 8a): verifies the reused runs with release 1.0.0, then runs Q-MAWS, ML-MAWS and the IQ-TREE reference; skips finished jobs, records wall time and peak memory in `results/benchmark/runs.tsv` |
 | `start_benchmark.bat` | Double-click to start or continue `benchmark_queue.sh` with Git Bash; closing the window pauses the queue |
+| `stop_benchmark.bat` | Double-click to pause the benchmark queue (stops the queue and the program it runs; nothing is lost) |
+| `benchmark_status.bat` | Double-click to see whether the queue runs, how many of its jobs are done, and its last log lines |
 | `mem_peak.ps1` | Samples the summed working set of the named processes every second and writes the peak in MB; used by `benchmark_queue.sh` |
 | `fragment_genomes.py` | Cuts each genome of a multi-FASTA file into contigs of 2,000 to 18,000 letters (seeded) and writes one multi-record file per taxon; used by `simulate_benchmark.sh` |
 | `install-hooks.bat` | Installs the guard as the `pre-commit` and `commit-msg` hooks (Windows) |
