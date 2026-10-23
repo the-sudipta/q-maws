@@ -19,6 +19,8 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `site_data.py` | Writes the data of the website (`site/data/site.json`) and copies its figures from the committed results; run by `pages.yml` |
 | `simulate_scaling.sh` | The simulated scaling datasets of H2 (plan 6.5): AliSim (IQ-TREE 2.4.0) genomes of 1,000,000 letters on random Yule–Harding trees, 25/50/100 taxa × 3 replicates and 200 taxa × 1, fixed seeds; writes the manifest and true trees to `data/manifests/simulated/` |
 | `simulate_hgt.sh` | The simulated HGT datasets of H5 (Amendment 4): AliSim species trees (30 taxa), gene trees with transfers from `qmaws hgt-trees`, genomes of 1,000 genes from AliSim topology-unlinked partitions, h = 0, 0.1, 0.2, 0.4 × 5 replicates, fixed seeds; writes the manifest, species trees and transfer tables to `data/manifests/simulated/` |
+| `simulate_benchmark.sh` | The new simulated datasets of the extended benchmark (Amendment 8), in the H5 design: divergence (mean branch length 0.005, 0.02, 0.05), number of species (15, 60), 6 tuning datasets and fragmented assemblies of the H5 datasets with h = 0.2; fixed seeds from 9000; writes `data/manifests/simulated/benchmark.tsv`, species trees and transfer tables |
+| `fragment_genomes.py` | Cuts each genome of a multi-FASTA file into contigs of 2,000 to 18,000 letters (seeded) and writes one multi-record file per taxon; used by `simulate_benchmark.sh` |
 | `install-hooks.bat` | Installs the guard as the `pre-commit` and `commit-msg` hooks (Windows) |
 | `install-hooks.sh` | Installs the guard as the `pre-commit` and `commit-msg` hooks (macOS, Linux, Git Bash) |
 | `pre-commit` | The guard: blocks unsafe commits (see Notes) |
