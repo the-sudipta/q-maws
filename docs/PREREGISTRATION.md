@@ -134,3 +134,25 @@ If decision D8 is declined, H2 and H4 are reported as "not tested" with the reas
 - **Alignment-based reference:** IQ-TREE 2.4.0 on the true alignment of each simulated dataset whose alignment is known (the 20 H5 and the 25 new non-fragmented evaluation datasets): `iqtree2 -s sequences.fasta -m MFP -nt 12 -seed 1`.
 - **Runs of these methods:** Q-MAWS on the 30 new evaluation datasets; ML-MAWS on the 30 new evaluation datasets and on the 9 AFproject datasets (H1 used the values reported by ML-MAWS; the benchmark uses laptop runs); the reference on the 45 datasets above; `qmaws verify --quick` with release 1.0.0 on every reused run. Results go to `results/benchmark/`. Wall time and peak memory (sum of the working sets of the method's processes, sampled every second) are recorded for every run.
 - **Order:** committed before any run of these methods on any dataset of the benchmark.
+
+## Amendment 8b (2026-10-24): final methods, commands and tuning grids
+
+- **Where:** the Linux tools run in Ubuntu 24.04 under WSL 1 on the development laptop (WSL 2 would need virtualization in the firmware, which the owner keeps off). Tools are installed in `/opt/bench`; every run goes through `scripts/bench_tools.sh` (default settings unless a tuned value is given) with 12 threads and a time limit of 6 hours. Methods that give distances get a neighbour-joining tree from `scripts/nj_tree.py` (Biopython 1.84), as in Amendment 5.
+- **Smoke test** (tuning dataset `bm_tune_r1`, results in `results/benchmark/smoke/`): 12 of the 13 Linux candidates wrote a tree with all 30 taxa. **AAF** (commit `40fdd2d`) is **excluded**: its per-species k-mer tables stayed empty (also with 4 threads, the memory limit of 4 GB, and sequences wrapped at 80 letters), so no distance matrix and no tree were made. Peafowl needed 30,898 s of wall time, which included the laptop sleeping and a shared processor; its 6-hour limit (which does not count sleep) was not reached.
+- **Final methods** (versions and commands; the run command is the one in `scripts/bench_tools.sh`):
+  - Q-MAWS 1.0.0, ML-MAWS `0c38db1` and the IQ-TREE 2.4.0 reference, as in Amendment 8a (Windows).
+  - Mash 2.3 (official binary `mash-Linux64-v2.3`): `mash sketch -k 21 -s 1000`, `mash dist`, NJ.
+  - CD-MAWS (`cd-maws-sa` `8bfe7d5`): `maw-gen` with lengths 4 to 14 per taxon, `dist-calc`, NJ.
+  - Peafowl (`89ed477`, Jellyfish 2.3.1, RAxML 8.2.12): `peafowl.sh -i input -n 12 -r`.
+  - andi 0.14 (Ubuntu): `andi -j -t 12`, NJ.
+  - phylonium 1.7 (Ubuntu): `phylonium -t 12`, NJ.
+  - FSWM (`burkhard-morgenstern/FSWM` `59efdc6`, compiled with its own command plus `-include cstdint`): `fswm -k 12 -t 12` on one record per genome, NJ.
+  - Multi-SpaM (`tdencker/multi-SpaM` `3230d3f`, built with `-fcommon` for its PHYLIP part and `-include cstdint`): `multispam.py -t 12 -k 10` (default 100 don't-care positions, 1,000,000 quartet blocks).
+  - SANS (`gi-bielefeld/sans` `3d3cdd9`, "SANS ambages", the successor of SANS serif, which moved from GitLab to GitHub): `SANS -k 31 -f strict -N <tree>`.
+  - CVTree (`ghzuo/cvtree` `575ba9b`): `cvtree -g fna -m Hao -k 7` (the largest value of its default list 5 6 7).
+  - JolyTree 2.1 (`ffbff7b`, with FastME `08e2150`, REQ `a528040`, Mash 2.3): `JolyTree.sh -i <genomes> -b jt -t 12 -x` (k and sketch size estimated by JolyTree).
+  - Skmer (`ea948d3`): `skmer reference -k 31 -p 12` (default sketch size 100,000), NJ.
+  - mashtree 1.4.6 (`c0853a8`): `mashtree --numcpus 12 --kmerlength 21`.
+- **Tuning grids** (value with the lowest median nRF on the six tuning datasets `bm_tune_r1` to `bm_tune_r6`; ties keep the default, or else the tied value closest to it): Mash k ∈ {15, 17, 19, 21, 23, 25, 31}; mashtree k ∈ {15, 17, 19, 21, 23, 25, 31}; SANS k ∈ {15, 19, 23, 27, 31}; Skmer k ∈ {15, 19, 23, 27, 31}; FSWM weight ∈ {8, 10, 12, 14, 16}; Multi-SpaM weight ∈ {8, 10, 12}; CVTree K ∈ {7, 9, 11, 13}. No tuning (no such setting, or the method chooses it itself): Q-MAWS, ML-MAWS, CD-MAWS, Peafowl, andi, phylonium, JolyTree.
+- **Runs:** every final method with default settings on all 59 evaluation datasets (the 9 AFproject, 20 H5 and 30 new datasets), and a second time with the tuned value where it differs from the default; for the speed comparison, every method on the 9 speed datasets of M13, one run at a time on mains power with no other work (the Q-MAWS and ML-MAWS times of M13 were measured this way on this laptop and are reused). These runs form phase B of the queue (`scripts/benchmark_queue_b.sh`), which starts after phase A.
+- **Order:** committed before any tuning run and before any evaluation run of the methods above; only the smoke test on `bm_tune_r1` had been run.

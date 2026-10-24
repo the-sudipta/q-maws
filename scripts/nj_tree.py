@@ -1,9 +1,12 @@
 """Neighbour-joining tree from a distance matrix (Amendment 5; development
-only). Used for Mash and CD-MAWS, which give distances, not trees.
+only). Used for the tools that give distances, not trees (Mash and CD-MAWS
+in Amendment 5; andi, phylonium, FSWM and Skmer in Amendment 8).
 
 Usage:
-  python nj_tree.py mash <mash dist output> <tree out>
-  python nj_tree.py csv  <CD-MAWS matrix (header ",a,b,..."; rows "a,d,d,...")> <tree out>
+  python nj_tree.py mash   <mash dist output> <tree out>
+  python nj_tree.py csv    <CD-MAWS matrix (header ",a,b,..."; rows "a,d,d,...")> <tree out>
+  python nj_tree.py phylip <square PHYLIP matrix (first line: number of taxa)> <tree out>
+  python nj_tree.py tsv    <square matrix with a header row (Skmer: "sample\ta\tb...")> <tree out>
 
 Mash names are file paths; the taxon name is the file name without its
 extension. The matrix is made symmetric (mean of both entries, which are
@@ -41,9 +44,34 @@ def read_csv(path):
     return names, d
 
 
+def read_phylip(path):
+    rows = [l.split() for l in open(path, encoding="utf-8") if l.strip()]
+    n = int(rows[0][0])
+    body = rows[1:1 + n]
+    names = [taxon(r[0]) for r in body]
+    d = {}
+    for r, a in zip(body, names):
+        for b, v in zip(names, r[1:1 + n]):
+            d[(a, b)] = float(v)
+    return names, d
+
+
+def read_tsv(path):
+    rows = [l.rstrip("\n").split("\t") for l in open(path, encoding="utf-8") if l.strip()]
+    names = [taxon(x) for x in rows[0][1:]]
+    d = {}
+    for r in rows[1:]:
+        for b, v in zip(names, r[1:]):
+            d[(taxon(r[0]), b)] = float(v)
+    return names, d
+
+
+READERS = {"mash": read_mash, "csv": read_csv, "phylip": read_phylip, "tsv": read_tsv}
+
+
 def main():
     kind, src, out = sys.argv[1:4]
-    names, d = read_mash(src) if kind == "mash" else read_csv(src)
+    names, d = READERS[kind](src)
     lower = []
     for i, a in enumerate(names):
         row = []
