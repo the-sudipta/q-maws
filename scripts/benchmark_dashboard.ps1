@@ -149,6 +149,8 @@ while ($true) {
         $cache.Cur = Get-Current; $cache.QStart = Get-QueueStart
         $cache.Done24 = @(Get-Content (Join-Path $B 'runs.tsv') | Select-Object -Skip 1 | Where-Object { $f = $_ -split "`t"; $f.Count -ge 4 -and ((UtcToLocal $f[3]) -gt $now.AddHours(-24)) }).Count
         $cache.Log = Get-Content (Join-Path $B 'queue.log') -Tail 6
+        $mf = Join-Path $B 'benchmark.sha256'
+        if (Test-Path $mf) { $ml = @(Get-Content $mf); $cache.Sealed = @($ml | Where-Object { $_ -like '*files.sha256' }).Count; $cache.Root = ($ml[-1] -split ' ')[0].Substring(0, 16) } else { $cache.Sealed = 0; $cache.Root = $null }
     }
     if (($now - $cache.slow).TotalSeconds -ge 30 -or $Once) {
         $cpu = (Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average
@@ -221,6 +223,7 @@ un.log") -Tail 1
     $L.Add((C '  TIME' '1;97'))
     $L.Add('  Work left            ' + (C (Dur $remS) '1;97') + '   (' + $R.Rem.Count + ' jobs, if the laptop runs without breaks)')
     $L.Add('  Everything done at   ' + (C ($eta.ToString($df)) '1;92') + '   (local time)')
+    $L.Add('  Tamper check         ' + $(if ($cache.Root) { (C ($cache.Sealed.ToString() + ' runs sealed with SHA-256') '32') + '   root fingerprint ' + (C ($cache.Root + '...') '90') + '   (verify_benchmark.bat)' } else { C 'no runs sealed yet' '33' }))
     $L.Add('  Jobs finished in the last 24 h:  ' + $cache.Done24 + '      failed so far:  ' + $(if ($R.Failed) { C $R.Failed '1;31' } else { C '0' '32' }))
     $L.Add('')
 

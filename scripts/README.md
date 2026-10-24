@@ -27,6 +27,8 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `start_benchmark.bat` | Double-click to start or continue `benchmark_queue.sh` with Git Bash; closing the window pauses the queue |
 | `stop_benchmark.bat` | Double-click to pause the benchmark queue (stops the queue and the program it runs; nothing is lost) |
 | `benchmark_status.bat` | Double-click to open the live dashboard (`benchmark_dashboard.ps1`) |
+| `bench_hash.py` | Seals every finished benchmark run with SHA-256 (`files.sha256` in the run folder, never overwritten) and keeps `results/benchmark/benchmark.sha256` with a root fingerprint; `verify` reports every changed, missing or added file |
+| `verify_benchmark.bat` | Double-click: seal newly finished runs, then verify every sealed run (PASS or FAIL) |
 | `benchmark_dashboard.ps1` | Live dashboard of the benchmark: state, current job with its expected end, progress of phases A and B, time left and the expected end of everything (local time, 12-hour clock), jobs per day, failures, processor, memory, disk, power and the last steps; redraws in place, Q closes it |
 | `mem_peak.ps1` | Samples the summed working set of the named processes every second and writes the peak in MB; used by `benchmark_queue.sh` |
 | `fragment_genomes.py` | Cuts each genome of a multi-FASTA file into contigs of 2,000 to 18,000 letters (seeded) and writes one multi-record file per taxon; used by `simulate_benchmark.sh` |

@@ -10,6 +10,8 @@
 # Restartable like phase A: a job with done.txt or failed.txt is skipped.
 # Every tree is compared with its reference by `qmaws tree-compare`; wall
 # time and peak memory (GNU time, largest process) go to results/benchmark/runs.tsv.
+# Finished runs are sealed with SHA-256 (scripts/bench_hash.py) after tuning,
+# after every evaluation dataset and at the end.
 
 set -u
 root=$(cd "${0%/*}/.." && pwd)
@@ -125,6 +127,7 @@ for m in $TOOLS; do
 done
 if all_done $tune_dirs; then
     python scripts/bench_tune_choose.py "$OUT/tuning" "$OUT/tuning/chosen.tsv" > /dev/null
+    python scripts/bench_hash.py seal > /dev/null
     say "tuning done: $(tail -n +2 "$OUT/tuning/chosen.tsv" | cut -f1,3 | tr '\t\n' '= ' )"
 else
     say "tuning incomplete; start the queue again"; exit 1
@@ -139,6 +142,7 @@ for ds in $AF $H5 $NEW; do
         c=$(chosen_of "$m"); dflt=$(default_of "$m")
         [ -n "$c" ] && [ "$c" != "$dflt" ] && run_job "$ds" "$m" "$OUT/$ds/${m}_tuned" "$c"
     done
+    python scripts/bench_hash.py seal > /dev/null
     say "evaluation: $ds finished"
 done
 
@@ -147,6 +151,7 @@ echo; echo "Speed runs: please do not use the laptop until they finish (it keeps
 for ds in $SPEED; do
     for m in $TOOLS; do run_job "$ds" "$m" "$OUT/speed/$ds/$m"; done
 done
+python scripts/bench_hash.py seal | tail -1 | sed "s/^/  /"
 say "PHASE B COMPLETED"
 echo; echo "=========================================="
 echo "  PHASE B COMPLETED: the benchmark runs are done."

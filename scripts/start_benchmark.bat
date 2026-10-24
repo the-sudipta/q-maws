@@ -23,5 +23,7 @@ echo.
 "%BASH%" scripts/benchmark_queue.sh
 rem Phase B (the Linux methods) runs after phase A; it skips everything already done.
 "%BASH%" scripts/benchmark_queue_b.sh
+rem Seal every finished run with SHA-256 (tamper check; see verify_benchmark.bat).
+python scripts\bench_hash.py seal
 echo.
 pause
