@@ -13,6 +13,9 @@ if not defined BASH (
     pause
     exit /b 1
 )
+rem Git Bash's own tools (dirname, date, awk, ...) sit next to bash.exe; put them on the path.
+for %%D in ("%BASH%") do set "BASHDIR=%%~dpD"
+set "PATH=%BASHDIR%;%SystemRoot%\System32;%SystemRoot%\System32\WindowsPowerShell\v1.0;%PATH%"
 echo Q-MAWS benchmark queue
 echo Keep the laptop plugged in and on the Performance power mode.
 echo To pause: close this window. Double-click start_benchmark.bat again to continue.
