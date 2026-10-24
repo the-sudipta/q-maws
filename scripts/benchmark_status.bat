@@ -1,17 +1,9 @@
 @echo off
-rem Shows the progress of the benchmark queue: finished jobs and the last log lines.
+rem Opens the live dashboard of the benchmark: state, current job and its end,
+rem overall progress, the time left and when everything ends (local time,
+rem 12-hour clock), speed, processor, memory, disk, power, and the last steps.
+rem It updates itself; press Q to close it. The benchmark keeps running.
+title Q-MAWS benchmark: live status (press Q to close)
 cd /d "%~dp0.."
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command ^
-  "$b = 'results\benchmark'; $lock = Join-Path $b 'queue.lock';" ^
-  "$running = (Test-Path $lock) -and (Get-Process -Id (Get-Content $lock) -ErrorAction SilentlyContinue);" ^
-  "if ($running) { Write-Host 'The benchmark queue is RUNNING.' } else { Write-Host 'The benchmark queue is NOT running. Double-click start_benchmark.bat to start or continue it.' };" ^
-  "$v = @(Get-ChildItem (Join-Path $b 'verify') -Filter *.txt -ErrorAction SilentlyContinue).Count;" ^
-  "$q = @(Get-ChildItem $b -Recurse -Filter root.txt -ErrorAction SilentlyContinue | Where-Object { $_.DirectoryName -like '*\qmaws\audit' }).Count;" ^
-  "$a = @(Get-ChildItem $b -Recurse -Filter done.txt -ErrorAction SilentlyContinue | Where-Object { $_.Directory.Name -in 'ml_maws','iqtree_true' }).Count;" ^
-  "Write-Host ''; Write-Host ('Phase A (Windows methods): ' + ($v + $q + $a) + ' of 213 jobs done  (checks ' + $v + ' of 99, Q-MAWS ' + $q + ' of 30, ML-MAWS and IQ-TREE ' + $a + ' of 84)');" ^
-  "$marks = @(Get-ChildItem $b -Recurse -Include done.txt,failed.txt -ErrorAction SilentlyContinue | Where-Object { $_.Directory.Name -notin 'ml_maws','iqtree_true' });" ^
-  "$t = @($marks | Where-Object { $_.FullName -like '*\tuning\*' }).Count; $s = @($marks | Where-Object { $_.FullName -like '*\speed\*' }).Count; $e = $marks.Count - $t - $s;" ^
-  "$f = @($marks | Where-Object { $_.Name -eq 'failed.txt' }).Count;" ^
-  "Write-Host ('Phase B (Linux methods):   tuning ' + $t + ' of 216, evaluation ' + $e + ' of at least 708, speed ' + $s + ' of 108  (failed so far: ' + $f + ')');" ^
-  "Write-Host ''; Write-Host 'Last steps:'; Get-Content (Join-Path $b 'queue.log') -Tail 8"
-pause
+mode con: cols=114 lines=46 >nul 2>&1
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File "%~dp0benchmark_dashboard.ps1"

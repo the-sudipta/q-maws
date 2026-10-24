@@ -26,7 +26,8 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `bench_tune_choose.py` | Picks each method's tuned setting: lowest median nRF on the tuning datasets, ties keep the default |
 | `start_benchmark.bat` | Double-click to start or continue `benchmark_queue.sh` with Git Bash; closing the window pauses the queue |
 | `stop_benchmark.bat` | Double-click to pause the benchmark queue (stops the queue and the program it runs; nothing is lost) |
-| `benchmark_status.bat` | Double-click to see whether the queue runs, how many of its jobs are done, and its last log lines |
+| `benchmark_status.bat` | Double-click to open the live dashboard (`benchmark_dashboard.ps1`) |
+| `benchmark_dashboard.ps1` | Live dashboard of the benchmark: state, current job with its expected end, progress of phases A and B, time left and the expected end of everything (local time, 12-hour clock), jobs per day, failures, processor, memory, disk, power and the last steps; redraws in place, Q closes it |
 | `mem_peak.ps1` | Samples the summed working set of the named processes every second and writes the peak in MB; used by `benchmark_queue.sh` |
 | `fragment_genomes.py` | Cuts each genome of a multi-FASTA file into contigs of 2,000 to 18,000 letters (seeded) and writes one multi-record file per taxon; used by `simulate_benchmark.sh` |
 | `install-hooks.bat` | Installs the guard as the `pre-commit` and `commit-msg` hooks (Windows) |
