@@ -21,5 +21,7 @@ echo Keep the laptop plugged in and on the Performance power mode.
 echo To pause: close this window. Double-click start_benchmark.bat again to continue.
 echo.
 "%BASH%" scripts/benchmark_queue.sh
+rem Phase B (the Linux methods) runs after phase A; it skips everything already done.
+"%BASH%" scripts/benchmark_queue_b.sh
 echo.
 pause
