@@ -1,7 +1,7 @@
 @echo off
 rem Shows the progress of the benchmark queue: finished jobs and the last log lines.
 cd /d "%~dp0.."
-powershell -NoProfile -Command ^
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -Command ^
   "$b = 'results\benchmark'; $lock = Join-Path $b 'queue.lock';" ^
   "$running = (Test-Path $lock) -and (Get-Process -Id (Get-Content $lock) -ErrorAction SilentlyContinue);" ^
   "if ($running) { Write-Host 'The benchmark queue is RUNNING.' } else { Write-Host 'The benchmark queue is NOT running. Double-click start_benchmark.bat to start or continue it.' };" ^
