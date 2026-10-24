@@ -38,6 +38,17 @@ $DEFAULT = @{ mash = 21; mashtree = 21; sans = 31; skmer = 31; fswm = 12; multis
 $PRIOR = @{ qmaws = 3600; ml_maws = 1800; iqtree_true = 1800; verify = 60; mash = 10; cdmaws = 90; peafowl = 2400; andi = 15; phylonium = 10; fswm = 30; multispam = 2400; sans = 30; cvtree = 15; jolytree = 90; skmer = 30; mashtree = 15 }
 $NICE = @{ qmaws = 'Q-MAWS'; ml_maws = 'ML-MAWS'; iqtree_true = 'IQ-TREE reference'; mash = 'Mash'; cdmaws = 'CD-MAWS'; peafowl = 'Peafowl'; andi = 'andi'; phylonium = 'phylonium'; fswm = 'FSWM'; multispam = 'Multi-SpaM'; sans = 'SANS'; cvtree = 'CVTree'; jolytree = 'JolyTree'; skmer = 'Skmer'; mashtree = 'mashtree' }
 
+function Fit([string]$s, [int]$w) {
+    $sb = New-Object System.Text.StringBuilder; $vis = 0; $i = 0
+    while ($i -lt $s.Length) {
+        if ($s[$i] -eq $esc) { $j = $s.IndexOf('m', $i); if ($j -lt 0) { break }; [void]$sb.Append($s.Substring($i, $j - $i + 1)); $i = $j + 1; continue }
+        if ($vis -ge $w) { break }
+        [void]$sb.Append($s[$i]); $vis++; $i++
+    }
+    [void]$sb.Append("$esc[0m"); $sb.ToString()
+}
+function Leave { [Console]::Write("$esc[?25h$esc[?1049l") }
+
 function Has([string]$rel) { Test-Path (Join-Path $B $rel) }
 function Marked([string]$rel) { (Has "$rel\done.txt") -or (Has "$rel\failed.txt") }
 
@@ -126,9 +137,7 @@ function Get-QueueStart {
 $cache = @{ t = [datetime]::MinValue; slow = [datetime]::MinValue }
 $spin = '|','/','-','\'
 $tick = 0
-try { [Console]::CursorVisible = $false } catch {}
-Clear-Host
-if (-not $Once) { Write-Host ''; Write-Host '  Q-MAWS benchmark: loading the status, one moment...' -ForegroundColor Cyan }
+if (-not $Once) { [Console]::Write("$esc[?1049h$esc[?25l$esc[2J$esc[3;3H" + (C 'Q-MAWS benchmark: loading the status, one moment...' '96')) }
 $cache.sizeT = [datetime]::MinValue
 
 while ($true) {
@@ -180,7 +189,7 @@ while ($true) {
         if ($el -le $est) {
             $L.Add('  ' + (Bar $frac $bw '36') + '  ' + ('{0,3:N0}%' -f ($frac * 100)) + '   ends about ' + (C ($endc.ToString($tf)) '1;97'))
         } else {
-            $L.Add('  ' + (Bar 1 $bw '33') + '  ' + (C ('longer than usual, ' + (Dur ($el - $est)) + ' over the typical time; still working') '33'))
+            $L.Add('  ' + (Bar 1 $bw '33') + '  ' + (C ('running longer than usual (+' + (Dur ($el - $est)) + ')') '33'))
         }
         if ($cur.Method -eq 'qmaws') {
             $ql = Get-Content (Join-Path $B "$($cur.Dataset)\qmaws
@@ -241,15 +250,21 @@ un.log") -Tail 1
     $L.Add((C '  Updates live. Press Q to close this window; the benchmark keeps running.' '90'))
 
     if ($Once) { $L | ForEach-Object { $_ }; break }
-    $H = $Host.UI.RawUI.WindowSize.Height; if (-not $H -or $H -lt 10) { $H = 60 }
-    try { [Console]::SetCursorPosition(0, 0) } catch { Clear-Host }
+    # draw on the program's own screen: every line at its fixed row, cut to the
+    # window width (no wrapping), never more rows than the window has (no scrolling)
+    $Hn = $Host.UI.RawUI.WindowSize.Height; if (-not $Hn -or $Hn -lt 8) { $Hn = 40 }
+    $Wn = $Host.UI.RawUI.WindowSize.Width; if (-not $Wn -or $Wn -lt 20) { $Wn = 100 }
+    $rows = $Hn - 1
+    if ($L.Count -gt $rows) { $keep = @($L[0..($rows - 2)]) + @($L[$L.Count - 1]) } else { $keep = @($L) }
     $out = New-Object System.Text.StringBuilder
-    $i = 0
-    foreach ($ln in $L) { if ($i -ge $H - 1) { break }; [void]$out.Append($ln + "$esc[K`n"); $i++ }
-    [void]$out.Append("$esc[J")
+    for ($i = 0; $i -lt $keep.Count; $i++) {
+        [void]$out.Append("$esc[$($i + 1);1H" + (Fit $keep[$i] ($Wn - 1)) + "$esc[K")
+    }
+    for ($i = $keep.Count; $i -lt $Hn; $i++) { [void]$out.Append("$esc[$($i + 1);1H$esc[K") }
+    [void]$out.Append("$esc[1;1H")
     [Console]::Write($out.ToString())
     for ($k = 0; $k -lt 10; $k++) {
         Start-Sleep -Milliseconds 100
-        try { if ([Console]::KeyAvailable) { $key = [Console]::ReadKey($true); if ($key.Key -eq 'Q') { try { [Console]::CursorVisible = $true } catch {}; Clear-Host; exit } } } catch {}
+        try { if ([Console]::KeyAvailable) { $key = [Console]::ReadKey($true); if ($key.Key -eq 'Q') { Leave; exit } } } catch {}
     }
 }
