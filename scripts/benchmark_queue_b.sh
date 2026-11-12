@@ -88,6 +88,12 @@ ref_of() {
 run_job() {
     ds=$1; m=$2; dir=$3; set_=${4:-}
     { [ -f "$dir/done.txt" ] || [ -f "$dir/failed.txt" ]; } && return 0
+    # Ubuntu's /tmp is on drive C:; a full disk would fail every job, so the queue stops instead
+    free_kb=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_*; df -Pk /tmp' | tr -d '\r' | awk 'NR==2{print $4}')
+    if [ "${free_kb:-0}" -lt 3145728 ]; then
+        say "stopped: less than 3 GB free on drive C: ($((${free_kb:-0} / 1024)) MB); free some space and start the queue again"
+        exit 1
+    fi
     rm -rf "$dir"; mkdir -p "$dir"
     say "$m${set_:+ ($set_)} on $ds"
     s0=$(date -u +%FT%TZ)

@@ -22,6 +22,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 export PATH="$B/bin:$PATH"
 PY=$B/venv/bin/python
 mkdir -p "$out"
+# the queue runs one job at a time, so temp folders left by an interrupted job are removed first
+rm -rf /tmp/bench_* /tmp/aaft_*
 w=$(mktemp -d /tmp/bench_XXXXXX)
 trap 'rm -rf "$w"' EXIT
 

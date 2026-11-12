@@ -5,7 +5,7 @@ in Amendment 5; andi, phylonium, FSWM and Skmer in Amendment 8).
 Usage:
   python nj_tree.py mash   <mash dist output> <tree out>
   python nj_tree.py csv    <CD-MAWS matrix (header ",a,b,..."; rows "a,d,d,...")> <tree out>
-  python nj_tree.py phylip <square PHYLIP matrix (first line: number of taxa)> <tree out>
+  python nj_tree.py phylip <square PHYLIP matrix (first line: number of taxa; relaxed or strict names)> <tree out>
   python nj_tree.py tsv    <square matrix with a header row (Skmer: "sample\ta\tb...")> <tree out>
 
 Mash names are file paths; the taxon name is the file name without its
@@ -48,6 +48,8 @@ def read_phylip(path):
     rows = [l.split() for l in open(path, encoding="utf-8") if l.strip()]
     n = int(rows[0][0])
     body = rows[1:1 + n]
+    # strict PHYLIP (FSWM): a name of exactly 10 characters runs into the first value
+    body = [[r[0][:10], r[0][10:]] + r[1:] if len(r) == n else r for r in body]
     names = [taxon(r[0]) for r in body]
     d = {}
     for r, a in zip(body, names):
