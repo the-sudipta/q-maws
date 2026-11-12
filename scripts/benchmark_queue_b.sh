@@ -102,7 +102,9 @@ run_job() {
     # notification and a red line on the dashboard, and then continues by itself.
     warned=0
     while :; do
-        free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_* /mnt/d/q-maws/.benchtmp/bench_*; df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
+        # only the space is checked here; each job removes the left-overs of its own lane
+        # (bench_tools.sh), so one lane never deletes the scratch folder of the other
+        free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
         free_c=$(echo "$free" | cut -d' ' -f1); free_d=$(echo "$free" | cut -d' ' -f2)
         [ "${free_c:-0}" -ge 1048576 ] && [ "${free_d:-0}" -ge 3145728 ] && break
         msg="waiting for free space: drive C: $((${free_c:-0} / 1024)) MB (needs 1 GB), drive D: $((${free_d:-0} / 1024)) MB (needs 3 GB); it continues by itself"
