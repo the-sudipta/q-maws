@@ -30,6 +30,10 @@ RUNS="$OUT/runs.tsv"
 mkdir -p "$OUT"
 [ -f "$RUNS" ] || printf 'dataset\tmethod\tstart_utc\tend_utc\tseconds\tpeak_mb\texit\n' > "$RUNS"
 say() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG"; }
+# a Windows notification (balloon in the corner of the screen) for things the owner must see
+notify() {
+    "$PS" -NoProfile -WindowStyle Hidden -Command "Add-Type -AssemblyName System.Windows.Forms; \$n = New-Object System.Windows.Forms.NotifyIcon; \$n.Icon = [System.Drawing.SystemIcons]::Warning; \$n.Visible = \$true; \$n.ShowBalloonTip(60000, 'Q-MAWS benchmark', '$1', 'Warning'); Start-Sleep 60; \$n.Dispose()" > /dev/null 2>&1 &
+}
 
 # --- one queue at a time (shared lock with phase A) ---------------------------
 LOCK="$OUT/queue.lock"; [ "$MODE" = lane ] && LOCK="$OUT/lane.lock"
@@ -94,12 +98,18 @@ run_job() {
     { [ -f "$dir/done.txt" ] || [ -f "$dir/failed.txt" ]; } && return 0
     # scratch files are on drive D: (Amendment 9); Ubuntu itself is on drive C:. A full disk
     # would fail every job, so the queue stops instead (no job is marked failed)
-    free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_* /mnt/d/q-maws/.benchtmp/bench_*; df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
-    free_c=$(echo "$free" | cut -d' ' -f1); free_d=$(echo "$free" | cut -d' ' -f2)
-    if [ "${free_c:-0}" -lt 1048576 ] || [ "${free_d:-0}" -lt 3145728 ]; then
-        say "stopped: too little free space (drive C: $((${free_c:-0} / 1024)) MB, needs 1 GB; drive D: $((${free_d:-0} / 1024)) MB, needs 3 GB); free some space and start the queue again"
-        exit 1
-    fi
+    # The queue waits (never exits) until there is space again, tells the owner with a Windows
+    # notification and a red line on the dashboard, and then continues by itself.
+    warned=0
+    while :; do
+        free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_* /mnt/d/q-maws/.benchtmp/bench_*; df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
+        free_c=$(echo "$free" | cut -d' ' -f1); free_d=$(echo "$free" | cut -d' ' -f2)
+        [ "${free_c:-0}" -ge 1048576 ] && [ "${free_d:-0}" -ge 3145728 ] && break
+        msg="waiting for free space: drive C: $((${free_c:-0} / 1024)) MB (needs 1 GB), drive D: $((${free_d:-0} / 1024)) MB (needs 3 GB); it continues by itself"
+        if [ $warned -eq 0 ]; then say "$msg"; notify "Q-MAWS benchmark is WAITING: free some space on drive C: or D:. It continues by itself."; warned=1; fi
+        sleep 300
+    done
+    [ $warned -eq 1 ] && say "space is free again; continuing"
     rm -rf "$dir"; mkdir -p "$dir"
     say "$m${set_:+ ($set_)} on $ds"
     s0=$(date -u +%FT%TZ)

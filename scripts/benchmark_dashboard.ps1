@@ -149,6 +149,14 @@ while ($true) {
         $cache.Cur = Get-Current; $cache.QStart = Get-QueueStart
         $cache.Done24 = @(Get-Content (Join-Path $B 'runs.tsv') | Select-Object -Skip 1 | Where-Object { $f = $_ -split "`t"; $f.Count -ge 4 -and ((UtcToLocal $f[3]) -gt $now.AddHours(-24)) }).Count
         $cache.Log = Get-Content (Join-Path $B 'queue.log') -Tail 6
+        # second lane (Amendment 9a): references, then Peafowl
+        $lanef = Join-Path $B 'lane.lock'
+        $cache.Lane = (Test-Path $lanef) -and ($lp = Get-Process -Id (Get-Content $lanef) -ErrorAction SilentlyContinue) -and ($lp.Name -in 'sh', 'bash')
+        $lanelog = Join-Path $B 'queue_lane.log'
+        $cache.LaneLast = if (Test-Path $lanelog) { Get-Content $lanelog -Tail 1 } else { $null }
+        # a lane waiting for disk space says so in its last log line
+        $cache.Waiting = @(@($cache.Log | Select-Object -Last 1) + @($cache.LaneLast) | Where-Object { $_ -match 'waiting for free space' })
+        $c = Get-PSDrive C; $cache.CFree = $c.Free / 1GB
         $mf = Join-Path $B 'benchmark.sha256'
         if (Test-Path $mf) { $ml = @(Get-Content $mf); $cache.Sealed = @($ml | Where-Object { $_ -like '*files.sha256' }).Count; $cache.Root = ($ml[-1] -split ' ')[0].Substring(0, 16) } else { $cache.Sealed = 0; $cache.Root = $null }
     }
@@ -176,7 +184,13 @@ while ($true) {
     if ($cache.Running -and $cache.QStart) { $L.Add('  Queue running since  ' + (C ($cache.QStart.ToString($df)) '97') + '   (' + (Dur ($now - $cache.QStart).TotalSeconds) + ')') }
     elseif (-not $cache.Running) { $L.Add('  ' + (C 'Paused or finished. Double-click start_benchmark.bat to start or continue.' '93')) }
     else { $L.Add('') }
-    $L.Add('')
+    $laneTxt = if ($cache.Lane) { C 'RUNNING' '1;32' } else { C 'not running' '90' }
+    $laneJob = if ($cache.LaneLast -and $cache.LaneLast.Length -gt 21) { $cache.LaneLast.Substring(21) } else { '' }
+    if ($laneJob.Length -gt $W - 40) { $laneJob = $laneJob.Substring(0, $W - 43) + '...' }
+    $L.Add('  Peafowl lane         ' + $laneTxt + '   ' + (C $laneJob '90'))
+    if ($cache.Waiting.Count -gt 0) {
+        $L.Add('  ' + (C (' WAITING FOR DISK SPACE: drive C: has {0:N1} GB free. Free some space; the queue continues by itself. ' -f $cache.CFree) '1;97;41'))
+    } else { $L.Add('') }
 
     # current job
     $L.Add((C '  CURRENT JOB' '1;97'))
@@ -232,7 +246,8 @@ un.log") -Tail 1
     $memF = $cache.MemUsed / [Math]::Max(0.1, $cache.MemTot)
     $L.Add(('  {0,-12}' -f 'Processor') + (Bar ($cache.Cpu / 100) 20 '36') + ('  {0,3}%' -f $cache.Cpu) + ('        {0,-8}' -f 'Memory') + (Bar $memF 20 '35') + ('  {0:N1} of {1:N1} GB' -f $cache.MemUsed, $cache.MemTot))
     $diskF = 1 - $cache.DiskFree / [Math]::Max(1, $cache.DiskTot)
-    $L.Add(('  {0,-12}' -f 'Disk D:') + (Bar $diskF 20 '33') + ('  {0:N0} GB free' -f $cache.DiskFree) + ('   results so far {0:N2} GB' -f $cache.Size))
+    $L.Add(('  {0,-12}' -f 'Disk D:') + (Bar $diskF 20 '33') + ('  {0:N0} GB free' -f $cache.DiskFree) + ('   results so far {0:N2} GB' -f $cache.Size) +
+        '   Disk C: ' + (C ('{0:N1} GB free' -f $cache.CFree) $(if ($cache.CFree -lt 2) { '1;31' } else { '32' })))
     if ($null -ne $cache.Bat) {
         $pw = if ($cache.AC) { C ("plugged in, battery $($cache.Bat)%") '32' } else { C ("ON BATTERY ($($cache.Bat)%): please plug in, runs are much slower") '1;31' }
         $L.Add(('  {0,-12}' -f 'Power') + $pw)
