@@ -23,11 +23,14 @@ export PATH="$B/bin:$PATH"
 PY=$B/venv/bin/python
 mkdir -p "$out"
 # Scratch files go to drive D: (Amendment 9): Ubuntu's /tmp is on drive C:, which is nearly full.
-# The queue runs one job at a time, so folders left by an interrupted job are removed first.
+# Each lane runs one job at a time, so folders left by an interrupted job of the same lane are
+# removed first. Peafowl's evaluation runs have their own lane (Amendment 9a) and prefix.
 SCRATCH=/mnt/d/q-maws/.benchtmp
+lane=bench; [ "$method" = peafowl ] && lane=pf
 mkdir -p "$SCRATCH"
-rm -rf "$SCRATCH"/bench_* /tmp/bench_* /tmp/aaft_*
-w=$(mktemp -d "$SCRATCH/bench_XXXXXX")
+rm -rf "$SCRATCH/${lane}_"*
+[ "$lane" = bench ] && rm -rf /tmp/bench_* /tmp/aaft_*
+w=$(mktemp -d "$SCRATCH/${lane}_XXXXXX")
 trap 'rm -rf "$w"' EXIT
 
 # --- input: one file per taxon in $w/genomes, and one joined multi-FASTA ---

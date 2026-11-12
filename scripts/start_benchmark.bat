@@ -20,6 +20,9 @@ echo Q-MAWS benchmark queue
 echo Keep the laptop plugged in and on the Performance power mode.
 echo To pause: close this window. Double-click start_benchmark.bat again to continue.
 echo.
+rem The second lane (Amendment 9a: alignment-based references, then Peafowl's evaluation runs)
+rem runs beside the main queue in its own minimized window; it skips what is already done.
+start "Q-MAWS benchmark lane (Peafowl)" /min "%BASH%" scripts/benchmark_queue_b.sh lane
 "%BASH%" scripts/benchmark_queue.sh
 rem Phase B (the Linux methods) runs after phase A; it skips everything already done.
 "%BASH%" scripts/benchmark_queue_b.sh

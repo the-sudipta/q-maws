@@ -14,6 +14,9 @@
 # after every evaluation dataset and at the end.
 
 set -u
+# Without an argument: the main queue of phase B. With "lane": the second lane of Amendment 9a
+# (alignment-based references, then Peafowl's evaluation runs), started beside the main queue.
+MODE=${1:-main}
 root=$(cd "${0%/*}/.." && pwd)
 cd "$root" || exit 1
 export PATH=/usr/bin:/mingw64/bin:$PATH
@@ -22,14 +25,14 @@ PS="/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
 QMAWS="$root/target/release/qmaws.exe"
 DISTRO=Ubuntu-24.04
 OUT=results/benchmark
-LOG="$OUT/queue.log"
+LOG="$OUT/queue.log"; [ "$MODE" = lane ] && LOG="$OUT/queue_lane.log"
 RUNS="$OUT/runs.tsv"
 mkdir -p "$OUT"
 [ -f "$RUNS" ] || printf 'dataset\tmethod\tstart_utc\tend_utc\tseconds\tpeak_mb\texit\n' > "$RUNS"
 say() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG"; }
 
 # --- one queue at a time (shared lock with phase A) ---------------------------
-LOCK="$OUT/queue.lock"
+LOCK="$OUT/queue.lock"; [ "$MODE" = lane ] && LOCK="$OUT/lane.lock"
 mywin=$(cat /proc/$$/winpid 2>/dev/null || echo 0)
 if [ -f "$LOCK" ]; then
     other=$(cat "$LOCK")
@@ -42,8 +45,9 @@ echo "$mywin" > "$LOCK"
 trap 'rm -f "$LOCK"' EXIT INT TERM HUP
 
 "$QMAWS" --version | grep -q "1.0.0" || { say "Q-MAWS is not release 1.0.0"; exit 1; }
-# leftovers of an interrupted run inside Ubuntu are stopped first
-wsl.exe --terminate "$DISTRO" > /dev/null 2>&1
+# Ubuntu is not reset here: the Peafowl lane (Amendment 9a) may be running in it. Left-over
+# processes of an interrupted run are stopped by stop_benchmark.bat, and left-over scratch
+# folders by bench_tools.sh.
 
 TOOLS="mash cdmaws peafowl andi phylonium fswm multispam sans cvtree jolytree skmer mashtree"
 grid_of() {
@@ -110,8 +114,13 @@ run_job() {
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$ds" "$m${set_:+_$set_}" "$s0" "$s1" "${secs:-NA}" "$mb" "$rc" >> "$RUNS"
     if [ -s "$dir/tree.nwk" ]; then
         "$QMAWS" --quiet tree-compare --tree "$dir/tree.nwk" --reference "$(ref_of "$ds")" > "$dir/comparison.tsv" 2> "$dir/comparison_error.txt"
+    fi
+    if [ -s "$dir/tree.nwk" ] && [ ! -s "$dir/comparison_error.txt" ]; then
         echo "ok" > "$dir/done.txt"
         say "$m on $ds: $(grep -m1 '^nRF' "$dir/comparison.tsv" | cut -f2 | sed 's/^/nRF /')"
+    elif [ -s "$dir/tree.nwk" ]; then  # a tree that cannot be compared (for example, taxa missing)
+        echo "exit $rc; tree not comparable with the reference, see comparison_error.txt" > "$dir/failed.txt"
+        say "$m on $ds: FAILED (tree not comparable)"
     else
         echo "exit $rc; see run.log" > "$dir/failed.txt"
         say "$m on $ds: FAILED (exit $rc)"
@@ -121,6 +130,15 @@ run_job() {
 all_done() { # folder pattern list: returns 0 when every listed job has a marker
     for d in "$@"; do { [ -f "$d/done.txt" ] || [ -f "$d/failed.txt" ]; } || return 1; done; return 0
 }
+
+# --- lane mode (Amendment 9a): the alignment-based references, then Peafowl's evaluation runs ---
+if [ "$MODE" = lane ]; then
+    say "lane started"
+    wsl.exe -d "$DISTRO" -u root -- bash /mnt/d/q-maws/scripts/bench_refs.sh > /dev/null 2>&1
+    for ds in $AF $H5 $NEW; do run_job "$ds" peafowl "$OUT/$ds/peafowl"; done
+    say "LANE COMPLETED"
+    exit 0
+fi
 
 say "phase B started"
 # 1. tuning
@@ -146,6 +164,7 @@ default_of() { awk -F'\t' -v m="$1" '$1==m{print $2}' "$OUT/tuning/chosen.tsv"; 
 # 2. evaluation
 for ds in $AF $H5 $NEW; do
     for m in $TOOLS; do
+        [ "$m" = peafowl ] && continue  # Peafowl's evaluation runs are in their own lane (Amendment 9a)
         run_job "$ds" "$m" "$OUT/$ds/$m"
         c=$(chosen_of "$m"); dflt=$(default_of "$m")
         [ -n "$c" ] && [ "$c" != "$dflt" ] && run_job "$ds" "$m" "$OUT/$ds/${m}_tuned" "$c"
@@ -154,7 +173,11 @@ for ds in $AF $H5 $NEW; do
     say "evaluation: $ds finished"
 done
 
-# 3. speed (run alone)
+# 3. speed (run alone): wait until the lane (references and Peafowl, Amendment 9a) has finished
+LANE_LOCK="$OUT/lane.lock"
+while [ -f "$LANE_LOCK" ] && "$PS" -NoProfile -Command "if (Get-Process -Id $(cat "$LANE_LOCK") -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"; do
+    say "speed runs wait for the Peafowl lane to finish"; sleep 600
+done
 echo; echo "Speed runs: please do not use the laptop until they finish (it keeps the timings fair)."
 for ds in $SPEED; do
     for m in $TOOLS; do run_job "$ds" "$m" "$OUT/speed/$ds/$m"; done

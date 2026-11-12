@@ -177,3 +177,11 @@ If decision D8 is declined, H2 and H4 are reported as "not tested" with the reas
   - the spread of run times between seeds and its causes (power state, sleep and restarts recorded in the run logs).
 - **Order:** this text is committed before CASTER, TREE-QMC and FastTree are installed or run on any dataset, and before any of the analyses above is computed. All results are reported, whatever they show.
 - **Decided by:** the owner, 2026-11-12.
+
+## Amendment 9a (2026-11-12): a second lane for Peafowl and the references
+
+- **Why:** a Peafowl run takes from minutes to hours (its k-mer merging runs on one core; its smoke test took 8.5 hours). In a single queue, every other method waited behind each Peafowl run, and phase B would have taken weeks.
+- **Change (operational; no method, setting, dataset or measure changes):** `scripts/benchmark_queue_b.sh lane` runs in a second window beside the main queue: first the alignment-based references of Amendment 9 (`scripts/bench_refs.sh`), then Peafowl's 59 evaluation runs. The main queue skips Peafowl's evaluation runs. Each lane has its own lock and its own scratch prefix, and the main queue no longer resets Ubuntu when it starts (that would stop the lane). A run is marked finished only when its tree can be compared with the reference; a tree that cannot (for example, with taxa missing) is marked failed with that reason.
+- **Times:** evaluation times were already for information only (Amendment 8). The speed runs, the only timed comparison, wait until the lane has finished, so every speed run still runs alone.
+- **Order:** committed before the lanes were started. Peafowl had finished 4 evaluation runs (Fish mtDNA, E. coli/Shigella, E. coli/Shigella HGT, Yersinia HGT); its run on `sim_hgt_0` was stopped unfinished and runs again.
+- **Decided by:** the owner, 2026-11-12.

@@ -11,6 +11,15 @@ if defined QPID (
     taskkill /PID %QPID% /T /F >nul 2>&1
     del /q "results\benchmark\queue.lock" >nul 2>&1
 )
+rem The second lane (Amendment 9a) has its own lock.
+set "LPID="
+if exist "results\benchmark\lane.lock" (
+    set /p LPID=<"results\benchmark\lane.lock"
+)
+if defined LPID (
+    taskkill /PID %LPID% /T /F >nul 2>&1
+    del /q "results\benchmark\lane.lock" >nul 2>&1
+)
 rem Phase B runs its tools inside Ubuntu (WSL): stop them too.
 wsl.exe --terminate Ubuntu-24.04 >nul 2>&1
 "%PS%" -NoProfile -Command "Get-Process -Name qmaws,ml-maws,iqtree2 -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host 'The benchmark queue is paused. Double-click start_benchmark.bat to continue.'"
