@@ -15,8 +15,10 @@ Written to results/benchmark/summary/:
                         quartets containing the taxon that the Q-MAWS tree resolves wrongly
   halo_summary.tsv      Spearman correlation and AUC (halo predicting a taxon in a wrong
                         quartet) per dataset group
-  wrong_splits.tsv      for Q-MAWS and ML-MAWS: wrong branches and the size of their smaller
-                        side (deep errors cost many quartets: the nRF/nQD relation)
+  wrong_splits.tsv      for Q-MAWS and ML-MAWS: wrong branches, the size of their smaller side,
+                        and their transfer distance (the fewest taxa to move to make the
+                        branch a true one); near misses cost few quartets, so a method with
+                        more but nearer wrong branches has the higher nRF and the lower nQD
 """
 import csv
 import itertools
@@ -301,12 +303,26 @@ def wrong_splits():
                 continue
             e, _ = splits(read(p))
             bad = [min(len(s), len(taxa) - len(s)) for s in e if s not in t]
+            far = [transfer(s, t, taxa) for s in e if s not in t]
             rows.append([ds, group(ds), m, len(taxa), len(e), len(bad),
-                         f'{median(bad):.1f}' if bad else 'NA', f'{sum(bad) / len(bad):.2f}' if bad else 'NA'])
-    write('wrong_splits.tsv', ['dataset', 'group', 'method', 'taxa', 'branches', 'wrong', 'median_small_side', 'mean_small_side'], rows)
+                         f'{median(bad):.1f}' if bad else 'NA', f'{sum(bad) / len(bad):.2f}' if bad else 'NA',
+                         f'{sum(far) / len(far):.2f}' if far else 'NA'])
+    write('wrong_splits.tsv', ['dataset', 'group', 'method', 'taxa', 'branches', 'wrong', 'median_small_side',
+                               'mean_small_side', 'mean_transfer_distance'], rows)
     for m in ('qmaws', 'ml_maws'):
         sides = [float(r[7]) for r in rows if r[2] == m and r[7] != 'NA']
-        print(f'  wrong splits {m}: datasets {len(sides)}, median of mean smaller side {median(sides):.2f}')
+        far = [float(r[8]) for r in rows if r[2] == m and r[8] != 'NA']
+        print(f'  wrong splits {m}: datasets {len(sides)}, median of mean smaller side {median(sides):.2f}, '
+              f'median of mean transfer distance {median(far):.2f}')
+
+
+def transfer(side, truth, taxa):
+    """Fewest taxa to move so that the split becomes one of the true splits."""
+    best = len(taxa)
+    for t in truth:
+        d = len(side ^ t)
+        best = min(best, d, len(taxa) - d)
+    return best
 
 
 def write(name, header, rows):

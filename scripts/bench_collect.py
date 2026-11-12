@@ -87,6 +87,9 @@ def tree_in(folder):
 
 
 def status_of(folder):
+    err = os.path.join(folder, 'comparison_error.txt')
+    if os.path.exists(err) and os.path.getsize(err) > 0:
+        return 'failed'  # a tree that cannot be compared (for example, taxa missing) is no result
     if os.path.exists(os.path.join(folder, 'done.txt')):
         return 'done'
     if os.path.exists(os.path.join(folder, 'failed.txt')):
