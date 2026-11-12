@@ -88,10 +88,12 @@ ref_of() {
 run_job() {
     ds=$1; m=$2; dir=$3; set_=${4:-}
     { [ -f "$dir/done.txt" ] || [ -f "$dir/failed.txt" ]; } && return 0
-    # Ubuntu's /tmp is on drive C:; a full disk would fail every job, so the queue stops instead
-    free_kb=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_*; df -Pk /tmp' | tr -d '\r' | awk 'NR==2{print $4}')
-    if [ "${free_kb:-0}" -lt 3145728 ]; then
-        say "stopped: less than 3 GB free on drive C: ($((${free_kb:-0} / 1024)) MB); free some space and start the queue again"
+    # scratch files are on drive D: (Amendment 9); Ubuntu itself is on drive C:. A full disk
+    # would fail every job, so the queue stops instead (no job is marked failed)
+    free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'rm -rf /tmp/bench_* /tmp/aaft_* /mnt/d/q-maws/.benchtmp/bench_*; df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
+    free_c=$(echo "$free" | cut -d' ' -f1); free_d=$(echo "$free" | cut -d' ' -f2)
+    if [ "${free_c:-0}" -lt 1048576 ] || [ "${free_d:-0}" -lt 3145728 ]; then
+        say "stopped: too little free space (drive C: $((${free_c:-0} / 1024)) MB, needs 1 GB; drive D: $((${free_d:-0} / 1024)) MB, needs 3 GB); free some space and start the queue again"
         exit 1
     fi
     rm -rf "$dir"; mkdir -p "$dir"

@@ -22,9 +22,12 @@ here=$(cd "$(dirname "$0")" && pwd)
 export PATH="$B/bin:$PATH"
 PY=$B/venv/bin/python
 mkdir -p "$out"
-# the queue runs one job at a time, so temp folders left by an interrupted job are removed first
-rm -rf /tmp/bench_* /tmp/aaft_*
-w=$(mktemp -d /tmp/bench_XXXXXX)
+# Scratch files go to drive D: (Amendment 9): Ubuntu's /tmp is on drive C:, which is nearly full.
+# The queue runs one job at a time, so folders left by an interrupted job are removed first.
+SCRATCH=/mnt/d/q-maws/.benchtmp
+mkdir -p "$SCRATCH"
+rm -rf "$SCRATCH"/bench_* /tmp/bench_* /tmp/aaft_*
+w=$(mktemp -d "$SCRATCH/bench_XXXXXX")
 trap 'rm -rf "$w"' EXIT
 
 # --- input: one file per taxon in $w/genomes, and one joined multi-FASTA ---
