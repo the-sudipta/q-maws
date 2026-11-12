@@ -107,8 +107,8 @@ run_job() {
         free=$(wsl.exe -d "$DISTRO" -u root -- sh -c 'df -Pk / /mnt/d' | tr -d '\r' | awk 'NR>1{printf "%s ", $4}')
         free_c=$(echo "$free" | cut -d' ' -f1); free_d=$(echo "$free" | cut -d' ' -f2)
         [ "${free_c:-0}" -ge 1048576 ] && [ "${free_d:-0}" -ge 3145728 ] && break
-        msg="waiting for free space: drive C: $((${free_c:-0} / 1024)) MB (needs 1 GB), drive D: $((${free_d:-0} / 1024)) MB (needs 3 GB); it continues by itself"
-        if [ $warned -eq 0 ]; then say "$msg"; notify "Q-MAWS benchmark is WAITING: free some space on drive C: or D:. It continues by itself."; warned=1; fi
+        msg="waiting for free space: Ubuntu disk $((${free_c:-0} / 1024)) MB (needs 1 GB), drive D: $((${free_d:-0} / 1024)) MB (needs 3 GB); it continues by itself"
+        if [ $warned -eq 0 ]; then say "$msg"; notify "Q-MAWS benchmark is WAITING: free some space on drive D:. It continues by itself."; warned=1; fi
         sleep 300
     done
     [ $warned -eq 1 ] && say "space is free again; continuing"
