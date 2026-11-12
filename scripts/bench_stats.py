@@ -14,6 +14,9 @@ Written to results/benchmark/summary/:
                   95% CIs and the number of finished datasets
   friedman.tsv    Friedman test and mean ranks on the datasets every method finished
   pairwise.tsv    two-sided Wilcoxon tests of every pair of methods, Holm-adjusted
+  h1_rerun.tsv    descriptive: the H1 test (Q-MAWS mean of five seeds against ML-MAWS on the
+                  7 AFproject datasets with HGT) with ML-MAWS run on this laptop instead of
+                  the values reported in its paper (results/summary/h1_pairs.tsv)
 
 The exact Wilcoxon distribution uses mid-ranks (doubled to integers) and is
 computed by dynamic programming, so ties are handled exactly. Only the Python
@@ -202,12 +205,36 @@ def check_h5():
         print(f'  H5 check, {who} minus ML-MAWS: Holm p nRF {adj[0]:.3f}, nQD {adj[1]:.3f}')
 
 
+def h1_rerun(acc):
+    """H1 with ML-MAWS values from our own runs (descriptive; H1 itself used reported values)."""
+    pairs = list(csv.DictReader(open(os.path.join('results', 'summary', 'h1_pairs.tsv'), encoding='utf-8'), delimiter='\t'))
+    out, ps = [], []
+    for metric, key in (('nRF', 'nrf'), ('nQD', 'nqd')):
+        d = [float(p['qmaws']) - float(acc[(p['dataset'], 'ml_maws')][key]) for p in pairs if p['metric'] == metric]
+        out.append((key, d))
+        ps.append(p_less(d))
+    rows = []
+    for (key, d), p, pa in zip(out, ps, holm(ps)):
+        c = clean(d)
+        rows.append(['Q-MAWS (mean of 5 seeds) minus ML-MAWS (laptop runs)', key, len(d), sum(x < 0 for x in c),
+                     sum(x == 0 for x in c), sum(x > 0 for x in c), fmt(median(d)), fmt(hodges_lehmann(d)),
+                     fmt(rank_biserial(d), 3), fmt(p), fmt(pa)])
+    with open(os.path.join(SUMMARY, 'h1_rerun.tsv'), 'w', encoding='utf-8', newline='') as f:
+        w = csv.writer(f, delimiter='\t', lineterminator='\n')
+        w.writerow(['comparison', 'measure', 'n', 'lower', 'equal', 'higher', 'median_diff', 'hodges_lehmann',
+                    'rank_biserial', 'p_one_sided', 'p_holm'])
+        w.writerows(rows)
+    for r in rows:
+        print('  H1 rerun', r[1], 'L/E/H', r[3], r[4], r[5], 'median', r[6], 'Holm p', r[10])
+
+
 def main():
     if '--check' in sys.argv:
         check_h5()
     acc = load()
     new = sorted({ds for ds, _ in acc if ds.startswith('bm_')})
     rows = paired_test(acc, new, 'qmaws', 'ml_maws', os.path.join(SUMMARY, 'h6.tsv'), 'Q-MAWS minus ML-MAWS (H6)')
+    h1_rerun(acc)
     for r in rows:
         print('  H6', r[1], 'n', r[2], 'median', r[6], 'CI', r[7], r[8], 'Holm p', r[12], 'met', r[13])
 
@@ -232,7 +259,9 @@ def main():
 
     # Friedman test and pairwise tests on the datasets every compared method finished
     # (alignment-free methods only; the references are reported, not ranked)
-    af = [m for m in methods if m not in ('iqtree_true', 'caster_site', 'treeqmc', 'wtreeqmc')]
+    # default settings only; tuned values are compared with their defaults separately
+    af = [m for m in methods if m not in ('iqtree_true', 'caster_site', 'treeqmc', 'wtreeqmc', 'fasttree_genes')
+          and not m.endswith('_tuned')]
     datasets = sorted({ds for ds, _ in acc})
     complete = [ds for ds in datasets if all(acc.get((ds, m), {}).get('status') == 'done' for m in af)]
     with open(os.path.join(SUMMARY, 'friedman.tsv'), 'w', encoding='utf-8', newline='') as f:
