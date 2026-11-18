@@ -27,7 +27,7 @@ The extended benchmark (docs/PREREGISTRATION.md, Amendments 8 to 10) on GitHub-h
 Run by `.github/workflows/benchmark_cloud.yml` (inputs, waves, analysis) and `benchmark_wave.yml` (one wave). Calls `scripts/bench_tools.sh`, `scripts/bench_refs.sh`, `scripts/simulate_benchmark.sh`, `scripts/simulate_scaling.sh`, `scripts/bench_tune_choose.py`, `scripts/bench_hash.py` and the analysis scripts. Writes the layout of `results/benchmark/`.
 
 ## Notes
-- **Start:** change `config/run.json` on the branch `cloud-benchmark` and push. `smoke` runs every method once on `bm_tune_r1`; `full` runs everything (up to 12 waves of at most 6 hours each per push; push again to continue).
+- **Start:** change `config/run.json` on the branch `cloud-benchmark` and push. `smoke` runs only the smoke tests (every method once on `bm_tune_r1`); `full` runs the smoke tests first and then everything, each method as soon as its own smoke test has a result tree (up to 12 waves of at most 6 hours each per push; push again to continue).
 - **Finished, failed, interrupted:** a run is finished when its folder has its marker (`done.txt`, `failed.txt`, or `audit/root.txt` for Q-MAWS). A run stopped only because its job ran out of time is not a result: it is continued (Q-MAWS, ML-MAWS's IQ-TREE step, the IQ-TREE reference) or started again in a later job. A run that fails three times for another reason is a result: failed.
 - **Time limit:** 5 h 30 min per run of the methods run through `bench_tools.sh`; none for Q-MAWS, ML-MAWS and the IQ-TREE reference (Amendments 8a and 10).
 - **Processors:** several tools compile with `-march=native`, so the built tools are cached per processor model.

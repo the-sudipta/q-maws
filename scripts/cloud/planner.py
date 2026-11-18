@@ -69,8 +69,8 @@ def plan(root, mode, max_shards):
     """Returns (shards, summary). root: a checkout of the state branch."""
     if mode == 'smoke':
         tasks = smoke_tasks()
-    else:
-        tasks = full_tasks(chosen_settings(root))
+    else:   # the smoke tests first; each method's runs start once its own smoke test passed
+        tasks = smoke_tasks() + full_tasks(chosen_settings(root))
     by_id = {t.id: t for t in tasks}
     partials = read_json(os.path.join(root, 'cloud', 'partials.json'), {})
     failures = read_json(os.path.join(root, 'cloud', 'failures.json'), {})
@@ -83,7 +83,7 @@ def plan(root, mode, max_shards):
         if any(not is_finished(root, by_id[n]) for n in t.needs):
             blocked[t.id] = 'waits for tuning'
             continue
-        if mode == 'full':
+        if mode == 'full' and section(t) != 'smoke':
             smoke = smoke_tasks_by_id().get(smoke_of(t))
             if smoke is None or not is_done_ok(root, smoke):
                 blocked[t.id] = f'waits for {smoke_of(t)}'
@@ -102,7 +102,7 @@ def plan(root, mode, max_shards):
 
     for t in pending:
         e = estimate(t)
-        if t.alone or t.id in partials or mode == 'smoke':   # smoke: one job per method, all at once
+        if t.alone or t.id in partials or section(t) == 'smoke':   # smoke: one job per method, all at once
             s = new_shard()               # alone, or continued first in its job
             if s is None:
                 continue
@@ -114,7 +114,7 @@ def plan(root, mode, max_shards):
                     continue
         s['tasks'].append(t.id)
         s['seconds'] += e
-        if t.alone or e >= SHARD_SECONDS or mode == 'smoke':
+        if t.alone or e >= SHARD_SECONDS or section(t) == 'smoke':
             s['closed'] = True
 
     for s in shards:
