@@ -12,12 +12,18 @@
 # <output>/version.txt and <output>/command.txt; returns 0 on success.
 #
 # Tools live in /opt/bench (see Amendment 8b for versions and commits).
+#
+# The caller may set (Amendment 10; the defaults are the laptop settings of Amendments 8b and 9):
+#   BENCH_THREADS  threads given to every method   (default 12)
+#   BENCH_LIMIT    time limit of each step         (default 360m)
+#   BENCH_SCRATCH  folder for scratch files        (default /mnt/d/q-maws/.benchtmp)
+# The method commands themselves never change.
 
 set -u
 method=${1:?method}; input=${2:?input}; out=${3:?output folder}; setting=${4:-}
 B=/opt/bench
-T=12
-LIMIT=360m
+T=${BENCH_THREADS:-12}
+LIMIT=${BENCH_LIMIT:-360m}
 here=$(cd "$(dirname "$0")" && pwd)
 export PATH="$B/bin:$PATH"
 PY=$B/venv/bin/python
@@ -25,7 +31,7 @@ mkdir -p "$out"
 # Scratch files go to drive D: (Amendment 9): Ubuntu's /tmp is on drive C:, which is nearly full.
 # Each lane runs one job at a time, so folders left by an interrupted job of the same lane are
 # removed first. Peafowl's evaluation runs have their own lane (Amendment 9a) and prefix.
-SCRATCH=/mnt/d/q-maws/.benchtmp
+SCRATCH=${BENCH_SCRATCH:-/mnt/d/q-maws/.benchtmp}
 lane=bench; [ "$method" = peafowl ] && lane=pf
 mkdir -p "$SCRATCH"
 rm -rf "$SCRATCH/${lane}_"*

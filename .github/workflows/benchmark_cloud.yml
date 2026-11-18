@@ -1,0 +1,233 @@
+name: Extended benchmark in the cloud
+
+# The extended benchmark of docs/PREREGISTRATION.md (Amendments 8 to 10), run on
+# GitHub-hosted runners. Started by a push to the branch cloud-benchmark that changes
+# scripts/cloud/config/run.json (mode smoke or full, number of waves); every run finished
+# is committed to the branch benchmark-cloud-state, so the workflow can be started again
+# at any time and continues where it stopped. See scripts/cloud/README.md.
+
+on:
+  push:
+    branches: [cloud-benchmark]
+    paths: ["scripts/cloud/config/run.json"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: benchmark-cloud
+  cancel-in-progress: false
+
+env:
+  STATE_BRANCH: benchmark-cloud-state
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  prepare:
+    name: Read the request and the state
+    runs-on: ubuntu-24.04
+    outputs:
+      mode: ${{ steps.request.outputs.mode }}
+      waves: ${{ steps.request.outputs.waves }}
+      inputs_run: ${{ steps.state.outputs.inputs_run }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Read the request
+        id: request
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'EOF'
+          import json
+          r = json.load(open('scripts/cloud/config/run.json'))
+          assert r['mode'] in ('smoke', 'full') and 1 <= int(r['waves']) <= 12
+          print(f"mode={r['mode']}")
+          print(f"waves={int(r['waves'])}")
+          EOF
+      - name: Make or read the state branch
+        id: state
+        run: |
+          if ! git ls-remote --exit-code --heads origin "$STATE_BRANCH" > /dev/null; then
+            git worktree add -q --detach "$RUNNER_TEMP/new"
+            cd "$RUNNER_TEMP/new"
+            git checkout -q --orphan state-start
+            git rm -rq --cached .
+            find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+            mkdir -p cloud results/benchmark
+            cp "$GITHUB_WORKSPACE/scripts/cloud/STATE_README.md" README.md
+            echo '{}' > cloud/partials.json
+            git add -A
+            git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "🎉 : Start the state of the cloud benchmark (Amendment 10)"
+            git push -q origin "HEAD:refs/heads/$STATE_BRANCH"
+            cd "$GITHUB_WORKSPACE"
+          fi
+          git fetch -q --no-tags --depth 1 origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          run=$(git show origin/state:cloud/inputs_run.txt 2>/dev/null || true)
+          if [ -n "$run" ]; then
+            names=$(gh api "repos/${{ github.repository }}/actions/runs/$run/artifacts" --paginate \
+                      --jq '.artifacts[] | select(.expired == false) | .name' || true)
+            for g in afproject ncbi h5 benchmark scaling; do
+              echo "$names" | grep -qx "input-$g" || { echo "inputs of run $run are gone; they are made again"; run=""; break; }
+            done
+          fi
+          echo "inputs_run=$run" >> "$GITHUB_OUTPUT"
+
+  inputs-sim:
+    name: Make the simulated data again (Windows, AliSim 2.4.0)
+    needs: prepare
+    if: needs.prepare.outputs.inputs_run == ''
+    runs-on: windows-2025
+    timeout-minutes: 300
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Simulate and check against the manifests
+        run: sh scripts/cloud/inputs_windows.sh "$RUNNER_TEMP/work" "$RUNNER_TEMP/sim"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sim-raw
+          path: ${{ runner.temp }}/sim
+          retention-days: 3
+
+  inputs-real:
+    name: Collect and pack every input
+    needs: [prepare, inputs-sim]
+    if: needs.prepare.outputs.inputs_run == ''
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Q-MAWS 1.0.0
+        run: |
+          sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
+          bash scripts/cloud/install_tools.sh qmaws
+      - uses: actions/download-artifact@v8
+        with:
+          name: sim-raw
+          path: ${{ runner.temp }}/sim
+      - name: Collect
+        run: sh scripts/cloud/inputs_linux.sh /opt/bench/bin/qmaws "$RUNNER_TEMP/sim" "$RUNNER_TEMP/inputs"
+      - { uses: actions/upload-artifact@v7, with: { name: input-afproject, path: "${{ runner.temp }}/inputs/input-afproject.tar", retention-days: 90 } }
+      - { uses: actions/upload-artifact@v7, with: { name: input-ncbi, path: "${{ runner.temp }}/inputs/input-ncbi.tar", retention-days: 90 } }
+      - { uses: actions/upload-artifact@v7, with: { name: input-h5, path: "${{ runner.temp }}/inputs/input-h5.tar", retention-days: 90 } }
+      - { uses: actions/upload-artifact@v7, with: { name: input-benchmark, path: "${{ runner.temp }}/inputs/input-benchmark.tar", retention-days: 90 } }
+      - { uses: actions/upload-artifact@v7, with: { name: input-scaling, path: "${{ runner.temp }}/inputs/input-scaling.tar", retention-days: 90 } }
+      - name: Record the inputs in the state
+        run: |
+          git fetch -q --no-tags origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          git worktree add -q -B state-update "$RUNNER_TEMP/state" origin/state
+          cd "$RUNNER_TEMP/state"
+          mkdir -p cloud results/benchmark/inputs
+          cp "$RUNNER_TEMP/inputs/inputs.json" cloud/inputs.json
+          echo "${{ github.run_id }}" > cloud/inputs_run.txt
+          cp "$RUNNER_TEMP/sim/hash_check.tsv" "$RUNNER_TEMP/sim/manifest_diff.txt" results/benchmark/inputs/
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "🌐 data : Record the inputs of the cloud benchmark (workflow run ${{ github.run_id }})"
+          git push -q origin "HEAD:refs/heads/$STATE_BRANCH"
+
+  inputs:
+    name: Inputs ready
+    needs: [prepare, inputs-real]
+    if: ${{ !cancelled() && (needs.inputs-real.result == 'success' || needs.inputs-real.result == 'skipped') }}
+    runs-on: ubuntu-24.04
+    outputs:
+      run: ${{ steps.run.outputs.run }}
+    steps:
+      - id: run
+        run: echo "run=${{ needs.prepare.outputs.inputs_run || github.run_id }}" >> "$GITHUB_OUTPUT"
+
+  wave-1:
+    needs: [prepare, inputs]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 1, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-2:
+    needs: [prepare, inputs, wave-1]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 2 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 2, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-3:
+    needs: [prepare, inputs, wave-2]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 3 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 3, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-4:
+    needs: [prepare, inputs, wave-3]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 4 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 4, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-5:
+    needs: [prepare, inputs, wave-4]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 5 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 5, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-6:
+    needs: [prepare, inputs, wave-5]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 6 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 6, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-7:
+    needs: [prepare, inputs, wave-6]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 7 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 7, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-8:
+    needs: [prepare, inputs, wave-7]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 8 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 8, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-9:
+    needs: [prepare, inputs, wave-8]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 9 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 9, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-10:
+    needs: [prepare, inputs, wave-9]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 10 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 10, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-11:
+    needs: [prepare, inputs, wave-10]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 11 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 11, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+  wave-12:
+    needs: [prepare, inputs, wave-11]
+    if: ${{ !cancelled() && needs.inputs.result == 'success' && fromJSON(needs.prepare.outputs.waves) >= 12 }}
+    uses: ./.github/workflows/benchmark_wave.yml
+    with: { wave: 12, mode: "${{ needs.prepare.outputs.mode }}", inputs_run: "${{ needs.inputs.outputs.run }}" }
+
+  analysis:
+    name: Analyse (when every run is finished)
+    needs: [prepare, inputs, wave-12]
+    if: ${{ !cancelled() && needs.prepare.outputs.mode == 'full' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out the state
+        run: |
+          git fetch -q --no-tags origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          git worktree add -q -B state-update "$RUNNER_TEMP/state" origin/state
+      - name: Progress
+        id: progress
+        run: |
+          python3 scripts/cloud/bench_cloud.py status --state "$RUNNER_TEMP/state" --mode full | tee status.json
+          echo "remaining=$(python3 -c "import json; s=json.load(open('status.json')); print(s['pending'] + s['blocked'])")" >> "$GITHUB_OUTPUT"
+      - name: Analyse
+        if: steps.progress.outputs.remaining == '0'
+        run: |
+          sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
+          bash scripts/cloud/install_tools.sh qmaws
+          mkdir -p target/release && ln -sf /opt/bench/bin/qmaws target/release/qmaws
+          sh scripts/cloud/analyse.sh "$RUNNER_TEMP/state"
+      - name: Commit the analysis
+        if: steps.progress.outputs.remaining == '0'
+        run: |
+          cd "$RUNNER_TEMP/state"
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "📊 data : Add the analysis of the extended benchmark (workflow run ${{ github.run_id }})" || echo "nothing new"
+          git push -q origin "HEAD:refs/heads/$STATE_BRANCH"

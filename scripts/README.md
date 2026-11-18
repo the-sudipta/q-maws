@@ -7,6 +7,7 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | Item | Description |
 |---|---|
 | `check-readmes.sh` | Checks that every folder has a README listing every item in it |
+| `cloud/` | The extended benchmark on GitHub-hosted runners (Amendment 10): inputs, installs, scheduling in waves, state, analysis ([README](cloud/README.md)) |
 | `equivalence.sh` | Development check: builds ML-MAWS at a fixed commit (needs g++ with OpenMP), runs it and `qmaws matrix` on Fish mtDNA and Yersinia HGT, and compares the matrices byte for byte and the entropy tables |
 | `iqtree_check.sh` | Development check (Linux x86-64): downloads IQ-TREE 3.1.4 and checks its SHA-256, exports 5 quartets of Fish mtDNA with `qmaws iqtree-export`, fits them in IQ-TREE and compares the log-likelihoods with `qmaws iqtree-compare` (tolerance 0.0001) |
 | `wqfm_check.sh` | Development check (needs Java): checks out wQFM v1.4 at a fixed commit, writes 23 weighted-quartet inputs with `qmaws wqfm-export` (worksheet, simulated, Fish mtDNA), runs the jar on each and compares with `qmaws wqfm-compare` |

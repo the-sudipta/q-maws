@@ -11,24 +11,32 @@
 # scratch folders (ref_*) never match the ones phase B removes (bench_*).
 #
 # Usage (inside WSL, as root): bash scripts/bench_refs.sh
+#
+# The caller may set (Amendment 10; the defaults are the laptop settings of Amendment 9):
+#   BENCH_ROOT          repository folder            (default /mnt/d/q-maws)
+#   BENCH_THREADS       threads                      (default 12)
+#   BENCH_SCRATCH       folder for scratch files     (default <root>/.benchtmp)
+#   BENCH_REFS_DATASETS the datasets to run          (default all 45 below)
+# The commands themselves never change.
 
 set -u
-root=/mnt/d/q-maws
+root=${BENCH_ROOT:-/mnt/d/q-maws}
 cd "$root" || exit 1
 B=/opt/bench
-T=12
+T=${BENCH_THREADS:-12}
 OUT=results/benchmark
 RUNS="$OUT/runs.tsv"
 LOG="$OUT/queue_refs.log"
-SCRATCH=$root/.benchtmp
+SCRATCH=${BENCH_SCRATCH:-$root/.benchtmp}
 mkdir -p "$SCRATCH"
 say() { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG"; }
 
-DATASETS="hgt_h000_r1 hgt_h000_r2 hgt_h000_r3 hgt_h000_r4 hgt_h000_r5 hgt_h010_r1 hgt_h010_r2 hgt_h010_r3 hgt_h010_r4 hgt_h010_r5
+ALL_DATASETS="hgt_h000_r1 hgt_h000_r2 hgt_h000_r3 hgt_h000_r4 hgt_h000_r5 hgt_h010_r1 hgt_h010_r2 hgt_h010_r3 hgt_h010_r4 hgt_h010_r5
 hgt_h020_r1 hgt_h020_r2 hgt_h020_r3 hgt_h020_r4 hgt_h020_r5 hgt_h040_r1 hgt_h040_r2 hgt_h040_r3 hgt_h040_r4 hgt_h040_r5
 bm_div005_r1 bm_div005_r2 bm_div005_r3 bm_div005_r4 bm_div005_r5 bm_div020_r1 bm_div020_r2 bm_div020_r3 bm_div020_r4 bm_div020_r5
 bm_div050_r1 bm_div050_r2 bm_div050_r3 bm_div050_r4 bm_div050_r5 bm_m15_r1 bm_m15_r2 bm_m15_r3 bm_m15_r4 bm_m15_r5
 bm_m60_r1 bm_m60_r2 bm_m60_r3 bm_m60_r4 bm_m60_r5"
+DATASETS=${BENCH_REFS_DATASETS:-$ALL_DATASETS}
 
 # one gene alignment per charset of partitions.nex: gene_<n>.fa in folder $3
 split_genes() { # sequences.fasta partitions.nex folder

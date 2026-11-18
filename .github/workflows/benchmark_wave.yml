@@ -1,0 +1,156 @@
+name: Benchmark wave
+
+# One wave of the extended benchmark in the cloud (docs/PREREGISTRATION.md, Amendment 10),
+# called by benchmark_cloud.yml. A wave plans the unfinished runs from the state branch,
+# runs them in at most 20 parallel jobs of at most 6 hours, and commits every finished
+# run to the state branch before the next wave starts. Nothing here chooses a method,
+# setting or dataset: scripts/cloud/ only schedules what Amendments 8 to 10 fixed.
+
+on:
+  workflow_call:
+    inputs:
+      wave:
+        type: number
+        required: true
+      mode:
+        type: string
+        required: true
+      inputs_run:
+        type: string
+        required: true
+
+env:
+  STATE_BRANCH: benchmark-cloud-state
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  plan:
+    name: Plan wave ${{ inputs.wave }}
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out the state
+        run: |
+          git fetch -q --no-tags --depth 1 origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          git worktree add -q --detach "$RUNNER_TEMP/state" origin/state
+      - name: Plan
+        id: plan
+        run: python3 scripts/cloud/bench_cloud.py plan --state "$RUNNER_TEMP/state" --mode "${{ inputs.mode }}" --max-shards 20 --out plan.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: plan-w${{ inputs.wave }}
+          path: plan.json
+
+  run:
+    name: Wave ${{ inputs.wave }} job ${{ matrix.shard }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 358
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - name: Note the start of the job
+        run: echo "JOB_START=$(date +%s)" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7
+      - name: Check out the state
+        run: git fetch -q --no-tags --depth 1 origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+      - name: Free disk space (preinstalled SDKs that no method uses)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h / | tail -n 1
+      - name: Ubuntu packages
+        run: sudo bash scripts/cloud/install_tools.sh system
+      - name: Processor of this runner (the tool cache is per processor model, -march=native)
+        run: echo "CPU_KEY=$(grep -m 1 'model name' /proc/cpuinfo | sha256sum | cut -c1-16)" >> "$GITHUB_ENV"
+      - name: Restore the tools
+        id: tools
+        uses: actions/cache/restore@v6
+        with:
+          path: /opt/bench
+          key: bench-tools-${{ hashFiles('scripts/cloud/install_tools.sh') }}-${{ env.CPU_KEY }}
+      - name: Build the tools
+        if: steps.tools.outputs.cache-hit != 'true'
+        run: |
+          sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
+          bash scripts/cloud/install_tools.sh build
+      - name: Keep the tools
+        if: steps.tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        continue-on-error: true
+        with:
+          path: /opt/bench
+          key: bench-tools-${{ hashFiles('scripts/cloud/install_tools.sh') }}-${{ env.CPU_KEY }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: plan-w${{ inputs.wave }}
+      - name: Inputs and saved runs of this job
+        run: |
+          python3 - "${{ matrix.shard }}" > fetch.txt <<'EOF'
+          import json, sys
+          s = json.load(open('plan.json'))['shards'][int(sys.argv[1])]
+          for g in s['groups']: print('input', g)
+          for run, art in s['partial_artifacts']: print('partial', run, art)
+          EOF
+          while read -r kind a b; do
+            if [ "$kind" = input ]; then
+              gh run download "${{ inputs.inputs_run }}" -n "input-$a" -D "$RUNNER_TEMP/in"
+              tar -xf "$RUNNER_TEMP/in/input-$a.tar" && rm "$RUNNER_TEMP/in/input-$a.tar"
+            else
+              gh run download "$a" -n "$b" -D "$RUNNER_TEMP/partial/in" || echo "::warning::saved run $b of workflow run $a is gone; it starts again"
+            fi
+          done < fetch.txt
+      - name: Run the tasks
+        run: |
+          python3 scripts/cloud/bench_cloud.py run --plan plan.json --shard "${{ matrix.shard }}" \
+            --out "$RUNNER_TEMP/out" --partial "$RUNNER_TEMP/partial" --scratch "$RUNNER_TEMP/scratch" \
+            --tools /opt/bench --deadline "$((JOB_START + 348 * 60))" --wave "${{ inputs.wave }}" \
+            --job "w${{ inputs.wave }}-s${{ matrix.shard }}" --state-ref origin/state
+          mkdir -p "$RUNNER_TEMP/out/results/benchmark/versions"
+          bash scripts/cloud/install_tools.sh versions "$RUNNER_TEMP/out/results/benchmark/versions/$CPU_KEY.tsv"
+      - name: Keep the results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: out-w${{ inputs.wave }}-s${{ matrix.shard }}
+          path: ${{ runner.temp }}/out
+          if-no-files-found: ignore
+          retention-days: 30
+      - name: Keep the unfinished runs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: partial-w${{ inputs.wave }}-s${{ matrix.shard }}
+          path: ${{ runner.temp }}/partial/out
+          if-no-files-found: ignore
+          retention-days: 30
+
+  merge:
+    name: Commit wave ${{ inputs.wave }}
+    needs: [plan, run]
+    if: always() && needs.plan.outputs.count != '0'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out the state
+        run: |
+          git fetch -q --no-tags origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          git worktree add -q -B state-update "$RUNNER_TEMP/state" origin/state
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: out-w${{ inputs.wave }}-s*
+          path: ${{ runner.temp }}/outputs
+      - name: Merge
+        run: python3 scripts/cloud/bench_cloud.py merge --state "$RUNNER_TEMP/state" --outputs "$RUNNER_TEMP/outputs" --run "${{ github.run_id }}" --wave "${{ inputs.wave }}"
+      - name: Commit to the state branch
+        run: |
+          cd "$RUNNER_TEMP/state"
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "📊 data : Add the runs of wave ${{ inputs.wave }} (workflow run ${{ github.run_id }})" || echo "nothing new"
+          git push -q origin "HEAD:refs/heads/$STATE_BRANCH"
