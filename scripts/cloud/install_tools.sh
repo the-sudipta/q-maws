@@ -38,7 +38,8 @@ readonly ASTER=https://github.com/chaoszhang/ASTER@db2b3e95da5bb0318b933afe1a144
 readonly TREEQMC=https://github.com/molloy-lab/TREE-QMC@b5bfe82dbe95590d53dbc603b1073ea1fe61fd7f
 readonly BIOPYTHON=1.84
 readonly APT_PACKAGES="build-essential cmake git curl gawk zlib1g-dev libexpat1-dev cpanminus
-    default-jdk-headless time jellyfish raxml andi phylonium fasttree seqtk quicktree"
+    nlohmann-json3-dev python3-venv default-jdk-headless time
+    jellyfish raxml andi phylonium fasttree seqtk quicktree"
 
 log() { echo "[install $(date -u +%T)] $*"; }
 
@@ -188,14 +189,26 @@ install_treeqmc() {  # the build of its README, written to build/tree-qmc (scrip
             -DVERSION=\""$(cat version.txt)"\")
 }
 
+readonly STEPS="python_env qmaws iqtree mlmaws mash cdmaws peafowl fswm multispam sans cvtree
+    jolytree skmer mashtree aster treeqmc fasttree_name"
+
+# build_all: every program in its own process (so `set -e` stops only that program); a
+# failure is published as its own annotation and the others still build, so one run
+# shows every problem. Any failure fails the build (and nothing is cached).
 build_all() {
     mkdir -p "$B/bin"
-    local step
-    for step in python_env qmaws iqtree mlmaws mash cdmaws peafowl fswm multispam sans cvtree \
-                jolytree skmer mashtree aster treeqmc fasttree_name; do
+    local step failed="" out
+    for step in $STEPS; do
         log "$step"
-        "install_$step"
+        out=$(mktemp)
+        if ! bash "$0" step "$step" > "$out" 2>&1; then
+            failed="$failed $step"
+            cat "$out"
+            echo "::error title=build $step::$(tail -n 40 "$out" | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')"
+        fi
+        rm -f "$out"
     done
+    [ -z "$failed" ] || { log "FAILED:$failed"; return 1; }
     log "done"
 }
 
@@ -224,7 +237,8 @@ versions() {
 case ${1:-} in
     system) install_system ;;
     build) build_all ;;
+    step) "install_${2:?program}" ;;                   # one program (used by build_all)
     qmaws) mkdir -p "$B/bin" && install_qmaws ;;      # Q-MAWS only (data and analysis jobs)
     versions) versions "${2:?output file}" ;;
-    *) echo "usage: $0 system | build | qmaws | versions <out>" >&2; exit 2 ;;
+    *) echo "usage: $0 system | build | step <program> | qmaws | versions <out>" >&2; exit 2 ;;
 esac
