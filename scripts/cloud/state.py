@@ -56,7 +56,8 @@ def read_json(path, default):
 
 
 def write_json(path, value):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.dirname(path):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         json.dump(value, f, indent=1, sort_keys=True)
         f.write('\n')

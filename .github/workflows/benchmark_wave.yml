@@ -38,7 +38,7 @@ jobs:
           git worktree add -q --detach "$RUNNER_TEMP/state" origin/state
       - name: Plan
         id: plan
-        run: python3 scripts/cloud/bench_cloud.py plan --state "$RUNNER_TEMP/state" --mode "${{ inputs.mode }}" --max-shards 20 --out plan.json
+        run: bash scripts/cloud/logged.sh "Plan" python3 scripts/cloud/bench_cloud.py plan --state "$RUNNER_TEMP/state" --mode "${{ inputs.mode }}" --max-shards 20 --out plan.json
       - uses: actions/upload-artifact@v7
         with:
           name: plan-w${{ inputs.wave }}
@@ -65,7 +65,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
           df -h / | tail -n 1
       - name: Ubuntu packages
-        run: sudo bash scripts/cloud/install_tools.sh system
+        run: sudo bash scripts/cloud/logged.sh "Ubuntu packages" bash scripts/cloud/install_tools.sh system
       - name: Processor of this runner (the tool cache is per processor model, -march=native)
         run: echo "CPU_KEY=$(grep -m 1 'model name' /proc/cpuinfo | sha256sum | cut -c1-16)" >> "$GITHUB_ENV"
       - name: Restore the tools
@@ -78,7 +78,7 @@ jobs:
         if: steps.tools.outputs.cache-hit != 'true'
         run: |
           sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
-          bash scripts/cloud/install_tools.sh build
+          bash scripts/cloud/logged.sh "Build the tools" bash scripts/cloud/install_tools.sh build
       - name: Keep the tools
         if: steps.tools.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -107,7 +107,7 @@ jobs:
           done < fetch.txt
       - name: Run the tasks
         run: |
-          python3 scripts/cloud/bench_cloud.py run --plan plan.json --shard "${{ matrix.shard }}" \
+          bash scripts/cloud/logged.sh "Run the tasks" python3 scripts/cloud/bench_cloud.py run --plan plan.json --shard "${{ matrix.shard }}" \
             --out "$RUNNER_TEMP/out" --partial "$RUNNER_TEMP/partial" --scratch "$RUNNER_TEMP/scratch" \
             --tools /opt/bench --deadline "$((JOB_START + 348 * 60))" --wave "${{ inputs.wave }}" \
             --job "w${{ inputs.wave }}-s${{ matrix.shard }}" --state-ref origin/state
@@ -146,7 +146,7 @@ jobs:
           pattern: out-w${{ inputs.wave }}-s*
           path: ${{ runner.temp }}/outputs
       - name: Merge
-        run: python3 scripts/cloud/bench_cloud.py merge --state "$RUNNER_TEMP/state" --outputs "$RUNNER_TEMP/outputs" --run "${{ github.run_id }}" --wave "${{ inputs.wave }}"
+        run: bash scripts/cloud/logged.sh "Merge" python3 scripts/cloud/bench_cloud.py merge --state "$RUNNER_TEMP/state" --outputs "$RUNNER_TEMP/outputs" --run "${{ github.run_id }}" --wave "${{ inputs.wave }}"
       - name: Commit to the state branch
         run: |
           cd "$RUNNER_TEMP/state"

@@ -85,7 +85,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Simulate and check against the manifests
-        run: sh scripts/cloud/inputs_windows.sh "$RUNNER_TEMP/work" "$RUNNER_TEMP/sim"
+        run: bash scripts/cloud/logged.sh "Simulated data" sh scripts/cloud/inputs_windows.sh "$RUNNER_TEMP/work" "$RUNNER_TEMP/sim"
       - uses: actions/upload-artifact@v7
         with:
           name: sim-raw
@@ -108,7 +108,7 @@ jobs:
           name: sim-raw
           path: ${{ runner.temp }}/sim
       - name: Collect
-        run: sh scripts/cloud/inputs_linux.sh /opt/bench/bin/qmaws "$RUNNER_TEMP/sim" "$RUNNER_TEMP/inputs"
+        run: bash scripts/cloud/logged.sh "Collect inputs" sh scripts/cloud/inputs_linux.sh /opt/bench/bin/qmaws "$RUNNER_TEMP/sim" "$RUNNER_TEMP/inputs"
       - { uses: actions/upload-artifact@v7, with: { name: input-afproject, path: "${{ runner.temp }}/inputs/input-afproject.tar", retention-days: 90 } }
       - { uses: actions/upload-artifact@v7, with: { name: input-ncbi, path: "${{ runner.temp }}/inputs/input-ncbi.tar", retention-days: 90 } }
       - { uses: actions/upload-artifact@v7, with: { name: input-h5, path: "${{ runner.temp }}/inputs/input-h5.tar", retention-days: 90 } }
@@ -131,7 +131,8 @@ jobs:
   inputs:
     name: Inputs ready
     needs: [prepare, inputs-real]
-    if: ${{ !cancelled() && (needs.inputs-real.result == 'success' || needs.inputs-real.result == 'skipped') }}
+    # ready when the inputs of an earlier run are still there, or when this run made them
+    if: ${{ !cancelled() && (needs.prepare.outputs.inputs_run != '' || needs.inputs-real.result == 'success') }}
     runs-on: ubuntu-24.04
     outputs:
       run: ${{ steps.run.outputs.run }}

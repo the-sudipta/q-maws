@@ -19,6 +19,7 @@ The extended benchmark (docs/PREREGISTRATION.md, Amendments 8 to 10) on GitHub-h
 | `inputs_windows.sh` | Makes the simulated datasets again with IQ-TREE 2.4.0 and Q-MAWS 1.0.0 for Windows and checks them against the committed SHA-256 values |
 | `inputs_linux.sh` | Downloads the AFproject and NCBI data, takes the H5 data from `h5-data`, and packs every input in one archive per group |
 | `analyse.sh` | Runs the committed analysis scripts on the finished runs and writes their tables into the state |
+| `logged.sh` | Runs a workflow step and, if it fails, publishes the end of its output as an error annotation (readable without signing in) |
 | `STATE_README.md` | The README of the branch `benchmark-cloud-state` |
 
 ## Relationships

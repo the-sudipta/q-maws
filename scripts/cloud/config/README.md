@@ -7,7 +7,7 @@ The two inputs of the cloud benchmark that are data, not code.
 | Item | Description |
 |---|---|
 | `methods.tsv` | Every method: kind of run, default setting, tuning grid (Amendment 8b) and a first time estimate used only to pack jobs |
-| `run.json` | The run request: `mode` (`smoke` or `full`) and `waves` (1 to 12). A push that changes it starts `benchmark_cloud.yml` |
+| `run.json` | The run request: `mode` (`smoke` or `full`), `waves` (1 to 12) and `request` (a counter: increase it to start again). A push that changes it starts `benchmark_cloud.yml` |
 
 ## Relationships
 Read by `scripts/cloud/catalog.py` and `.github/workflows/benchmark_cloud.yml`.
