@@ -142,7 +142,8 @@ class Context:
 
 
 def run_shard(shard, tasks_by_id, out, partial, scratch, tools, deadline, full_budget, wave, job, state_ref):
-    os.makedirs(os.path.join(out, 'cloud'), exist_ok=True)
+    for folder in (os.path.join(out, 'cloud'), scratch, partial):
+        os.makedirs(folder, exist_ok=True)
     ctx = Context(shard, out, partial, scratch, tools, deadline, full_budget, state_ref)
     host = hostinfo.describe(scratch)
     outcomes = {}
