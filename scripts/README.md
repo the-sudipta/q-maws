@@ -25,6 +25,12 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `benchmark_queue.sh` | The restartable job queue of the extended benchmark (Amendments 8 and 8a): verifies the reused runs with release 1.0.0, then runs Q-MAWS, ML-MAWS and the IQ-TREE reference; skips finished jobs, records wall time and peak memory in `results/benchmark/runs.tsv` |
 | `benchmark_queue_b.sh` | Phase B of the benchmark queue (Amendment 8b): tuning on the 6 tuning datasets, then the 12 Linux methods on the 59 evaluation datasets (default and tuned) and the 9 speed datasets; restartable; wall time and peak memory by GNU time |
 | `bench_tune_choose.py` | Picks each method's tuned setting: lowest median nRF on the tuning datasets, ties keep the default |
+| `bench_refs.sh` | The alignment-based references of Amendment 9 on the 45 datasets with a known alignment: FastTree gene trees, CASTER-site, TREE-QMC and weighted TREE-QMC; repository folder, threads, scratch folder and datasets set by the caller (Amendment 10) |
+| `bench_w2c1000.sh` | Q-MAWS 1.0.0 with 1,000 W2c resamples on the five H5 datasets with h = 0.2 (Amendment 9; laptop version, superseded by `cloud/`) |
+| `bench_collect.py` | Collects accuracy, time and memory of every run of the extended benchmark into `results/benchmark/summary/accuracy.tsv` |
+| `bench_stats.py` | H6 (pre-registered test) and the descriptive statistics of the benchmark: effect sizes, medians, Friedman test, pairwise tests |
+| `bench_extra.py` | Descriptive analyses of Amendment 9: calibration with bootstrap intervals, halo as a predictor of misplaced taxa, wrong splits and nRF against nQD |
+| `bench_dependence.py` | Dependence between MAW columns and the share of star quartets against a parametric bootstrap (Amendment 9) |
 | `start_benchmark.bat` | Double-click to start or continue `benchmark_queue.sh` with Git Bash; closing the window pauses the queue |
 | `stop_benchmark.bat` | Double-click to pause the benchmark queue (stops the queue and the program it runs; nothing is lost) |
 | `benchmark_status.bat` | Double-click to open the live dashboard (`benchmark_dashboard.ps1`) |

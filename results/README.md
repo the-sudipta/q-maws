@@ -14,6 +14,7 @@ Committed records of runs and experiments: per-run audit records, trees, reports
 | `h5/` | H5: Q-MAWS v2 against ML-MAWS on 20 new simulated datasets ([README](h5/README.md)) |
 | `baselines/` | Mash, CD-MAWS and Peafowl on the AFproject and H5 datasets ([README](baselines/README.md)) |
 | `scaling/` | M13: scaling and H2 ([README](scaling/README.md)) |
+| `benchmark/` | The extended benchmark (Amendments 8 to 10) and H6 ([README](benchmark/README.md)) |
 | `summary/` | Final comparison tables ([README](summary/README.md)) |
 
 ## Relationships

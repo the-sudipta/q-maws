@@ -8,6 +8,7 @@ Recipes and records of the simulated datasets: the scaling datasets of hypothesi
 |---|---|
 | `scaling.tsv` | One row per dataset: id, taxa, replicate, seed, sequence length, the AliSim command, SHA-256 of the sequences (after removing trailing spaces from the headers) and of the true tree |
 | `hgt.tsv` | One row per H5 dataset: id, transfer fraction, replicate, seed, the three commands (species tree, gene trees, genome), SHA-256 of the sequences, of the species tree and of the transfer table |
+| `benchmark.tsv` | One row per dataset of the extended benchmark (Amendment 8, made by `scripts/simulate_benchmark.sh`): id, condition (divergence, size, tuning, fragmented), taxa, transfer fraction, mean branch length, replicate, seed, the three commands, SHA-256 of the sequences (for fragmented data: of all files joined in name order), of the species tree and of the transfer table |
 | `trees/` | The true tree of every dataset as written by AliSim |
 | `transfers/` | The transfers of every H5 dataset ([README](transfers/README.md)) |
 
