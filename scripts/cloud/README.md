@@ -16,8 +16,9 @@ The extended benchmark (docs/PREREGISTRATION.md, Amendments 8 to 10) on GitHub-h
 | `hostinfo.py` | The computer of a job: processor, cores, memory, disk, image, a 10-second processor calibration |
 | `merge.py` | Adds a wave's results to the state, picks the tuned settings when tuning is complete, seals finished runs |
 | `install_tools.sh` | Installs every program at its pinned version (Ubuntu packages, release downloads checked by SHA-256, builds from pinned commits) |
-| `inputs_windows.sh` | Makes the simulated datasets again with IQ-TREE 2.4.0 and Q-MAWS 1.0.0 for Windows and checks them against the committed SHA-256 values |
-| `inputs_linux.sh` | Downloads the AFproject and NCBI data, takes the H5 data from `h5-data`, and packs every input in one archive per group |
+| `make_simulated_data.sh` | Run on the development laptop (Amendment 10a): makes the simulated datasets again with IQ-TREE 2.4.0 and Q-MAWS 1.0.0 for Windows, checks them against the committed SHA-256 values and packs one archive per dataset for the branch `benchmark-data` |
+| `check_simulated.sh` | Checks every simulated dataset of the benchmark and of M13 against the committed manifests (SHA-256); used on the runner before any dataset is used |
+| `inputs_linux.sh` | Downloads the AFproject and NCBI data, takes the H5 data from `h5-data` and the other simulated data from `benchmark-data` (each checked by SHA-256), and packs every input in one archive per group |
 | `analyse.sh` | Runs the committed analysis scripts on the finished runs and writes their tables into the state |
 | `logged.sh` | Runs a workflow step and, if it fails, publishes the end of its output as an error annotation (readable without signing in) |
 | `STATE_README.md` | The README of the branch `benchmark-cloud-state` |

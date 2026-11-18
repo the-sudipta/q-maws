@@ -1,20 +1,23 @@
 #!/bin/sh
-# Makes the simulated datasets again on a Windows runner (Amendment 10): AliSim gives
-# other data on Linux, so the programs of the laptop are used, IQ-TREE 2.4.0 for
-# Windows and Q-MAWS 1.0.0 for Windows, with the committed scripts and seeds:
+# Makes the simulated datasets again with the programs that made them (Amendments 10 and
+# 10a): IQ-TREE 2.4.0 for Windows (AliSim) and Q-MAWS 1.0.0 for Windows, on the
+# development laptop, with the committed scripts and seeds:
 #   scripts/simulate_benchmark.sh   the 36 datasets of Amendment 8
 #   scripts/simulate_scaling.sh     the 9 speed datasets of M13
+# AliSim gives other data on Linux and on Windows runners with other processors
+# (Amendment 10a), so these data are made here and stored on the branch benchmark-data.
 # Every dataset is compared with the committed manifests (SHA-256) and the result is
-# written to hash_check.tsv; a dataset that differs is not run (Amendment 10).
+# written to hash_check.tsv; the archives are made only if every dataset is equal.
 #
-# Usage (Git Bash on windows-2025, from the repository folder):
-#   sh scripts/cloud/inputs_windows.sh <work folder> <output folder>
-# Writes <output>/benchmark.tar, <output>/scaling.tar and <output>/hash_check.tsv.
+# Usage (Git Bash, from the repository folder; PYTHON = a Python 3, default python):
+#   sh scripts/cloud/make_simulated_data.sh <work folder> <output folder>
+# Writes <output>/hash_check.tsv and <output>/benchdata/<dataset>.tar.gz (one per dataset).
 
 set -eu
 
 work=${1:?work folder}
 out=${2:?output folder}
+python=${PYTHON:-python}      # a Python 3 for scripts/fragment_genomes.py
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 mkdir -p "$work" "$out"
@@ -33,8 +36,15 @@ fetch() { # url file sha256
 # 1. the programs
 fetch "$QMAWS_URL" "$work/qmaws.zip" "$QMAWS_SHA256"
 fetch "$IQ_URL" "$work/iqtree.zip" "$IQ_SHA256"
-7z x -y -o"$work/qmaws" "$work/qmaws.zip" > /dev/null    # 7-Zip is on every Windows runner
-7z x -y -o"$work" "$work/iqtree.zip" > /dev/null
+unzip_to() { # zip folder: 7-Zip (on every Windows runner), or PowerShell
+    if command -v 7z > /dev/null; then
+        7z x -y -o"$2" "$1" > /dev/null
+    else
+        powershell -NoProfile -Command "Expand-Archive -Force -LiteralPath '$(cygpath -w "$1")' -DestinationPath '$(cygpath -w "$2")'"
+    fi
+}
+unzip_to "$work/qmaws.zip" "$work/qmaws"
+unzip_to "$work/iqtree.zip" "$work"
 qmaws=$(find "$work/qmaws" -name Q-MAWS.exe | head -n 1)
 iq="$work/iqtree-2.4.0-Windows/bin/iqtree2.exe"
 "$qmaws" --version
@@ -53,7 +63,7 @@ done
 # 3. the simulations; the scripts write the manifests again, which are compared below
 cp "$man/benchmark.tsv" "$work/benchmark.committed.tsv"
 cp "$man/scaling.tsv" "$work/scaling.committed.tsv"
-sh scripts/simulate_benchmark.sh "$iq" "$qmaws" python
+sh scripts/simulate_benchmark.sh "$iq" "$qmaws" "$python"
 sh scripts/simulate_scaling.sh "$iq"
 
 # 4. hash check: dataset, expected SHA-256, SHA-256 made here, equal
@@ -74,7 +84,12 @@ git checkout -- "$man"
 cat "$out/hash_check.tsv"
 echo "datasets equal to the manifests: $(grep -c 'yes$' "$out/hash_check.tsv"), different: $(grep -c 'no$' "$out/hash_check.tsv")"
 
-# 5. pack (the 200-taxa dataset is left out, Amendment 7)
-tar -cf "$out/benchmark.tar" data/raw/simulated/bm_*
-tar -cf "$out/scaling.tar" data/raw/simulated/scaling_m25_* data/raw/simulated/scaling_m50_* data/raw/simulated/scaling_m100_*
-ls -l "$out"
+[ "$(grep -c 'no$' "$out/hash_check.tsv")" -eq 0 ] || { echo "some datasets differ: nothing is packed"; exit 1; }
+
+# 5. one archive per dataset for the branch benchmark-data (200 taxa left out, Amendment 7);
+#    the AliSim logs are left out (they hold the computer's name and times, not data)
+mkdir -p "$out/benchdata"
+for dir in data/raw/simulated/bm_* data/raw/simulated/scaling_m25_* data/raw/simulated/scaling_m50_* data/raw/simulated/scaling_m100_*; do
+    tar --force-local --exclude='*.log' -czf "$out/benchdata/$(basename "$dir").tar.gz" "$dir"
+done
+ls -l "$out/benchdata"

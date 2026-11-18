@@ -5,18 +5,20 @@
 #   ncbi       the 5 NCBI datasets of M11            (for the checks of the reused runs)
 #   h5         the 20 H5 datasets                    (branch h5-data, checked against hgt.tsv),
 #              with their gene partitions made again by `qmaws hgt-trees` (checked)
-#   benchmark  the 36 datasets of Amendment 8        (made on Windows, inputs_windows.sh)
-#   scaling    the 9 speed datasets of M13           (made on Windows, inputs_windows.sh)
+#   benchmark  the 36 datasets of Amendment 8        (branch benchmark-data, Amendment 10a)
+#   scaling    the 9 speed datasets of M13           (branch benchmark-data, Amendment 10a)
+# The datasets of the branch benchmark-data were made on the development laptop by
+# make_simulated_data.sh; each is used only if it equals the committed manifests
+# (check_simulated.sh); hash_check.tsv records the check.
 #
 # Usage (from the repository folder):
-#   sh scripts/cloud/inputs_linux.sh <qmaws program> <folder with the Windows output> <output folder>
-# Writes <output>/input-<group>.tar and <output>/inputs.json.
+#   sh scripts/cloud/inputs_linux.sh <qmaws program> <output folder>
+# Writes <output>/input-<group>.tar, <output>/inputs.json and <output>/hash_check.tsv.
 
 set -eu
 
 qmaws=${1:?qmaws program}
-win=${2:?folder with benchmark.tar and scaling.tar}
-out=${3:?output folder}
+out=${2:?output folder}
 root=$(git rev-parse --show-toplevel)
 cd "$root"
 mkdir -p "$out"
@@ -41,9 +43,12 @@ for id in $H5_IDS; do
     echo "$(awk -F'\t' -v d="$id" '$1 == d { print $10 }' "$man/hgt.tsv")  $dir/genes/transfers.tsv" | sha256sum -c --quiet -
 done
 
-# 3. the simulated data made on Windows
-tar -xf "$win/benchmark.tar"
-tar -xf "$win/scaling.tar"
+# 3. the simulated data made on the development laptop (one archive per dataset), checked
+git fetch -q --depth 1 origin benchmark-data
+for f in $(git ls-tree --name-only FETCH_HEAD benchdata/ | grep '\.tar\.gz$'); do
+    git show "FETCH_HEAD:$f" | tar -xzf -
+done
+sh scripts/cloud/check_simulated.sh "$out/hash_check.tsv"
 
 # 4. sizes and taxon counts (used to plan the jobs), and the archives
 python3 scripts/cloud/bench_cloud.py inputs --data . --out "$out/inputs.json"
