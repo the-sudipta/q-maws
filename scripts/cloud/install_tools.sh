@@ -38,7 +38,7 @@ readonly ASTER=https://github.com/chaoszhang/ASTER@db2b3e95da5bb0318b933afe1a144
 readonly TREEQMC=https://github.com/molloy-lab/TREE-QMC@b5bfe82dbe95590d53dbc603b1073ea1fe61fd7f
 readonly BIOPYTHON=1.84
 readonly APT_PACKAGES="build-essential cmake git curl gawk zlib1g-dev libexpat1-dev cpanminus
-    nlohmann-json3-dev python3-venv default-jdk-headless time
+    nlohmann-json3-dev libboost-dev python3-venv default-jdk-headless time
     jellyfish raxml andi phylonium fasttree seqtk quicktree"
 
 log() { echo "[install $(date -u +%T)] $*"; }
