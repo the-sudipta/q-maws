@@ -18,11 +18,11 @@ Runs of the extended benchmark (docs/PREREGISTRATION.md, Amendments 8 to 10). Th
 | `speed/` | Every method alone on the 9 speed datasets |
 | `w2c1000/` | Q-MAWS with 1,000 W2c resamples on the five H5 datasets with h = 0.2 |
 | `dependence/` | The MAW matrices of the dependence analysis |
-| `summary/` | The analysis: accuracy table, H6, medians, ranks, effect sizes, calibration, halo, dependence |
+| `summary/` | The analysis: accuracy table, H6, medians, ranks, effect sizes, calibration, halo, dependence, speed, W2c with 1,000 resamples |
 | `benchmark.sha256` | The SHA-256 of every run's seal (`files.sha256`) and its root fingerprint |
 
 ## Relationships
-Made by `scripts/cloud/` with `scripts/bench_tools.sh` and `scripts/bench_refs.sh`; analysed by `scripts/bench_collect.py`, `bench_stats.py`, `bench_extra.py` and `bench_dependence.py`; checked by `scripts/bench_hash.py verify`.
+Made by `scripts/cloud/` with `scripts/bench_tools.sh` and `scripts/bench_refs.sh`; analysed by `scripts/bench_collect.py`, `bench_stats.py`, `bench_extra.py`, `bench_dependence.py`, `bench_speed.py` and `bench_w2c1000.py`; checked by `scripts/bench_hash.py verify`.
 
 ## Notes
 A run folder is finished when it has `done.txt` (a result tree), `failed.txt` (the reason, for example "not run (time)") or, for Q-MAWS, `audit/root.txt`. Files here keep their bytes on every system (`.gitattributes`), so the seals stay valid after a checkout on Windows.

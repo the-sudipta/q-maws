@@ -26,6 +26,8 @@ python3 scripts/bench_dependence.py \
     hgt_h010_r1=results/benchmark/dependence/hgt_h010_r1 \
     hgt_h020_r1=results/benchmark/dependence/hgt_h020_r1 \
     hgt_h040_r1=results/benchmark/dependence/hgt_h040_r1
+python3 scripts/bench_speed.py                # speed runs, compared per processor model
+python3 scripts/bench_w2c1000.py              # W2c with 1,000 against 100 resamples
 
 rm -rf "$state/results/benchmark/summary"
 cp -r results/benchmark/summary "$state/results/benchmark/summary"

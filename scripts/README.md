@@ -31,6 +31,8 @@ Development scripts that protect the repository: the pre-commit guard, the insta
 | `bench_stats.py` | H6 (pre-registered test) and the descriptive statistics of the benchmark: effect sizes, medians, Friedman test, pairwise tests |
 | `bench_extra.py` | Descriptive analyses of Amendment 9: calibration with bootstrap intervals, halo as a predictor of misplaced taxa, wrong splits and nRF against nQD |
 | `bench_dependence.py` | Dependence between MAW columns and the share of star quartets against a parametric bootstrap (Amendment 9) |
+| `bench_speed.py` | The speed runs (Amendments 8 and 10): one row per run with its processor, and medians per processor model, number of taxa and method |
+| `bench_w2c1000.py` | W2c with 1,000 against 100 resamples (Amendment 9): nRF, nQD, the share of quartets whose winner changes and the change in the winner's mean weight |
 | `start_benchmark.bat` | Double-click to start or continue `benchmark_queue.sh` with Git Bash; closing the window pauses the queue |
 | `stop_benchmark.bat` | Double-click to pause the benchmark queue (stops the queue and the program it runs; nothing is lost) |
 | `benchmark_status.bat` | Double-click to open the live dashboard (`benchmark_dashboard.ps1`) |
