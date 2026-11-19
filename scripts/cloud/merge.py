@@ -29,6 +29,20 @@ def _copy_tree(src, dest, notes):
             shutil.copy2(s, os.path.join(dest, rel, name))
 
 
+def _clear_finished(outcomes, src, dest):
+    """Removes from the state the folder (or file) of every run that this job finished, when
+    the job has it, so that files left by an earlier attempt that was stopped half-way (a
+    cancelled or killed job) do not stay beside the finished run (Amendment 10c)."""
+    for task_id, outcome in outcomes.items():
+        if outcome not in ('done', 'failed') or not os.path.exists(os.path.join(src, task_id)):
+            continue
+        old = os.path.join(dest, task_id)
+        if os.path.isdir(old):
+            shutil.rmtree(old)
+        elif os.path.isfile(old):
+            os.remove(old)
+
+
 def merge(state, outputs, run_id, wave):
     """state: state checkout; outputs: folder holding one sub-folder per job output."""
     partials = read_json(os.path.join(state, 'cloud', 'partials.json'), {})
@@ -38,11 +52,12 @@ def merge(state, outputs, run_id, wave):
         out = os.path.join(outputs, job)
         if not os.path.isdir(os.path.join(out, 'cloud')):
             continue
+        result = read_json(os.path.join(out, 'cloud', 'outcomes.json'), {'outcomes': {}, 'partials': {}})
         if os.path.isdir(os.path.join(out, 'results', 'benchmark')):
+            _clear_finished(result['outcomes'], os.path.join(out, 'results', 'benchmark'), bench(state))
             _copy_tree(os.path.join(out, 'results', 'benchmark'), bench(state), notes)
         append_rows(os.path.join(bench(state), 'runs.tsv'), RUNS_HEADER, read_rows(os.path.join(out, 'cloud', 'runs.tsv')))
         append_rows(os.path.join(bench(state), 'hosts.tsv'), HOSTS_HEADER, read_rows(os.path.join(out, 'cloud', 'hosts.tsv')))
-        result = read_json(os.path.join(out, 'cloud', 'outcomes.json'), {'outcomes': {}, 'partials': {}})
         artifact = 'partial-' + job[len('out-'):] if job.startswith('out-') else 'partial-' + job
         for task_id, outcome in result['outcomes'].items():
             counts[outcome] = counts.get(outcome, 0) + 1
