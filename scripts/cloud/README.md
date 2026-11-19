@@ -10,7 +10,7 @@ The extended benchmark (docs/PREREGISTRATION.md, Amendments 8 to 10) on GitHub-h
 | `bench_cloud.py` | Command line used by the workflows: `plan`, `run`, `merge`, `inputs`, `status` |
 | `catalog.py` | What runs: the datasets, the methods and the list of tasks (one task = one run folder under `results/benchmark/`) |
 | `state.py` | Which tasks are finished (from the run folders' own markers) and the run tables |
-| `planner.py` | Plans one wave: unfinished tasks whose prerequisites and smoke test are finished, packed into at most 20 jobs |
+| `planner.py` | Plans one wave: unfinished tasks whose prerequisites and smoke test are finished, packed into at most 20 jobs; every job that is not a speed or smoke job also gets its own share of the remaining tasks, so that it works until its deadline (Amendment 10b) |
 | `executor.py` | Runs one job's tasks before the job's deadline and writes the results, run rows and host rows |
 | `runners.py` | One function per kind of run (the Linux methods, Q-MAWS, ML-MAWS, the IQ-TREE reference, the references of Amendment 9, checks of reused runs, matrices) |
 | `hostinfo.py` | The computer of a job: processor, cores, memory, disk, image, a 10-second processor calibration |

@@ -4,9 +4,15 @@ Rules (Amendment 10):
   * a task runs only after its prerequisites (the tuned runs wait for all tuning runs);
   * in full mode a method runs only after its smoke test has a result tree;
   * a speed run gets a job of its own (nothing else on that runner);
-  * an unfinished resumable run is continued first in a job, with its saved state;
-  * other tasks are packed longest first into jobs of about 5 h 30 min of estimated work.
-Estimates only order and pack the work; a wrong estimate costs a retry, never a result.
+  * an unfinished resumable run is continued first in a job, with its saved state, and a run
+    stopped because its job ran out of time starts again first in a job (Amendment 10);
+  * long runs (one job or more of estimated work) start early, since they need several jobs;
+  * other tasks are packed longest first into jobs of about 5 h 30 min of estimated work;
+  * every job that is not a speed or smoke job then gets its own share of the remaining tasks
+    as extra work, so that it keeps working until its deadline even when the estimates were
+    too high. The shares are disjoint: no task is planned twice. An extra task that the job
+    cannot finish is stopped by the deadline and is not a result (see executor.py).
+Estimates only order and pack the work; a wrong estimate costs time, never a result.
 """
 import os
 import statistics
@@ -17,6 +23,8 @@ from state import REF_STEPS, bench, chosen_settings, is_done_ok, is_finished, re
 
 SHARD_SECONDS = 5 * 3600 + 30 * 60
 PRIORITY = {'smoke': 0, 'tuning': 1, 'verify': 2, 'speed': 5, 'w2c1000': 4, 'dependence': 4}
+FIRST = -1          # continued or stopped runs: first in a job
+LONG = 1.5          # one job or more of estimated work: right after tuning
 
 
 def smoke_of(task):
@@ -29,6 +37,14 @@ def smoke_of(task):
 
 def section(task):
     return task.id.split('/', 1)[0]
+
+
+def stopped_runs(root):
+    """Tasks whose last attempt was stopped by the end of its job (outcome 'interrupted')."""
+    last = {}
+    for r in read_rows(os.path.join(bench(root), 'hosts.tsv')):
+        last[r['task']] = r.get('outcome', '')
+    return {t for t, o in last.items() if o == 'interrupted'}
 
 
 class Estimator:
@@ -75,6 +91,7 @@ def plan(root, mode, max_shards):
     partials = read_json(os.path.join(root, 'cloud', 'partials.json'), {})
     failures = read_json(os.path.join(root, 'cloud', 'failures.json'), {})
     estimate = Estimator(root)
+    stopped = stopped_runs(root)
 
     pending, blocked = [], {}
     for t in tasks:
@@ -90,7 +107,18 @@ def plan(root, mode, max_shards):
                 continue
         pending.append(t)
 
-    pending.sort(key=lambda t: (PRIORITY.get(section(t), 3), -estimate(t)))
+    def first(t):           # continued, or started again from the beginning (Amendment 10)
+        return t.id in partials or t.id in stopped
+
+    def priority(t):
+        if section(t) == 'smoke':
+            return PRIORITY['smoke']
+        if first(t):
+            return FIRST
+        base = PRIORITY.get(section(t), 3)
+        return min(LONG, base) if estimate(t) >= SHARD_SECONDS else base
+
+    pending.sort(key=lambda t: (priority(t), -estimate(t)))
     shards = []
 
     def new_shard():
@@ -102,7 +130,7 @@ def plan(root, mode, max_shards):
 
     for t in pending:
         e = estimate(t)
-        if t.alone or t.id in partials or section(t) == 'smoke':   # smoke: one job per method, all at once
+        if t.alone or first(t) or section(t) == 'smoke':   # smoke: one job per method, all at once
             s = new_shard()               # alone, or continued first in its job
             if s is None:
                 continue
@@ -117,6 +145,17 @@ def plan(root, mode, max_shards):
         if t.alone or e >= SHARD_SECONDS or section(t) == 'smoke':
             s['closed'] = True
 
+    # extra work: the tasks left over, dealt out in order to the jobs that may take them; a run
+    # that must start first in a job, or that needs a whole job or more, waits for its own job
+    planned = {i for s in shards for i in s['tasks']}
+    takers = [s for s in shards if not any(by_id[i].alone or section(by_id[i]) == 'smoke' for i in s['tasks'])]
+    rest = [t for t in pending if t.id not in planned and not t.alone and section(t) != 'smoke'
+            and not first(t) and estimate(t) < SHARD_SECONDS]
+    for k, t in enumerate(rest if takers else []):
+        s = takers[k % len(takers)]
+        s['tasks'].append(t.id)
+        s['extra'] = s.get('extra', 0) + 1
+
     for s in shards:
         ts = [by_id[i] for i in s['tasks']]
         s['groups'] = sorted({input_group(d) for t in ts for d in t.inputs()})
@@ -129,6 +168,7 @@ def plan(root, mode, max_shards):
         s.pop('closed', None)
     summary = {'mode': mode, 'tasks': len(tasks), 'finished': len(tasks) - len(pending) - len(blocked),
                'pending': len(pending), 'blocked': len(blocked), 'planned': sum(len(s['tasks']) for s in shards),
+               'extra': sum(s.get('extra', 0) for s in shards),
                'blocked_examples': dict(list(blocked.items())[:20])}
     return shards, summary
 

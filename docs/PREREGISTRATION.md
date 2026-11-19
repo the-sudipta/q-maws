@@ -216,3 +216,11 @@ If decision D8 is declined, H2 and H4 are reported as "not tested" with the reas
 - **Unchanged:** everything else in Amendments 8 to 10. No dataset, seed, method, setting or analysis changes; only the computer that makes the simulated data does.
 - **Order:** committed before any method is run on any dataset for the benchmark.
 - **Decided by:** the owner (who delegated the operation of the benchmark), 2026-11-18.
+
+## Amendment 10b (2026-11-19): the order of the runs in the jobs (operational)
+
+- **What happened:** in the second wave of workflow run 44362579893, 10 of the 20 jobs finished within 40 minutes, while the wave lasted until its longest job ended after about 5 h 50 min. The jobs were packed by estimated time, and the first estimates of several kinds of run (the checks of reused Q-MAWS runs, the first runs of some methods) were far too high, so most runners stood idle.
+- **Change:** `scripts/cloud/planner.py` now (1) gives every job that is not a speed or smoke job its own share of the remaining runs as extra work, so that it works until its deadline (the shares are disjoint, so no run is planned twice); (2) starts runs estimated at one job or more right after the tuning runs, since they need several jobs in a row; and (3) puts a run that was stopped because its job ran out of time first in a later job, as Amendment 10 already requires ("started again from the beginning at the start of a later job"). The workflow run 44362579893 is stopped after its second wave has been committed, and a new run continues from the committed state.
+- **Unchanged:** every method, command, setting, limit, dataset, measure and analysis, and every rule of Amendment 10: a run stopped by the end of its job is still not a result, and every speed run still has a job of its own. Only the order in which runs are given to jobs changes. Runs already committed are kept as they are.
+- **Order:** committed after the second wave and before any analysis of any run; the only values seen were the smoke-test comparisons on the tuning dataset `bm_tune_r1`, which is never used for evaluation.
+- **Decided by:** the owner (who delegated the operation of the benchmark), 2026-11-19.
