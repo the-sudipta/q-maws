@@ -1,0 +1,2302 @@
+Sample worksheets: 50 quartets drawn with seed quartet_seed(1, 2^64 - 1), in rank order.
+Each worksheet recomputes the quartet from M_full and is compared with the stored w2c weights.
+
+----------------------------------------------------------------
+Quartet rank 11: a = T2, b = T10, c = T5, d = T9
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311135, n(c) = 310054, n(d) = 310512
+   n(ab) = 169380, n(ac) = 126342, n(ad) = 80270, n(bc) = 92980, n(bd) = 64527, n(cd) = 81414
+   n(abc) = 74389, n(abd) = 47429, n(acd) = 44804, n(bcd) = 32459
+   n(abcd) = 27214
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 27214 = 27214
+   c(1110) = n(abc) - n(abcd) = 74389 - 27214 = 47175
+   c(1101) = n(abd) - n(abcd) = 47429 - 27214 = 20215
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 169380 - 74389 - 47429 + 27214 = 74776
+   c(1011) = n(acd) - n(abcd) = 44804 - 27214 = 17590
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 126342 - 74389 - 44804 + 27214 = 34363
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80270 - 47429 - 44804 + 27214 = 15251
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 169380 - 126342 - 80270 + 74389 + 47429 + 44804 - 27214 = 74689
+   c(0111) = n(bcd) - n(abcd) = 32459 - 27214 = 5245
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 92980 - 74389 - 32459 + 27214 = 13346
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 64527 - 47429 - 32459 + 27214 = 11853
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 169380 - 92980 - 64527 + 74389 + 47429 + 32459 - 27214 = 111311
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 81414 - 44804 - 32459 + 27214 = 31365
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310054 - 126342 - 92980 - 81414 + 74389 + 44804 + 32459 - 27214 = 133756
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310512 - 80270 - 64527 - 81414 + 47429 + 44804 + 32459 - 27214 = 181779
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311135 - 310054 - 310512 + 169380 + 126342 + 80270 + 92980 + 64527 + 81414 - 74389 - 47429 - 44804 - 32459 + 27214 = 736435
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 74776 + 31365 = 106141
+   ac|bd: c(1010) + c(0101) = 34363 + 11853 = 46216
+   ad|bc: c(1001) + c(0110) = 15251 + 13346 = 28597
+   W1 weights: ab|cd 0.586563, ac|bd 0.255402, ad|bc 0.158035
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2102894.231810; lengths 0.000001, 0.508853, 0.371970, 10.000000, 0.513792
+   ac|bd: log-likelihood -2102894.231836; lengths 0.000001, 0.508851, 0.885762, 10.000000, 0.000001
+   ad|bc: log-likelihood -2102894.242522; lengths 0.000001, 0.508852, 0.885761, 10.000000, 0.000001
+   W2a: best ab|cd with gap 0.000026
+   W2b weights: ab|cd 0.334524, ac|bd 0.334516, ad|bc 0.330960
+
+5. W2c: 100 multinomial resamples with quartet seed 16063009206308251432
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 30: a = T10, b = T12, c = T9, d = T3
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 312476, n(c) = 310512, n(d) = 311465
+   n(ab) = 211507, n(ac) = 64527, n(ad) = 108819, n(bc) = 69443, n(bd) = 122554, n(cd) = 68139
+   n(abc) = 50976, n(abd) = 90827, n(acd) = 32203, n(bcd) = 36508
+   n(abcd) = 27844
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 27844 = 27844
+   c(1110) = n(abc) - n(abcd) = 50976 - 27844 = 23132
+   c(1101) = n(abd) - n(abcd) = 90827 - 27844 = 62983
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 211507 - 50976 - 90827 + 27844 = 97548
+   c(1011) = n(acd) - n(abcd) = 32203 - 27844 = 4359
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 64527 - 50976 - 32203 + 27844 = 9192
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 108819 - 90827 - 32203 + 27844 = 13633
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 211507 - 64527 - 108819 + 50976 + 90827 + 32203 - 27844 = 72444
+   c(0111) = n(bcd) - n(abcd) = 36508 - 27844 = 8664
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 69443 - 50976 - 36508 + 27844 = 9803
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 122554 - 90827 - 36508 + 27844 = 23063
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 211507 - 69443 - 122554 + 50976 + 90827 + 36508 - 27844 = 59439
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 68139 - 32203 - 36508 + 27844 = 27272
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310512 - 64527 - 69443 - 68139 + 50976 + 32203 + 36508 - 27844 = 200246
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311465 - 108819 - 122554 - 68139 + 90827 + 32203 + 36508 - 27844 = 143647
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 312476 - 310512 - 311465 + 211507 + 64527 + 108819 + 69443 + 122554 + 68139 - 50976 - 90827 - 32203 - 36508 + 27844 = 753094
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 97548 + 27272 = 124820
+   ac|bd: c(1010) + c(0101) = 9192 + 23063 = 32255
+   ad|bc: c(1001) + c(0110) = 13633 + 9803 = 23436
+   W1 weights: ab|cd 0.691481, ac|bd 0.178687, ad|bc 0.129831
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1988952.213138; lengths 0.290935, 0.013239, 10.000000, 0.577415, 0.394900
+   ac|bd: log-likelihood -1988952.213193; lengths 0.290934, 0.013239, 10.000000, 0.972314, 0.000001
+   ad|bc: log-likelihood -1988952.213193; lengths 0.290935, 0.013238, 10.000000, 0.972314, 0.000001
+   W2a: best ab|cd with gap 0.000055
+   W2b weights: ab|cd 0.333346, ac|bd 0.333327, ad|bc 0.333327
+
+5. W2c: 100 multinomial resamples with quartet seed 8586831706067660582
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 33: a = T10, b = T5, c = T9, d = T3
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 310054, n(c) = 310512, n(d) = 311465
+   n(ab) = 92980, n(ac) = 64527, n(ad) = 108819, n(bc) = 81414, n(bd) = 100549, n(cd) = 68139
+   n(abc) = 32459, n(abd) = 50496, n(acd) = 32203, n(bcd) = 35234
+   n(abcd) = 18909
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 18909 = 18909
+   c(1110) = n(abc) - n(abcd) = 32459 - 18909 = 13550
+   c(1101) = n(abd) - n(abcd) = 50496 - 18909 = 31587
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 92980 - 32459 - 50496 + 18909 = 28934
+   c(1011) = n(acd) - n(abcd) = 32203 - 18909 = 13294
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 64527 - 32459 - 32203 + 18909 = 18774
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 108819 - 50496 - 32203 + 18909 = 45029
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 92980 - 64527 - 108819 + 32459 + 50496 + 32203 - 18909 = 141058
+   c(0111) = n(bcd) - n(abcd) = 35234 - 18909 = 16325
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 81414 - 32459 - 35234 + 18909 = 32630
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 100549 - 50496 - 35234 + 18909 = 33728
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310054 - 92980 - 81414 - 100549 + 32459 + 50496 + 35234 - 18909 = 134391
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 68139 - 32203 - 35234 + 18909 = 19611
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310512 - 64527 - 81414 - 68139 + 32459 + 32203 + 35234 - 18909 = 177419
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311465 - 108819 - 100549 - 68139 + 50496 + 32203 + 35234 - 18909 = 132982
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 310054 - 310512 - 311465 + 92980 + 64527 + 108819 + 81414 + 100549 + 68139 - 32459 - 50496 - 32203 - 35234 + 18909 = 678142
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 28934 + 19611 = 48545
+   ac|bd: c(1010) + c(0101) = 18774 + 33728 = 52502
+   ad|bc: c(1001) + c(0110) = 45029 + 32630 = 77659
+   W1 weights: ab|cd 0.271647, ac|bd 0.293790, ad|bc 0.434563
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2312289.024288; lengths 0.599718, 0.742759, 10.000000, 0.408898, 0.000003
+   ac|bd: log-likelihood -2312289.024288; lengths 0.599717, 0.742759, 10.000000, 0.408901, 0.000001
+   ad|bc: log-likelihood -2312078.964776; lengths 0.593001, 0.000001, 1.898662, 0.407714, 0.733055
+   W2a: best ad|bc with gap 210.059512
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 15322076666171674479
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 47: a = T2, b = T10, c = T9, d = T4
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311135, n(c) = 310512, n(d) = 311181
+   n(ab) = 169380, n(ac) = 80270, n(ad) = 97522, n(bc) = 64527, n(bd) = 75734, n(cd) = 53355
+   n(abc) = 47429, n(abd) = 57909, n(acd) = 29874, n(bcd) = 21895
+   n(abcd) = 18416
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 18416 = 18416
+   c(1110) = n(abc) - n(abcd) = 47429 - 18416 = 29013
+   c(1101) = n(abd) - n(abcd) = 57909 - 18416 = 39493
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 169380 - 47429 - 57909 + 18416 = 82458
+   c(1011) = n(acd) - n(abcd) = 29874 - 18416 = 11458
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80270 - 47429 - 29874 + 18416 = 21383
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 97522 - 57909 - 29874 + 18416 = 28155
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 169380 - 80270 - 97522 + 47429 + 57909 + 29874 - 18416 = 80897
+   c(0111) = n(bcd) - n(abcd) = 21895 - 18416 = 3479
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 64527 - 47429 - 21895 + 18416 = 13619
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 75734 - 57909 - 21895 + 18416 = 14346
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 169380 - 64527 - 75734 + 47429 + 57909 + 21895 - 18416 = 110311
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 53355 - 29874 - 21895 + 18416 = 20002
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310512 - 80270 - 64527 - 53355 + 47429 + 29874 + 21895 - 18416 = 193142
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311181 - 97522 - 75734 - 53355 + 57909 + 29874 + 21895 - 18416 = 175832
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311135 - 310512 - 311181 + 169380 + 80270 + 97522 + 64527 + 75734 + 53355 - 47429 - 57909 - 29874 - 21895 + 18416 = 694359
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 82458 + 20002 = 102460
+   ac|bd: c(1010) + c(0101) = 21383 + 14346 = 35729
+   ad|bc: c(1001) + c(0110) = 28155 + 13619 = 41774
+   W1 weights: ab|cd 0.569339, ac|bd 0.198535, ad|bc 0.232125
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2211614.948249; lengths 0.000001, 0.470756, 2.406192, 1.257343, 0.000001
+   ac|bd: log-likelihood -2211614.954124; lengths 0.000001, 0.470755, 2.406191, 1.257344, 0.000001
+   ad|bc: log-likelihood -2211614.948851; lengths 0.000001, 0.470755, 2.406198, 1.257344, 0.000001
+   W2a: best ab|cd with gap 0.000603
+   W2b weights: ab|cd 0.334053, ac|bd 0.332096, ad|bc 0.333851
+
+5. W2c: 100 multinomial resamples with quartet seed 17133246953150174237
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 73: a = T2, b = T10, c = T12, d = T6
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311135, n(c) = 312476, n(d) = 311122
+   n(ab) = 169380, n(ac) = 197163, n(ad) = 72746, n(bc) = 211507, n(bd) = 59681, n(cd) = 64170
+   n(abc) = 147401, n(abd) = 43000, n(acd) = 49564, n(bcd) = 46532
+   n(abcd) = 37853
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 37853 = 37853
+   c(1110) = n(abc) - n(abcd) = 147401 - 37853 = 109548
+   c(1101) = n(abd) - n(abcd) = 43000 - 37853 = 5147
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 169380 - 147401 - 43000 + 37853 = 16832
+   c(1011) = n(acd) - n(abcd) = 49564 - 37853 = 11711
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 197163 - 147401 - 49564 + 37853 = 38051
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 72746 - 43000 - 49564 + 37853 = 18035
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 169380 - 197163 - 72746 + 147401 + 43000 + 49564 - 37853 = 74096
+   c(0111) = n(bcd) - n(abcd) = 46532 - 37853 = 8679
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 211507 - 147401 - 46532 + 37853 = 55427
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 59681 - 43000 - 46532 + 37853 = 8002
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 169380 - 211507 - 59681 + 147401 + 43000 + 46532 - 37853 = 69647
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 64170 - 49564 - 46532 + 37853 = 5927
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312476 - 197163 - 211507 - 64170 + 147401 + 49564 + 46532 - 37853 = 45280
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311122 - 72746 - 59681 - 64170 + 43000 + 49564 + 46532 - 37853 = 215768
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311135 - 312476 - 311122 + 169380 + 197163 + 72746 + 211507 + 59681 + 64170 - 147401 - 43000 - 49564 - 46532 + 37853 = 816360
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 16832 + 5927 = 22759
+   ac|bd: c(1010) + c(0101) = 38051 + 8002 = 46053
+   ad|bc: c(1001) + c(0110) = 18035 + 55427 = 73462
+   W1 weights: ab|cd 0.159966, ac|bd 0.323692, ad|bc 0.516342
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1768895.357176; lengths 0.315722, 0.245477, 0.078619, 10.000000, 0.000001
+   ac|bd: log-likelihood -1768895.357176; lengths 0.315722, 0.245476, 0.078620, 10.000000, 0.000001
+   ad|bc: log-likelihood -1768895.357146; lengths 0.084726, 0.245477, 0.078620, 10.000000, 0.230996
+   W2a: best ad|bc with gap 0.000030
+   W2b weights: ab|cd 0.333330, ac|bd 0.333330, ad|bc 0.333340
+
+5. W2c: 100 multinomial resamples with quartet seed 1683497122706024219
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 129: a = T2, b = T10, c = T12, d = T13
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311135, n(c) = 312476, n(d) = 311382
+   n(ab) = 169380, n(ac) = 197163, n(ad) = 80808, n(bc) = 211507, n(bd) = 64912, n(cd) = 70459
+   n(abc) = 147401, n(abd) = 47777, n(acd) = 55315, n(bcd) = 51223
+   n(abcd) = 42147
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 42147 = 42147
+   c(1110) = n(abc) - n(abcd) = 147401 - 42147 = 105254
+   c(1101) = n(abd) - n(abcd) = 47777 - 42147 = 5630
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 169380 - 147401 - 47777 + 42147 = 16349
+   c(1011) = n(acd) - n(abcd) = 55315 - 42147 = 13168
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 197163 - 147401 - 55315 + 42147 = 36594
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80808 - 47777 - 55315 + 42147 = 19863
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 169380 - 197163 - 80808 + 147401 + 47777 + 55315 - 42147 = 72268
+   c(0111) = n(bcd) - n(abcd) = 51223 - 42147 = 9076
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 211507 - 147401 - 51223 + 42147 = 55030
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 64912 - 47777 - 51223 + 42147 = 8059
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 169380 - 211507 - 64912 + 147401 + 47777 + 51223 - 42147 = 69590
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 70459 - 55315 - 51223 + 42147 = 6068
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312476 - 197163 - 211507 - 70459 + 147401 + 55315 + 51223 - 42147 = 45139
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311382 - 80808 - 64912 - 70459 + 47777 + 55315 + 51223 - 42147 = 207371
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311135 - 312476 - 311382 + 169380 + 197163 + 80808 + 211507 + 64912 + 70459 - 147401 - 47777 - 55315 - 51223 + 42147 = 824757
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 16349 + 6068 = 22417
+   ac|bd: c(1010) + c(0101) = 36594 + 8059 = 44653
+   ad|bc: c(1001) + c(0110) = 19863 + 55030 = 74893
+   W1 weights: ab|cd 0.157907, ac|bd 0.314540, ad|bc 0.527553
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1753874.835227; lengths 0.323798, 0.251579, 0.078707, 10.000000, 0.000001
+   ac|bd: log-likelihood -1753874.835227; lengths 0.323798, 0.251578, 0.078708, 10.000000, 0.000001
+   ad|bc: log-likelihood -1753874.835189; lengths 0.113975, 0.251579, 0.078708, 10.000000, 0.209823
+   W2a: best ad|bc with gap 0.000038
+   W2b weights: ab|cd 0.333329, ac|bd 0.333329, ad|bc 0.333342
+
+5. W2c: 100 multinomial resamples with quartet seed 5023319437967951369
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 137: a = T1, b = T10, c = T9, d = T13
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311135, n(c) = 310512, n(d) = 311382
+   n(ab) = 67194, n(ac) = 48339, n(ad) = 102815, n(bc) = 64527, n(bd) = 64912, n(cd) = 47211
+   n(abc) = 18985, n(abd) = 31002, n(acd) = 20733, n(bcd) = 18292
+   n(abcd) = 9180
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 9180 = 9180
+   c(1110) = n(abc) - n(abcd) = 18985 - 9180 = 9805
+   c(1101) = n(abd) - n(abcd) = 31002 - 9180 = 21822
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 67194 - 18985 - 31002 + 9180 = 26387
+   c(1011) = n(acd) - n(abcd) = 20733 - 9180 = 11553
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 48339 - 18985 - 20733 + 9180 = 17801
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 102815 - 31002 - 20733 + 9180 = 60260
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 67194 - 48339 - 102815 + 18985 + 31002 + 20733 - 9180 = 154440
+   c(0111) = n(bcd) - n(abcd) = 18292 - 9180 = 9112
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 64527 - 18985 - 18292 + 9180 = 36430
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 64912 - 31002 - 18292 + 9180 = 24798
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 67194 - 64527 - 64912 + 18985 + 31002 + 18292 - 9180 = 173601
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 47211 - 20733 - 18292 + 9180 = 17366
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310512 - 48339 - 64527 - 47211 + 18985 + 20733 + 18292 - 9180 = 199265
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311382 - 102815 - 64912 - 47211 + 31002 + 20733 + 18292 - 9180 = 157291
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311135 - 310512 - 311382 + 67194 + 48339 + 102815 + 64527 + 64912 + 47211 - 18985 - 31002 - 20733 - 18292 + 9180 = 607252
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 26387 + 17366 = 43753
+   ac|bd: c(1010) + c(0101) = 17801 + 24798 = 42599
+   ad|bc: c(1001) + c(0110) = 60260 + 36430 = 96690
+   W1 weights: ab|cd 0.239033, ac|bd 0.232728, ad|bc 0.528239
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2502294.155660; lengths 0.347322, 1.410941, 10.000000, 0.441245, 0.094876
+   ac|bd: log-likelihood -2502294.155657; lengths 0.344294, 1.410941, 10.000000, 0.536121, 0.003029
+   ad|bc: log-likelihood -2502057.730389; lengths 0.352750, 0.000001, 1.889420, 0.525054, 1.368726
+   W2a: best ad|bc with gap 236.425268
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 5535595769337854541
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 152: a = T1, b = T5, c = T3, d = T13
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 310054, n(c) = 311465, n(d) = 311382
+   n(ab) = 63852, n(ac) = 128837, n(ad) = 102815, n(bc) = 100549, n(bd) = 61525, n(cd) = 119974
+   n(abc) = 45258, n(abd) = 29052, n(acd) = 65118, n(bcd) = 42054
+   n(abcd) = 23802
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 23802 = 23802
+   c(1110) = n(abc) - n(abcd) = 45258 - 23802 = 21456
+   c(1101) = n(abd) - n(abcd) = 29052 - 23802 = 5250
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 63852 - 45258 - 29052 + 23802 = 13344
+   c(1011) = n(acd) - n(abcd) = 65118 - 23802 = 41316
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 128837 - 45258 - 65118 + 23802 = 42263
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 102815 - 29052 - 65118 + 23802 = 32447
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 63852 - 128837 - 102815 + 45258 + 29052 + 65118 - 23802 = 131370
+   c(0111) = n(bcd) - n(abcd) = 42054 - 23802 = 18252
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 100549 - 45258 - 42054 + 23802 = 37039
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 61525 - 29052 - 42054 + 23802 = 14221
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310054 - 63852 - 100549 - 61525 + 45258 + 29052 + 42054 - 23802 = 176690
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 119974 - 65118 - 42054 + 23802 = 36604
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 128837 - 100549 - 119974 + 45258 + 65118 + 42054 - 23802 = 90733
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311382 - 102815 - 61525 - 119974 + 29052 + 65118 + 42054 - 23802 = 139490
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 310054 - 311465 - 311382 + 63852 + 128837 + 102815 + 100549 + 61525 + 119974 - 45258 - 29052 - 65118 - 42054 + 23802 = 712086
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 13344 + 36604 = 49948
+   ac|bd: c(1010) + c(0101) = 42263 + 14221 = 56484
+   ad|bc: c(1001) + c(0110) = 32447 + 37039 = 69486
+   W1 weights: ab|cd 0.283928, ac|bd 0.321081, ad|bc 0.394991
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2206835.346375; lengths 0.684137, 1.236046, 0.114506, 0.786584, 0.000001
+   ac|bd: log-likelihood -2206835.345015; lengths 0.684138, 1.236045, 0.114506, 0.786583, 0.000001
+   ad|bc: log-likelihood -2205618.889161; lengths 0.555774, 1.264613, 0.000001, 0.663951, 0.246578
+   W2a: best ad|bc with gap 1216.455854
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 7396018447823967028
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 153: a = T2, b = T5, c = T3, d = T13
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 310054, n(c) = 311465, n(d) = 311382
+   n(ab) = 126342, n(ac) = 152159, n(ad) = 80808, n(bc) = 100549, n(bd) = 61525, n(cd) = 119974
+   n(abc) = 73236, n(abd) = 38191, n(acd) = 62870, n(bcd) = 42054
+   n(abcd) = 31309
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 31309 = 31309
+   c(1110) = n(abc) - n(abcd) = 73236 - 31309 = 41927
+   c(1101) = n(abd) - n(abcd) = 38191 - 31309 = 6882
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 126342 - 73236 - 38191 + 31309 = 46224
+   c(1011) = n(acd) - n(abcd) = 62870 - 31309 = 31561
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 152159 - 73236 - 62870 + 31309 = 47362
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80808 - 38191 - 62870 + 31309 = 11056
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 126342 - 152159 - 80808 + 73236 + 38191 + 62870 - 31309 = 94952
+   c(0111) = n(bcd) - n(abcd) = 42054 - 31309 = 10745
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 100549 - 73236 - 42054 + 31309 = 16568
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 61525 - 38191 - 42054 + 31309 = 12589
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310054 - 126342 - 100549 - 61525 + 73236 + 38191 + 42054 - 31309 = 143810
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 119974 - 62870 - 42054 + 31309 = 46359
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 152159 - 100549 - 119974 + 73236 + 62870 + 42054 - 31309 = 85634
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311382 - 80808 - 61525 - 119974 + 38191 + 62870 + 42054 - 31309 = 160881
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 310054 - 311465 - 311382 + 126342 + 152159 + 80808 + 100549 + 61525 + 119974 - 73236 - 38191 - 62870 - 42054 + 31309 = 748504
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 46224 + 46359 = 92583
+   ac|bd: c(1010) + c(0101) = 47362 + 12589 = 59951
+   ad|bc: c(1001) + c(0110) = 11056 + 16568 = 27624
+   W1 weights: ab|cd 0.513899, ac|bd 0.332769, ad|bc 0.153332
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2091722.441846; lengths 0.000001, 0.909417, 0.000001, 1.020819, 0.643038
+   ac|bd: log-likelihood -2098312.331435; lengths 0.000001, 0.899019, 0.663757, 10.000000, 0.052120
+   ad|bc: log-likelihood -2098312.332922; lengths 0.000001, 0.951138, 0.663756, 10.000000, 0.000001
+   W2a: best ab|cd with gap 6589.889589
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 17543754222754086877
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 218: a = T2, b = T12, c = T5, d = T7
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 312476, n(c) = 310054, n(d) = 314638
+   n(ab) = 197163, n(ac) = 126342, n(ad) = 66336, n(bc) = 103405, n(bd) = 59076, n(cd) = 52856
+   n(abc) = 86278, n(abd) = 45125, n(acd) = 31241, n(bcd) = 25458
+   n(abcd) = 22249
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 22249 = 22249
+   c(1110) = n(abc) - n(abcd) = 86278 - 22249 = 64029
+   c(1101) = n(abd) - n(abcd) = 45125 - 22249 = 22876
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 197163 - 86278 - 45125 + 22249 = 88009
+   c(1011) = n(acd) - n(abcd) = 31241 - 22249 = 8992
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 126342 - 86278 - 31241 + 22249 = 31072
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 66336 - 45125 - 31241 + 22249 = 12219
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 197163 - 126342 - 66336 + 86278 + 45125 + 31241 - 22249 = 61827
+   c(0111) = n(bcd) - n(abcd) = 25458 - 22249 = 3209
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 103405 - 86278 - 25458 + 22249 = 13918
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 59076 - 45125 - 25458 + 22249 = 10742
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 197163 - 103405 - 59076 + 86278 + 45125 + 25458 - 22249 = 87444
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 52856 - 31241 - 25458 + 22249 = 18406
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310054 - 126342 - 103405 - 52856 + 86278 + 31241 + 25458 - 22249 = 148179
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 314638 - 66336 - 59076 - 52856 + 45125 + 31241 + 25458 - 22249 = 215945
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 312476 - 310054 - 314638 + 197163 + 126342 + 66336 + 103405 + 59076 + 52856 - 86278 - 45125 - 31241 - 25458 + 22249 = 727247
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 88009 + 18406 = 106415
+   ac|bd: c(1010) + c(0101) = 31072 + 10742 = 41814
+   ad|bc: c(1001) + c(0110) = 12219 + 13918 = 26137
+   W1 weights: ab|cd 0.610297, ac|bd 0.239806, ad|bc 0.149897
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2072663.207653; lengths 0.000001, 0.350576, 0.520323, 10.000000, 0.309570
+   ac|bd: log-likelihood -2072663.207667; lengths 0.000001, 0.325545, 0.829893, 10.000000, 0.025031
+   ad|bc: log-likelihood -2072663.211243; lengths 0.000001, 0.350575, 0.829892, 10.000000, 0.000001
+   W2a: best ab|cd with gap 0.000014
+   W2b weights: ab|cd 0.333733, ac|bd 0.333729, ad|bc 0.332538
+
+5. W2c: 100 multinomial resamples with quartet seed 6504257376099719786
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 233: a = T1, b = T12, c = T3, d = T7
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 312476, n(c) = 311465, n(d) = 314638
+   n(ab) = 73407, n(ac) = 128837, n(ad) = 80959, n(bc) = 122554, n(bd) = 59076, n(cd) = 91934
+   n(abc) = 54882, n(abd) = 26186, n(acd) = 48500, n(bcd) = 39550
+   n(abcd) = 21719
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 21719 = 21719
+   c(1110) = n(abc) - n(abcd) = 54882 - 21719 = 33163
+   c(1101) = n(abd) - n(abcd) = 26186 - 21719 = 4467
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 73407 - 54882 - 26186 + 21719 = 14058
+   c(1011) = n(acd) - n(abcd) = 48500 - 21719 = 26781
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 128837 - 54882 - 48500 + 21719 = 47174
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80959 - 26186 - 48500 + 21719 = 27992
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 73407 - 128837 - 80959 + 54882 + 26186 + 48500 - 21719 = 135894
+   c(0111) = n(bcd) - n(abcd) = 39550 - 21719 = 17831
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 122554 - 54882 - 39550 + 21719 = 49841
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 59076 - 26186 - 39550 + 21719 = 15059
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 73407 - 122554 - 59076 + 54882 + 26186 + 39550 - 21719 = 156338
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 91934 - 48500 - 39550 + 21719 = 25603
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 128837 - 122554 - 91934 + 54882 + 48500 + 39550 - 21719 = 89353
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 314638 - 80959 - 59076 - 91934 + 26186 + 48500 + 39550 - 21719 = 175186
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 312476 - 311465 - 314638 + 73407 + 128837 + 80959 + 122554 + 59076 + 91934 - 54882 - 26186 - 48500 - 39550 + 21719 = 695904
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 14058 + 25603 = 39661
+   ac|bd: c(1010) + c(0101) = 47174 + 15059 = 62233
+   ad|bc: c(1001) + c(0110) = 27992 + 49841 = 77833
+   W1 weights: ab|cd 0.220674, ac|bd 0.346264, ad|bc 0.433062
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2244996.133923; lengths 0.773574, 0.848835, 0.000001, 1.535301, 0.000001
+   ac|bd: log-likelihood -2244996.126831; lengths 0.773575, 0.848835, 0.000001, 1.535301, 0.000001
+   ad|bc: log-likelihood -2244996.123766; lengths 0.773574, 0.848836, 0.000001, 1.535300, 0.000001
+   W2a: best ad|bc with gap 0.003066
+   W2b weights: ab|cd 0.331419, ac|bd 0.333778, ad|bc 0.334803
+
+5. W2c: 100 multinomial resamples with quartet seed 6477743027695067484
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 269: a = T1, b = T12, c = T6, d = T7
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 312476, n(c) = 311122, n(d) = 314638
+   n(ab) = 73407, n(ac) = 90458, n(ad) = 80959, n(bc) = 64170, n(bd) = 59076, n(cd) = 138555
+   n(abc) = 29873, n(abd) = 26186, n(acd) = 50401, n(bcd) = 34605
+   n(abcd) = 17488
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 17488 = 17488
+   c(1110) = n(abc) - n(abcd) = 29873 - 17488 = 12385
+   c(1101) = n(abd) - n(abcd) = 26186 - 17488 = 8698
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 73407 - 29873 - 26186 + 17488 = 34836
+   c(1011) = n(acd) - n(abcd) = 50401 - 17488 = 32913
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 90458 - 29873 - 50401 + 17488 = 27672
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80959 - 26186 - 50401 + 17488 = 21860
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 73407 - 90458 - 80959 + 29873 + 26186 + 50401 - 17488 = 155396
+   c(0111) = n(bcd) - n(abcd) = 34605 - 17488 = 17117
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 64170 - 29873 - 34605 + 17488 = 17180
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 59076 - 26186 - 34605 + 17488 = 15773
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 73407 - 64170 - 59076 + 29873 + 26186 + 34605 - 17488 = 188999
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 138555 - 50401 - 34605 + 17488 = 71037
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 90458 - 64170 - 138555 + 29873 + 50401 + 34605 - 17488 = 115330
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 314638 - 80959 - 59076 - 138555 + 26186 + 50401 + 34605 - 17488 = 129752
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 312476 - 311122 - 314638 + 73407 + 90458 + 80959 + 64170 + 59076 + 138555 - 29873 - 26186 - 50401 - 34605 + 17488 = 669927
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 34836 + 71037 = 105873
+   ac|bd: c(1010) + c(0101) = 27672 + 15773 = 43445
+   ad|bc: c(1001) + c(0110) = 21860 + 17180 = 39040
+   W1 weights: ab|cd 0.562084, ac|bd 0.230651, ad|bc 0.207265
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2314588.178061; lengths 0.129074, 10.000000, 0.023468, 0.644180, 1.199540
+   ac|bd: log-likelihood -2314588.178132; lengths 1.328615, 10.000000, 0.023467, 0.581259, 0.062922
+   ad|bc: log-likelihood -2314588.178133; lengths 1.328615, 10.000000, 0.023466, 0.644181, 0.000001
+   W2a: best ab|cd with gap 0.000071
+   W2b weights: ab|cd 0.333349, ac|bd 0.333326, ad|bc 0.333325
+
+5. W2c: 100 multinomial resamples with quartet seed 15914887098126212513
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 286: a = T9, b = T3, c = T6, d = T7
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 310512, n(b) = 311465, n(c) = 311122, n(d) = 314638
+   n(ab) = 68139, n(ac) = 44617, n(ad) = 42519, n(bc) = 104366, n(bd) = 91934, n(cd) = 138555
+   n(abc) = 25291, n(abd) = 22828, n(acd) = 23283, n(bcd) = 58834
+   n(abcd) = 14810
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 14810 = 14810
+   c(1110) = n(abc) - n(abcd) = 25291 - 14810 = 10481
+   c(1101) = n(abd) - n(abcd) = 22828 - 14810 = 8018
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 68139 - 25291 - 22828 + 14810 = 34830
+   c(1011) = n(acd) - n(abcd) = 23283 - 14810 = 8473
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 44617 - 25291 - 23283 + 14810 = 10853
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 42519 - 22828 - 23283 + 14810 = 11218
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 310512 - 68139 - 44617 - 42519 + 25291 + 22828 + 23283 - 14810 = 211829
+   c(0111) = n(bcd) - n(abcd) = 58834 - 14810 = 44024
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 104366 - 25291 - 58834 + 14810 = 35051
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 91934 - 22828 - 58834 + 14810 = 25082
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 68139 - 104366 - 91934 + 25291 + 22828 + 58834 - 14810 = 139169
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 138555 - 23283 - 58834 + 14810 = 71248
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 44617 - 104366 - 138555 + 25291 + 23283 + 58834 - 14810 = 116182
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 314638 - 42519 - 91934 - 138555 + 22828 + 23283 + 58834 - 14810 = 131765
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 310512 - 311465 - 311122 - 314638 + 68139 + 44617 + 42519 + 104366 + 91934 + 138555 - 25291 - 22828 - 23283 - 58834 + 14810 = 663330
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 34830 + 71248 = 106078
+   ac|bd: c(1010) + c(0101) = 10853 + 25082 = 35935
+   ad|bc: c(1001) + c(0110) = 11218 + 35051 = 46269
+   W1 weights: ab|cd 0.563400, ac|bd 0.190857, ad|bc 0.245743
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2323458.369098; lengths 10.000000, 0.000001, 0.186102, 0.457395, 0.794407
+   ac|bd: log-likelihood -2323458.369222; lengths 10.000000, 0.794409, 0.186101, 0.457395, 0.000001
+   ad|bc: log-likelihood -2323458.369222; lengths 10.000000, 0.794409, 0.186102, 0.446707, 0.010688
+   W2a: best ab|cd with gap 0.000124
+   W2b weights: ab|cd 0.333361, ac|bd 0.333320, ad|bc 0.333319
+
+5. W2c: 100 multinomial resamples with quartet seed 5060606947381483692
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 324: a = T10, b = T6, c = T13, d = T7
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 311122, n(c) = 311382, n(d) = 314638
+   n(ab) = 59681, n(ac) = 64912, n(ad) = 55304, n(bc) = 216211, n(bd) = 138555, n(cd) = 165008
+   n(abc) = 47898, n(abd) = 31992, n(acd) = 37969, n(bcd) = 122431
+   n(abcd) = 29066
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 29066 = 29066
+   c(1110) = n(abc) - n(abcd) = 47898 - 29066 = 18832
+   c(1101) = n(abd) - n(abcd) = 31992 - 29066 = 2926
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 59681 - 47898 - 31992 + 29066 = 8857
+   c(1011) = n(acd) - n(abcd) = 37969 - 29066 = 8903
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 64912 - 47898 - 37969 + 29066 = 8111
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 55304 - 31992 - 37969 + 29066 = 14409
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 59681 - 64912 - 55304 + 47898 + 31992 + 37969 - 29066 = 220031
+   c(0111) = n(bcd) - n(abcd) = 122431 - 29066 = 93365
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 216211 - 47898 - 122431 + 29066 = 74948
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 138555 - 31992 - 122431 + 29066 = 13198
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311122 - 59681 - 216211 - 138555 + 47898 + 31992 + 122431 - 29066 = 69930
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 165008 - 37969 - 122431 + 29066 = 33674
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311382 - 64912 - 216211 - 165008 + 47898 + 37969 + 122431 - 29066 = 44483
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 314638 - 55304 - 138555 - 165008 + 31992 + 37969 + 122431 - 29066 = 119097
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 311122 - 311382 - 314638 + 59681 + 64912 + 55304 + 216211 + 138555 + 165008 - 47898 - 31992 - 37969 - 122431 + 29066 = 776533
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 8857 + 33674 = 42531
+   ac|bd: c(1010) + c(0101) = 8111 + 13198 = 21309
+   ad|bc: c(1001) + c(0110) = 14409 + 74948 = 89357
+   W1 weights: ab|cd 0.277623, ac|bd 0.139095, ad|bc 0.583282
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1889808.816032; lengths 10.000000, 0.248476, 0.025858, 0.539762, 0.011112
+   ac|bd: log-likelihood -1889808.816031; lengths 10.000000, 0.259588, 0.025857, 0.539762, 0.000001
+   ad|bc: log-likelihood -1889808.816033; lengths 10.000000, 0.259588, 0.025858, 0.378891, 0.160872
+   W2a: best ac|bd with gap 0.000001
+   W2b weights: ab|cd 0.333333, ac|bd 0.333334, ad|bc 0.333333
+
+5. W2c: 100 multinomial resamples with quartet seed 1134084359041940915
+   W2c weights (final): ab|cd 0.000000, ac|bd 1.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (1, 65535)
+
+----------------------------------------------------------------
+Quartet rank 356: a = T1, b = T5, c = T3, d = T8
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 310054, n(c) = 311465, n(d) = 312350
+   n(ab) = 63852, n(ac) = 128837, n(ad) = 106309, n(bc) = 100549, n(bd) = 60754, n(cd) = 116807
+   n(abc) = 45258, n(abd) = 29558, n(acd) = 65229, n(bcd) = 41391
+   n(abcd) = 24017
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 24017 = 24017
+   c(1110) = n(abc) - n(abcd) = 45258 - 24017 = 21241
+   c(1101) = n(abd) - n(abcd) = 29558 - 24017 = 5541
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 63852 - 45258 - 29558 + 24017 = 13053
+   c(1011) = n(acd) - n(abcd) = 65229 - 24017 = 41212
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 128837 - 45258 - 65229 + 24017 = 42367
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 106309 - 29558 - 65229 + 24017 = 35539
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 63852 - 128837 - 106309 + 45258 + 29558 + 65229 - 24017 = 128278
+   c(0111) = n(bcd) - n(abcd) = 41391 - 24017 = 17374
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 100549 - 45258 - 41391 + 24017 = 37917
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 60754 - 29558 - 41391 + 24017 = 13822
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310054 - 63852 - 100549 - 60754 + 45258 + 29558 + 41391 - 24017 = 177089
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 116807 - 65229 - 41391 + 24017 = 34204
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 128837 - 100549 - 116807 + 45258 + 65229 + 41391 - 24017 = 93133
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 312350 - 106309 - 60754 - 116807 + 29558 + 65229 + 41391 - 24017 = 140641
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 310054 - 311465 - 312350 + 63852 + 128837 + 106309 + 100549 + 60754 + 116807 - 45258 - 29558 - 65229 - 41391 + 24017 = 710935
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 13053 + 34204 = 47257
+   ac|bd: c(1010) + c(0101) = 42367 + 13822 = 56189
+   ad|bc: c(1001) + c(0110) = 35539 + 37917 = 73456
+   W1 weights: ab|cd 0.267137, ac|bd 0.317628, ad|bc 0.415236
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2211366.539060; lengths 0.596547, 1.255356, 0.194313, 0.739006, 0.000001
+   ac|bd: log-likelihood -2211366.536811; lengths 0.596548, 1.255356, 0.194313, 0.739005, 0.000001
+   ad|bc: log-likelihood -2209447.235602; lengths 0.491694, 1.255164, 0.000001, 0.650319, 0.307382
+   W2a: best ad|bc with gap 1919.301209
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 11921016511896244677
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 398: a = T10, b = T9, c = T6, d = T8
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 310512, n(c) = 311122, n(d) = 312350
+   n(ab) = 64527, n(ac) = 59681, n(ad) = 64086, n(bc) = 44617, n(bd) = 46495, n(cd) = 84869
+   n(abc) = 16629, n(abd) = 18020, n(acd) = 25346, n(bcd) = 17213
+   n(abcd) = 7682
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 7682 = 7682
+   c(1110) = n(abc) - n(abcd) = 16629 - 7682 = 8947
+   c(1101) = n(abd) - n(abcd) = 18020 - 7682 = 10338
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 64527 - 16629 - 18020 + 7682 = 37560
+   c(1011) = n(acd) - n(abcd) = 25346 - 7682 = 17664
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 59681 - 16629 - 25346 + 7682 = 25388
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 64086 - 18020 - 25346 + 7682 = 28402
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 64527 - 59681 - 64086 + 16629 + 18020 + 25346 - 7682 = 175154
+   c(0111) = n(bcd) - n(abcd) = 17213 - 7682 = 9531
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 44617 - 16629 - 17213 + 7682 = 18457
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 46495 - 18020 - 17213 + 7682 = 18944
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 64527 - 44617 - 46495 + 16629 + 18020 + 17213 - 7682 = 199053
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 84869 - 25346 - 17213 + 7682 = 49992
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 59681 - 44617 - 84869 + 16629 + 25346 + 17213 - 7682 = 173461
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 312350 - 64086 - 46495 - 84869 + 18020 + 25346 + 17213 - 7682 = 169797
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 310512 - 311122 - 312350 + 64527 + 59681 + 64086 + 44617 + 46495 + 84869 - 16629 - 18020 - 25346 - 17213 + 7682 = 585993
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 37560 + 49992 = 87552
+   ac|bd: c(1010) + c(0101) = 25388 + 18944 = 44332
+   ad|bc: c(1001) + c(0110) = 28402 + 18457 = 46859
+   W1 weights: ab|cd 0.489821, ac|bd 0.248021, ad|bc 0.262159
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2566227.773359; lengths 0.000001, 1.572464, 0.656580, 0.409593, 1.228314
+   ac|bd: log-likelihood -2567089.992483; lengths 1.298579, 10.000000, 0.685615, 0.396614, 0.000001
+   ad|bc: log-likelihood -2567089.992485; lengths 1.298579, 10.000000, 0.624658, 0.396615, 0.060958
+   W2a: best ab|cd with gap 862.219124
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 10938041584755784989
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 450: a = T1, b = T2, c = T7, d = T8
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311273, n(c) = 314638, n(d) = 312350
+   n(ab) = 84782, n(ac) = 80959, n(ad) = 106309, n(bc) = 66336, n(bd) = 78801, n(cd) = 75833
+   n(abc) = 31024, n(abd) = 40786, n(acd) = 38517, n(bcd) = 28715
+   n(abcd) = 16895
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 16895 = 16895
+   c(1110) = n(abc) - n(abcd) = 31024 - 16895 = 14129
+   c(1101) = n(abd) - n(abcd) = 40786 - 16895 = 23891
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 84782 - 31024 - 40786 + 16895 = 29867
+   c(1011) = n(acd) - n(abcd) = 38517 - 16895 = 21622
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80959 - 31024 - 38517 + 16895 = 28313
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 106309 - 40786 - 38517 + 16895 = 43901
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 84782 - 80959 - 106309 + 31024 + 40786 + 38517 - 16895 = 132630
+   c(0111) = n(bcd) - n(abcd) = 28715 - 16895 = 11820
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 66336 - 31024 - 28715 + 16895 = 23492
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 78801 - 40786 - 28715 + 16895 = 26195
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311273 - 84782 - 66336 - 78801 + 31024 + 40786 + 28715 - 16895 = 164984
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 75833 - 38517 - 28715 + 16895 = 25496
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 314638 - 80959 - 66336 - 75833 + 31024 + 38517 + 28715 - 16895 = 172871
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 312350 - 106309 - 78801 - 75833 + 40786 + 38517 + 28715 - 16895 = 142530
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311273 - 314638 - 312350 + 84782 + 80959 + 106309 + 66336 + 78801 + 75833 - 31024 - 40786 - 38517 - 28715 + 16895 = 657727
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 29867 + 25496 = 55363
+   ac|bd: c(1010) + c(0101) = 28313 + 26195 = 54508
+   ad|bc: c(1001) + c(0110) = 43901 + 23492 = 67393
+   W1 weights: ab|cd 0.312319, ac|bd 0.307496, ad|bc 0.380184
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2370297.083599; lengths 0.360552, 1.059104, 1.279195, 0.612492, 0.000001
+   ac|bd: log-likelihood -2370297.083452; lengths 0.360552, 1.059103, 1.279195, 0.612492, 0.000001
+   ad|bc: log-likelihood -2370297.083504; lengths 0.360552, 1.059102, 1.279194, 0.612492, 0.000001
+   W2a: best ac|bd with gap 0.000053
+   W2b weights: ab|cd 0.333307, ac|bd 0.333356, ad|bc 0.333338
+
+5. W2c: 100 multinomial resamples with quartet seed 15147147770838449413
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 516: a = T1, b = T10, c = T3, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311135, n(c) = 311465, n(d) = 310850
+   n(ab) = 67194, n(ac) = 128837, n(ad) = 110025, n(bc) = 108819, n(bd) = 65458, n(cd) = 120451
+   n(abc) = 48775, n(abd) = 32575, n(acd) = 67661, n(bcd) = 46143
+   n(abcd) = 26901
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 26901 = 26901
+   c(1110) = n(abc) - n(abcd) = 48775 - 26901 = 21874
+   c(1101) = n(abd) - n(abcd) = 32575 - 26901 = 5674
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 67194 - 48775 - 32575 + 26901 = 12745
+   c(1011) = n(acd) - n(abcd) = 67661 - 26901 = 40760
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 128837 - 48775 - 67661 + 26901 = 39302
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 110025 - 32575 - 67661 + 26901 = 36690
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 67194 - 128837 - 110025 + 48775 + 32575 + 67661 - 26901 = 127302
+   c(0111) = n(bcd) - n(abcd) = 46143 - 26901 = 19242
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 108819 - 48775 - 46143 + 26901 = 40802
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 65458 - 32575 - 46143 + 26901 = 13641
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311135 - 67194 - 108819 - 65458 + 48775 + 32575 + 46143 - 26901 = 170256
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 120451 - 67661 - 46143 + 26901 = 33548
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 128837 - 108819 - 120451 + 48775 + 67661 + 46143 - 26901 = 89036
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 110025 - 65458 - 120451 + 32575 + 67661 + 46143 - 26901 = 134394
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311135 - 311465 - 310850 + 67194 + 128837 + 110025 + 108819 + 65458 + 120451 - 48775 - 32575 - 67661 - 46143 + 26901 = 724196
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 12745 + 33548 = 46293
+   ac|bd: c(1010) + c(0101) = 39302 + 13641 = 52943
+   ad|bc: c(1001) + c(0110) = 36690 + 40802 = 77492
+   W1 weights: ab|cd 0.261945, ac|bd 0.299573, ad|bc 0.438482
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2176175.682921; lengths 0.688750, 1.105928, 0.132738, 0.784291, 0.000001
+   ac|bd: log-likelihood -2176175.680770; lengths 0.688751, 1.105927, 0.132738, 0.784290, 0.000001
+   ad|bc: log-likelihood -2173486.624294; lengths 0.500923, 1.137460, 0.000001, 0.606085, 0.326151
+   W2a: best ad|bc with gap 2689.056475
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 14859994096424728252
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 545: a = T1, b = T3, c = T4, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311465, n(c) = 311181, n(d) = 310850
+   n(ab) = 128837, n(ac) = 130400, n(ad) = 110025, n(bc) = 156400, n(bd) = 120451, n(cd) = 122456
+   n(abc) = 86377, n(abd) = 67661, n(acd) = 68654, n(bcd) = 80510
+   n(abcd) = 48261
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 48261 = 48261
+   c(1110) = n(abc) - n(abcd) = 86377 - 48261 = 38116
+   c(1101) = n(abd) - n(abcd) = 67661 - 48261 = 19400
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 128837 - 86377 - 67661 + 48261 = 23060
+   c(1011) = n(acd) - n(abcd) = 68654 - 48261 = 20393
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 130400 - 86377 - 68654 + 48261 = 23630
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 110025 - 67661 - 68654 + 48261 = 21971
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 128837 - 130400 - 110025 + 86377 + 67661 + 68654 - 48261 = 116417
+   c(0111) = n(bcd) - n(abcd) = 80510 - 48261 = 32249
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 156400 - 86377 - 80510 + 48261 = 37774
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 120451 - 67661 - 80510 + 48261 = 20541
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 128837 - 156400 - 120451 + 86377 + 67661 + 80510 - 48261 = 92064
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 122456 - 68654 - 80510 + 48261 = 21553
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311181 - 130400 - 156400 - 122456 + 86377 + 68654 + 80510 - 48261 = 89205
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 110025 - 120451 - 122456 + 67661 + 68654 + 80510 - 48261 = 126482
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311465 - 311181 - 310850 + 128837 + 130400 + 110025 + 156400 + 120451 + 122456 - 86377 - 67661 - 68654 - 80510 + 48261 = 805247
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 23060 + 21553 = 44613
+   ac|bd: c(1010) + c(0101) = 23630 + 20541 = 44171
+   ad|bc: c(1001) + c(0110) = 21971 + 37774 = 59745
+   W1 weights: ab|cd 0.300366, ac|bd 0.297390, ad|bc 0.402245
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1951813.378562; lengths 0.651041, 0.358420, 0.329468, 0.784827, 0.000001
+   ac|bd: log-likelihood -1951813.379497; lengths 0.651041, 0.358420, 0.329468, 0.784827, 0.000001
+   ad|bc: log-likelihood -1951813.373784; lengths 0.651040, 0.358421, 0.329468, 0.784826, 0.000001
+   W2a: best ad|bc with gap 0.004779
+   W2b weights: ab|cd 0.332905, ac|bd 0.332594, ad|bc 0.334500
+
+5. W2c: 100 multinomial resamples with quartet seed 16085633066379108060
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 568: a = T10, b = T3, c = T6, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 311465, n(c) = 311122, n(d) = 310850
+   n(ab) = 108819, n(ac) = 59681, n(ad) = 65458, n(bc) = 104366, n(bd) = 120451, n(cd) = 86790
+   n(abc) = 40001, n(abd) = 46143, n(acd) = 25831, n(bcd) = 52633
+   n(abcd) = 21101
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 21101 = 21101
+   c(1110) = n(abc) - n(abcd) = 40001 - 21101 = 18900
+   c(1101) = n(abd) - n(abcd) = 46143 - 21101 = 25042
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 108819 - 40001 - 46143 + 21101 = 43776
+   c(1011) = n(acd) - n(abcd) = 25831 - 21101 = 4730
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 59681 - 40001 - 25831 + 21101 = 14950
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 65458 - 46143 - 25831 + 21101 = 14585
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 108819 - 59681 - 65458 + 40001 + 46143 + 25831 - 21101 = 168051
+   c(0111) = n(bcd) - n(abcd) = 52633 - 21101 = 31532
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 104366 - 40001 - 52633 + 21101 = 32833
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 120451 - 46143 - 52633 + 21101 = 42776
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 108819 - 104366 - 120451 + 40001 + 46143 + 52633 - 21101 = 95505
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 86790 - 25831 - 52633 + 21101 = 29427
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 59681 - 104366 - 86790 + 40001 + 25831 + 52633 - 21101 = 157649
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 65458 - 120451 - 86790 + 46143 + 25831 + 52633 - 21101 = 141657
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 311465 - 311122 - 310850 + 108819 + 59681 + 65458 + 104366 + 120451 + 86790 - 40001 - 46143 - 25831 - 52633 + 21101 = 693849
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 43776 + 29427 = 73203
+   ac|bd: c(1010) + c(0101) = 14950 + 42776 = 57726
+   ad|bc: c(1001) + c(0110) = 14585 + 32833 = 47418
+   W1 weights: ab|cd 0.410453, ac|bd 0.323672, ad|bc 0.265875
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2259837.403357; lengths 1.026326, 0.000001, 0.962223, 0.715145, 0.144820
+   ac|bd: log-likelihood -2259943.449810; lengths 1.031623, 0.000001, 1.113412, 0.863536, 0.000001
+   ad|bc: log-likelihood -2259943.451838; lengths 1.031623, 0.000001, 1.113413, 0.863535, 0.000001
+   W2a: best ab|cd with gap 106.046453
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 1786765515124276136
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 570: a = T5, b = T3, c = T6, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 310054, n(b) = 311465, n(c) = 311122, n(d) = 310850
+   n(ab) = 100549, n(ac) = 56678, n(ad) = 61816, n(bc) = 104366, n(bd) = 120451, n(cd) = 86790
+   n(abc) = 36843, n(abd) = 42669, n(acd) = 24322, n(bcd) = 52633
+   n(abcd) = 19535
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 19535 = 19535
+   c(1110) = n(abc) - n(abcd) = 36843 - 19535 = 17308
+   c(1101) = n(abd) - n(abcd) = 42669 - 19535 = 23134
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 100549 - 36843 - 42669 + 19535 = 40572
+   c(1011) = n(acd) - n(abcd) = 24322 - 19535 = 4787
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 56678 - 36843 - 24322 + 19535 = 15048
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 61816 - 42669 - 24322 + 19535 = 14360
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 310054 - 100549 - 56678 - 61816 + 36843 + 42669 + 24322 - 19535 = 175310
+   c(0111) = n(bcd) - n(abcd) = 52633 - 19535 = 33098
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 104366 - 36843 - 52633 + 19535 = 34425
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 120451 - 42669 - 52633 + 19535 = 44684
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 100549 - 104366 - 120451 + 36843 + 42669 + 52633 - 19535 = 98709
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 86790 - 24322 - 52633 + 19535 = 29370
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 56678 - 104366 - 86790 + 36843 + 24322 + 52633 - 19535 = 157551
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 61816 - 120451 - 86790 + 42669 + 24322 + 52633 - 19535 = 141882
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 310054 - 311465 - 311122 - 310850 + 100549 + 56678 + 61816 + 104366 + 120451 + 86790 - 36843 - 42669 - 24322 - 52633 + 19535 = 686590
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 40572 + 29370 = 69942
+   ac|bd: c(1010) + c(0101) = 15048 + 44684 = 59732
+   ad|bc: c(1001) + c(0110) = 14360 + 34425 = 48785
+   W1 weights: ab|cd 0.391922, ac|bd 0.334710, ad|bc 0.273368
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2279952.724779; lengths 1.140858, 0.000001, 0.907294, 0.673351, 0.169220
+   ac|bd: log-likelihood -2280150.974454; lengths 1.149972, 0.000001, 1.084393, 0.847104, 0.000001
+   ad|bc: log-likelihood -2280150.976095; lengths 1.149973, 0.000001, 1.084394, 0.847103, 0.000001
+   W2a: best ab|cd with gap 198.249675
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 5406368135833776880
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 575: a = T12, b = T4, c = T6, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 312476, n(b) = 311181, n(c) = 311122, n(d) = 310850
+   n(ab) = 82967, n(ac) = 64170, n(ad) = 70651, n(bc) = 131119, n(bd) = 122456, n(cd) = 86790
+   n(abc) = 40616, n(abd) = 41433, n(acd) = 28125, n(bcd) = 60817
+   n(abcd) = 21678
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 21678 = 21678
+   c(1110) = n(abc) - n(abcd) = 40616 - 21678 = 18938
+   c(1101) = n(abd) - n(abcd) = 41433 - 21678 = 19755
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 82967 - 40616 - 41433 + 21678 = 22596
+   c(1011) = n(acd) - n(abcd) = 28125 - 21678 = 6447
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 64170 - 40616 - 28125 + 21678 = 17107
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 70651 - 41433 - 28125 + 21678 = 22771
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 312476 - 82967 - 64170 - 70651 + 40616 + 41433 + 28125 - 21678 = 183184
+   c(0111) = n(bcd) - n(abcd) = 60817 - 21678 = 39139
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 131119 - 40616 - 60817 + 21678 = 51364
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 122456 - 41433 - 60817 + 21678 = 41884
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311181 - 82967 - 131119 - 122456 + 40616 + 41433 + 60817 - 21678 = 95827
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 86790 - 28125 - 60817 + 21678 = 19526
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 64170 - 131119 - 86790 + 40616 + 28125 + 60817 - 21678 = 136923
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 70651 - 122456 - 86790 + 41433 + 28125 + 60817 - 21678 = 139650
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 312476 - 311181 - 311122 - 310850 + 82967 + 64170 + 70651 + 131119 + 122456 + 86790 - 40616 - 41433 - 28125 - 60817 + 21678 = 699574
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 22596 + 19526 = 42122
+   ac|bd: c(1010) + c(0101) = 17107 + 41884 = 58991
+   ad|bc: c(1001) + c(0110) = 22771 + 51364 = 74135
+   W1 weights: ab|cd 0.240357, ac|bd 0.336614, ad|bc 0.423029
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2234585.424189; lengths 2.686327, 0.000001, 0.763910, 0.857614, 0.000001
+   ac|bd: log-likelihood -2234585.422294; lengths 2.686336, 0.000001, 0.763910, 0.857615, 0.000001
+   ad|bc: log-likelihood -2234585.422147; lengths 2.686331, 0.000001, 0.763911, 0.857614, 0.000001
+   W2a: best ad|bc with gap 0.000148
+   W2b weights: ab|cd 0.332896, ac|bd 0.333527, ad|bc 0.333577
+
+5. W2c: 100 multinomial resamples with quartet seed 15685246096100017361
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 592: a = T12, b = T9, c = T13, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 312476, n(b) = 310512, n(c) = 311382, n(d) = 310850
+   n(ab) = 69443, n(ac) = 70459, n(ad) = 70651, n(bc) = 47211, n(bd) = 47423, n(cd) = 97655
+   n(abc) = 20436, n(abd) = 20355, n(acd) = 32396, n(bcd) = 20132
+   n(abcd) = 10025
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 10025 = 10025
+   c(1110) = n(abc) - n(abcd) = 20436 - 10025 = 10411
+   c(1101) = n(abd) - n(abcd) = 20355 - 10025 = 10330
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 69443 - 20436 - 20355 + 10025 = 38677
+   c(1011) = n(acd) - n(abcd) = 32396 - 10025 = 22371
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 70459 - 20436 - 32396 + 10025 = 27652
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 70651 - 20355 - 32396 + 10025 = 27925
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 312476 - 69443 - 70459 - 70651 + 20436 + 20355 + 32396 - 10025 = 165085
+   c(0111) = n(bcd) - n(abcd) = 20132 - 10025 = 10107
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 47211 - 20436 - 20132 + 10025 = 16668
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 47423 - 20355 - 20132 + 10025 = 16961
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 69443 - 47211 - 47423 + 20436 + 20355 + 20132 - 10025 = 197333
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 97655 - 32396 - 20132 + 10025 = 55152
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311382 - 70459 - 47211 - 97655 + 20436 + 32396 + 20132 - 10025 = 158996
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 70651 - 47423 - 97655 + 20355 + 32396 + 20132 - 10025 = 157979
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 312476 - 310512 - 311382 - 310850 + 69443 + 70459 + 70651 + 47211 + 47423 + 97655 - 20436 - 20355 - 32396 - 20132 + 10025 = 610691
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 38677 + 55152 = 93829
+   ac|bd: c(1010) + c(0101) = 27652 + 16961 = 44613
+   ad|bc: c(1001) + c(0110) = 27925 + 16668 = 44593
+   W1 weights: ab|cd 0.512629, ac|bd 0.243740, ad|bc 0.243631
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2495436.234211; lengths 0.000001, 1.638888, 0.483124, 0.460879, 1.126041
+   ac|bd: log-likelihood -2496078.945870; lengths 1.168350, 10.000000, 0.489802, 0.465226, 0.000003
+   ad|bc: log-likelihood -2496078.945871; lengths 1.168350, 10.000000, 0.472536, 0.465229, 0.017266
+   W2a: best ab|cd with gap 642.711659
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 371343972918506297
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 627: a = T10, b = T9, c = T7, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 310512, n(c) = 314638, n(d) = 310850
+   n(ab) = 64527, n(ac) = 55304, n(ad) = 65458, n(bc) = 42519, n(bd) = 47423, n(cd) = 77811
+   n(abc) = 15453, n(abd) = 18473, n(acd) = 22958, n(bcd) = 16148
+   n(abcd) = 7082
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 7082 = 7082
+   c(1110) = n(abc) - n(abcd) = 15453 - 7082 = 8371
+   c(1101) = n(abd) - n(abcd) = 18473 - 7082 = 11391
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 64527 - 15453 - 18473 + 7082 = 37683
+   c(1011) = n(acd) - n(abcd) = 22958 - 7082 = 15876
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 55304 - 15453 - 22958 + 7082 = 23975
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 65458 - 18473 - 22958 + 7082 = 31109
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 64527 - 55304 - 65458 + 15453 + 18473 + 22958 - 7082 = 175648
+   c(0111) = n(bcd) - n(abcd) = 16148 - 7082 = 9066
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 42519 - 15453 - 16148 + 7082 = 18000
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 47423 - 18473 - 16148 + 7082 = 19884
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 64527 - 42519 - 47423 + 15453 + 18473 + 16148 - 7082 = 199035
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 77811 - 22958 - 16148 + 7082 = 45787
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 314638 - 55304 - 42519 - 77811 + 15453 + 22958 + 16148 - 7082 = 186481
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 65458 - 47423 - 77811 + 18473 + 22958 + 16148 - 7082 = 170655
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 310512 - 314638 - 310850 + 64527 + 55304 + 65458 + 42519 + 47423 + 77811 - 15453 - 18473 - 22958 - 16148 + 7082 = 576320
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 37683 + 45787 = 83470
+   ac|bd: c(1010) + c(0101) = 23975 + 19884 = 43859
+   ad|bc: c(1001) + c(0110) = 31109 + 18000 = 49109
+   W1 weights: ab|cd 0.473084, ac|bd 0.248580, ad|bc 0.278336
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2593655.130787; lengths 0.000001, 1.477907, 1.050261, 0.122627, 1.327865
+   ac|bd: log-likelihood -2594928.873460; lengths 1.495200, 10.000000, 1.196943, 0.000001, 0.000001
+   ad|bc: log-likelihood -2594928.873436; lengths 1.495201, 10.000000, 0.945508, 0.000001, 0.251436
+   W2a: best ab|cd with gap 1273.742649
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 10591406058740266770
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 669: a = T12, b = T5, c = T8, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 312476, n(b) = 310054, n(c) = 312350, n(d) = 310850
+   n(ab) = 103405, n(ac) = 69176, n(ad) = 70651, n(bc) = 60754, n(bd) = 61816, n(cd) = 203155
+   n(abc) = 30511, n(abd) = 31136, n(acd) = 51978, n(bcd) = 45363
+   n(abcd) = 23644
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 23644 = 23644
+   c(1110) = n(abc) - n(abcd) = 30511 - 23644 = 6867
+   c(1101) = n(abd) - n(abcd) = 31136 - 23644 = 7492
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 103405 - 30511 - 31136 + 23644 = 65402
+   c(1011) = n(acd) - n(abcd) = 51978 - 23644 = 28334
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 69176 - 30511 - 51978 + 23644 = 10331
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 70651 - 31136 - 51978 + 23644 = 11181
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 312476 - 103405 - 69176 - 70651 + 30511 + 31136 + 51978 - 23644 = 159225
+   c(0111) = n(bcd) - n(abcd) = 45363 - 23644 = 21719
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 60754 - 30511 - 45363 + 23644 = 8524
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 61816 - 31136 - 45363 + 23644 = 8961
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310054 - 103405 - 60754 - 61816 + 30511 + 31136 + 45363 - 23644 = 167445
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 203155 - 51978 - 45363 + 23644 = 129458
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 69176 - 60754 - 203155 + 30511 + 51978 + 45363 - 23644 = 83473
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 70651 - 61816 - 203155 + 31136 + 51978 + 45363 - 23644 = 80061
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 312476 - 310054 - 312350 - 310850 + 103405 + 69176 + 70651 + 60754 + 61816 + 203155 - 30511 - 31136 - 51978 - 45363 + 23644 = 724246
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 65402 + 129458 = 194860
+   ac|bd: c(1010) + c(0101) = 10331 + 8961 = 19292
+   ad|bc: c(1001) + c(0110) = 11181 + 8524 = 19705
+   W1 weights: ab|cd 0.833244, ac|bd 0.082495, ad|bc 0.084261
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2077869.875753; lengths 0.530712, 0.723226, 0.168234, 0.157991, 10.000000
+   ac|bd: log-likelihood -2080556.214855; lengths 10.000000, 10.000000, 0.145410, 0.145142, 0.039797
+   ad|bc: log-likelihood -2080556.214854; lengths 10.000000, 10.000000, 0.145386, 0.145127, 0.039836
+   W2a: best ab|cd with gap 2686.339101
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 1591490301830520467
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 671: a = T2, b = T9, c = T8, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 310512, n(c) = 312350, n(d) = 310850
+   n(ab) = 80270, n(ac) = 78801, n(ad) = 80511, n(bc) = 46495, n(bd) = 47423, n(cd) = 203155
+   n(abc) = 23904, n(abd) = 24520, n(acd) = 59848, n(bcd) = 33923
+   n(abcd) = 18493
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 18493 = 18493
+   c(1110) = n(abc) - n(abcd) = 23904 - 18493 = 5411
+   c(1101) = n(abd) - n(abcd) = 24520 - 18493 = 6027
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 80270 - 23904 - 24520 + 18493 = 50339
+   c(1011) = n(acd) - n(abcd) = 59848 - 18493 = 41355
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 78801 - 23904 - 59848 + 18493 = 13542
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 80511 - 24520 - 59848 + 18493 = 14636
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 80270 - 78801 - 80511 + 23904 + 24520 + 59848 - 18493 = 161470
+   c(0111) = n(bcd) - n(abcd) = 33923 - 18493 = 15430
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 46495 - 23904 - 33923 + 18493 = 7161
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 47423 - 24520 - 33923 + 18493 = 7473
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 80270 - 46495 - 47423 + 23904 + 24520 + 33923 - 18493 = 200178
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 203155 - 59848 - 33923 + 18493 = 127877
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 78801 - 46495 - 203155 + 23904 + 59848 + 33923 - 18493 = 83081
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 80511 - 47423 - 203155 + 24520 + 59848 + 33923 - 18493 = 79559
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 310512 - 312350 - 310850 + 80270 + 78801 + 80511 + 46495 + 47423 + 203155 - 23904 - 24520 - 59848 - 33923 + 18493 = 704331
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 50339 + 127877 = 178216
+   ac|bd: c(1010) + c(0101) = 13542 + 7473 = 21015
+   ad|bc: c(1001) + c(0110) = 14636 + 7161 = 21797
+   W1 weights: ab|cd 0.806305, ac|bd 0.095078, ad|bc 0.098616
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2125409.344552; lengths 10.000000, 10.000000, 0.168865, 0.150035, 10.000000
+   ac|bd: log-likelihood -2125409.344835; lengths 10.000000, 10.000000, 0.137748, 0.137481, 0.043672
+   ad|bc: log-likelihood -2125409.344829; lengths 10.000000, 10.000000, 0.132394, 0.048097, 0.138409
+   W2a: best ab|cd with gap 0.000277
+   W2b weights: ab|cd 0.333395, ac|bd 0.333301, ad|bc 0.333303
+
+5. W2c: 100 multinomial resamples with quartet seed 3696701986558946764
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 681: a = T1, b = T4, c = T8, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311181, n(c) = 312350, n(d) = 310850
+   n(ab) = 130400, n(ac) = 106309, n(ad) = 110025, n(bc) = 118210, n(bd) = 122456, n(cd) = 203155
+   n(abc) = 66190, n(abd) = 68654, n(acd) = 82810, n(bcd) = 92892
+   n(abcd) = 53411
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 53411 = 53411
+   c(1110) = n(abc) - n(abcd) = 66190 - 53411 = 12779
+   c(1101) = n(abd) - n(abcd) = 68654 - 53411 = 15243
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 130400 - 66190 - 68654 + 53411 = 48967
+   c(1011) = n(acd) - n(abcd) = 82810 - 53411 = 29399
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 106309 - 66190 - 82810 + 53411 = 10720
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 110025 - 68654 - 82810 + 53411 = 11972
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 130400 - 106309 - 110025 + 66190 + 68654 + 82810 - 53411 = 128757
+   c(0111) = n(bcd) - n(abcd) = 92892 - 53411 = 39481
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 118210 - 66190 - 92892 + 53411 = 12539
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 122456 - 68654 - 92892 + 53411 = 14321
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311181 - 130400 - 118210 - 122456 + 66190 + 68654 + 92892 - 53411 = 114440
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 203155 - 82810 - 92892 + 53411 = 80864
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 106309 - 118210 - 203155 + 66190 + 82810 + 92892 - 53411 = 73157
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 110025 - 122456 - 203155 + 68654 + 82810 + 92892 - 53411 = 66159
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311181 - 312350 - 310850 + 130400 + 106309 + 110025 + 118210 + 122456 + 203155 - 66190 - 68654 - 82810 - 92892 + 53411 = 824154
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 48967 + 80864 = 129831
+   ac|bd: c(1010) + c(0101) = 10720 + 14321 = 25041
+   ad|bc: c(1001) + c(0110) = 11972 + 12539 = 24511
+   W1 weights: ab|cd 0.723764, ac|bd 0.139595, ad|bc 0.136641
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1849170.237436; lengths 1.200781, 0.000001, 0.363860, 0.030347, 1.451557
+   ac|bd: log-likelihood -1852032.729319; lengths 10.000000, 1.600071, 0.296804, 0.000001, 0.104323
+   ad|bc: log-likelihood -1852032.729524; lengths 10.000000, 1.600070, 0.401126, 0.000001, 0.000001
+   W2a: best ab|cd with gap 2862.491883
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 18044291856841810900
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 703: a = T4, b = T13, c = T8, d = T15
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311181, n(b) = 311382, n(c) = 312350, n(d) = 310850
+   n(ab) = 154320, n(ac) = 118210, n(ad) = 122456, n(bc) = 94863, n(bd) = 97655, n(cd) = 203155
+   n(abc) = 68815, n(abd) = 71368, n(acd) = 92892, n(bcd) = 73141
+   n(abcd) = 55045
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 55045 = 55045
+   c(1110) = n(abc) - n(abcd) = 68815 - 55045 = 13770
+   c(1101) = n(abd) - n(abcd) = 71368 - 55045 = 16323
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 154320 - 68815 - 71368 + 55045 = 69182
+   c(1011) = n(acd) - n(abcd) = 92892 - 55045 = 37847
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 118210 - 68815 - 92892 + 55045 = 11548
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 122456 - 71368 - 92892 + 55045 = 13241
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311181 - 154320 - 118210 - 122456 + 68815 + 71368 + 92892 - 55045 = 94225
+   c(0111) = n(bcd) - n(abcd) = 73141 - 55045 = 18096
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 94863 - 68815 - 73141 + 55045 = 7952
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 97655 - 71368 - 73141 + 55045 = 8191
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311382 - 154320 - 94863 - 97655 + 68815 + 71368 + 73141 - 55045 = 122823
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 203155 - 92892 - 73141 + 55045 = 92167
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 118210 - 94863 - 203155 + 68815 + 92892 + 73141 - 55045 = 75925
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310850 - 122456 - 97655 - 203155 + 71368 + 92892 + 73141 - 55045 = 69940
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311181 - 311382 - 312350 - 310850 + 154320 + 118210 + 122456 + 94863 + 97655 + 203155 - 68815 - 71368 - 92892 - 73141 + 55045 = 830088
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 69182 + 92167 = 161349
+   ac|bd: c(1010) + c(0101) = 11548 + 8191 = 19739
+   ad|bc: c(1001) + c(0110) = 13241 + 7952 = 21193
+   W1 weights: ab|cd 0.797648, ac|bd 0.097582, ad|bc 0.104770
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1822069.096082; lengths 0.000001, 0.767074, 0.336758, 0.053594, 1.372321
+   ac|bd: log-likelihood -1838560.892158; lengths 1.730066, 10.000000, 0.407147, 0.000001, 0.000001
+   ad|bc: log-likelihood -1838560.891716; lengths 1.730067, 10.000000, 0.251924, 0.000001, 0.155224
+   W2a: best ab|cd with gap 16491.795635
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 4632160045930558522
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 740: a = T10, b = T12, c = T3, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 312476, n(c) = 311465, n(d) = 310989
+   n(ab) = 211507, n(ac) = 108819, n(ad) = 84931, n(bc) = 122554, n(bd) = 93961, n(cd) = 187980
+   n(abc) = 90827, n(abd) = 68959, n(acd) = 69869, n(bcd) = 78446
+   n(abcd) = 58575
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 58575 = 58575
+   c(1110) = n(abc) - n(abcd) = 90827 - 58575 = 32252
+   c(1101) = n(abd) - n(abcd) = 68959 - 58575 = 10384
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 211507 - 90827 - 68959 + 58575 = 110296
+   c(1011) = n(acd) - n(abcd) = 69869 - 58575 = 11294
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 108819 - 90827 - 69869 + 58575 = 6698
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 84931 - 68959 - 69869 + 58575 = 4678
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 211507 - 108819 - 84931 + 90827 + 68959 + 69869 - 58575 = 76958
+   c(0111) = n(bcd) - n(abcd) = 78446 - 58575 = 19871
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 122554 - 90827 - 78446 + 58575 = 11856
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 93961 - 68959 - 78446 + 58575 = 5131
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 211507 - 122554 - 93961 + 90827 + 68959 + 78446 - 58575 = 64111
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 187980 - 69869 - 78446 + 58575 = 98240
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311465 - 108819 - 122554 - 187980 + 90827 + 69869 + 78446 - 58575 = 72679
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 84931 - 93961 - 187980 + 68959 + 69869 + 78446 - 58575 = 102816
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 312476 - 311465 - 310989 + 211507 + 108819 + 84931 + 122554 + 93961 + 187980 - 90827 - 68959 - 69869 - 78446 + 58575 = 850524
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 110296 + 98240 = 208536
+   ac|bd: c(1010) + c(0101) = 6698 + 5131 = 11829
+   ad|bc: c(1001) + c(0110) = 4678 + 11856 = 16534
+   W1 weights: ab|cd 0.880274, ac|bd 0.049933, ad|bc 0.069793
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1724458.236776; lengths 0.353084, 0.000001, 0.000001, 0.486893, 1.567275
+   ac|bd: log-likelihood -1775861.372528; lengths 0.378863, 0.000001, 10.000000, 10.000000, 0.000001
+   ad|bc: log-likelihood -1775861.372528; lengths 0.378863, 0.000001, 10.000000, 10.000000, 0.000001
+   W2a: best ab|cd with gap 51403.135753
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 3320102795436591210
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 754: a = T2, b = T12, c = T4, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 312476, n(c) = 311181, n(d) = 310989
+   n(ab) = 197163, n(ac) = 97522, n(ad) = 112260, n(bc) = 82967, n(bd) = 93961, n(cd) = 190446
+   n(abc) = 66801, n(abd) = 76988, n(acd) = 77015, n(bcd) = 64151
+   n(abcd) = 53317
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 53317 = 53317
+   c(1110) = n(abc) - n(abcd) = 66801 - 53317 = 13484
+   c(1101) = n(abd) - n(abcd) = 76988 - 53317 = 23671
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 197163 - 66801 - 76988 + 53317 = 106691
+   c(1011) = n(acd) - n(abcd) = 77015 - 53317 = 23698
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 97522 - 66801 - 77015 + 53317 = 7023
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 112260 - 76988 - 77015 + 53317 = 11574
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 197163 - 97522 - 112260 + 66801 + 76988 + 77015 - 53317 = 71815
+   c(0111) = n(bcd) - n(abcd) = 64151 - 53317 = 10834
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 82967 - 66801 - 64151 + 53317 = 5332
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 93961 - 76988 - 64151 + 53317 = 6139
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 197163 - 82967 - 93961 + 66801 + 76988 + 64151 - 53317 = 93008
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 190446 - 77015 - 64151 + 53317 = 102597
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311181 - 97522 - 82967 - 190446 + 66801 + 77015 + 64151 - 53317 = 94896
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 112260 - 93961 - 190446 + 76988 + 77015 + 64151 - 53317 = 79159
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 312476 - 311181 - 310989 + 197163 + 97522 + 112260 + 82967 + 93961 + 190446 - 66801 - 76988 - 77015 - 64151 + 53317 = 833125
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 106691 + 102597 = 209288
+   ac|bd: c(1010) + c(0101) = 7023 + 6139 = 13162
+   ad|bc: c(1001) + c(0110) = 11574 + 5332 = 16906
+   W1 weights: ab|cd 0.874380, ac|bd 0.054989, ad|bc 0.070631
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1783040.089542; lengths 0.000001, 0.421730, 0.457175, 0.000001, 2.203509
+   ac|bd: log-likelihood -1843155.567589; lengths 0.000001, 0.452164, 10.000000, 10.000000, 0.000001
+   ad|bc: log-likelihood -1843155.567589; lengths 0.000001, 0.452164, 10.000000, 10.000000, 0.000001
+   W2a: best ab|cd with gap 60115.478047
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 4865847907324854031
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 792: a = T1, b = T4, c = T6, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311181, n(c) = 311122, n(d) = 310989
+   n(ab) = 130400, n(ac) = 90458, n(ad) = 167235, n(bc) = 131119, n(bd) = 190446, n(cd) = 121462
+   n(abc) = 64273, n(abd) = 111439, n(acd) = 71354, n(bcd) = 93950
+   n(abcd) = 56607
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 56607 = 56607
+   c(1110) = n(abc) - n(abcd) = 64273 - 56607 = 7666
+   c(1101) = n(abd) - n(abcd) = 111439 - 56607 = 54832
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 130400 - 64273 - 111439 + 56607 = 11295
+   c(1011) = n(acd) - n(abcd) = 71354 - 56607 = 14747
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 90458 - 64273 - 71354 + 56607 = 11438
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 167235 - 111439 - 71354 + 56607 = 41049
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 130400 - 90458 - 167235 + 64273 + 111439 + 71354 - 56607 = 113614
+   c(0111) = n(bcd) - n(abcd) = 93950 - 56607 = 37343
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 131119 - 64273 - 93950 + 56607 = 29503
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 190446 - 111439 - 93950 + 56607 = 41664
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311181 - 130400 - 131119 - 190446 + 64273 + 111439 + 93950 - 56607 = 72271
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 121462 - 71354 - 93950 + 56607 = 12765
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311122 - 90458 - 131119 - 121462 + 64273 + 71354 + 93950 - 56607 = 141053
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 167235 - 190446 - 121462 + 111439 + 71354 + 93950 - 56607 = 51982
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311181 - 311122 - 310989 + 130400 + 90458 + 167235 + 131119 + 190446 + 121462 - 64273 - 111439 - 71354 - 93950 + 56607 = 838534
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 11295 + 12765 = 24060
+   ac|bd: c(1010) + c(0101) = 11438 + 41664 = 53102
+   ad|bc: c(1001) + c(0110) = 41049 + 29503 = 70552
+   W1 weights: ab|cd 0.162882, ac|bd 0.359492, ad|bc 0.477626
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1814189.682795; lengths 0.655725, 0.474079, 1.643912, 0.000001, 0.000001
+   ac|bd: log-likelihood -1814189.677889; lengths 0.655725, 0.474080, 1.643914, 0.000001, 0.000001
+   ad|bc: log-likelihood -1811649.231480; lengths 0.643453, 0.054946, 1.125914, 0.000001, 0.411942
+   W2a: best ad|bc with gap 2540.446409
+   W2b weights: ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 1005300281130744348
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 804: a = T10, b = T12, c = T13, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 312476, n(c) = 311382, n(d) = 310989
+   n(ab) = 211507, n(ac) = 64912, n(ad) = 84931, n(bc) = 70459, n(bd) = 93961, n(cd) = 141927
+   n(abc) = 51223, n(abd) = 68959, n(acd) = 43814, n(bcd) = 48563
+   n(abcd) = 35969
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 35969 = 35969
+   c(1110) = n(abc) - n(abcd) = 51223 - 35969 = 15254
+   c(1101) = n(abd) - n(abcd) = 68959 - 35969 = 32990
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 211507 - 51223 - 68959 + 35969 = 127294
+   c(1011) = n(acd) - n(abcd) = 43814 - 35969 = 7845
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 64912 - 51223 - 43814 + 35969 = 5844
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 84931 - 68959 - 43814 + 35969 = 8127
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 211507 - 64912 - 84931 + 51223 + 68959 + 43814 - 35969 = 77812
+   c(0111) = n(bcd) - n(abcd) = 48563 - 35969 = 12594
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 70459 - 51223 - 48563 + 35969 = 6642
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 93961 - 68959 - 48563 + 35969 = 12408
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 312476 - 211507 - 70459 - 93961 + 51223 + 68959 + 48563 - 35969 = 69325
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 141927 - 43814 - 48563 + 35969 = 85519
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311382 - 64912 - 70459 - 141927 + 51223 + 43814 + 48563 - 35969 = 141715
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 84931 - 93961 - 141927 + 68959 + 43814 + 48563 - 35969 = 115537
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 312476 - 311382 - 310989 + 211507 + 64912 + 84931 + 70459 + 93961 + 141927 - 51223 - 68959 - 43814 - 48563 + 35969 = 781488
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 127294 + 85519 = 212813
+   ac|bd: c(1010) + c(0101) = 5844 + 12408 = 18252
+   ad|bc: c(1001) + c(0110) = 8127 + 6642 = 14769
+   W1 weights: ab|cd 0.865678, ac|bd 0.074245, ad|bc 0.060077
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1916297.665428; lengths 0.317585, 0.000001, 0.788508, 0.000003, 10.000000
+   ac|bd: log-likelihood -1932755.555299; lengths 0.249362, 0.000001, 10.000000, 10.000000, 0.078577
+   ad|bc: log-likelihood -1932755.555300; lengths 0.327937, 0.000001, 10.000000, 10.000000, 0.000002
+   W2a: best ab|cd with gap 16457.889871
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 4214276171742986240
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 810: a = T2, b = T9, c = T13, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 310512, n(c) = 311382, n(d) = 310989
+   n(ab) = 80270, n(ac) = 80808, n(ad) = 112260, n(bc) = 47211, n(bd) = 57169, n(cd) = 141927
+   n(abc) = 24508, n(abd) = 34036, n(acd) = 58095, n(bcd) = 29194
+   n(abcd) = 18234
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 18234 = 18234
+   c(1110) = n(abc) - n(abcd) = 24508 - 18234 = 6274
+   c(1101) = n(abd) - n(abcd) = 34036 - 18234 = 15802
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 80270 - 24508 - 34036 + 18234 = 39960
+   c(1011) = n(acd) - n(abcd) = 58095 - 18234 = 39861
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80808 - 24508 - 58095 + 18234 = 16439
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 112260 - 34036 - 58095 + 18234 = 38363
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 80270 - 80808 - 112260 + 24508 + 34036 + 58095 - 18234 = 136340
+   c(0111) = n(bcd) - n(abcd) = 29194 - 18234 = 10960
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 47211 - 24508 - 29194 + 18234 = 11743
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 57169 - 34036 - 29194 + 18234 = 12173
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 80270 - 47211 - 57169 + 24508 + 34036 + 29194 - 18234 = 195366
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 141927 - 58095 - 29194 + 18234 = 72872
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311382 - 80808 - 47211 - 141927 + 24508 + 58095 + 29194 - 18234 = 134999
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 112260 - 57169 - 141927 + 34036 + 58095 + 29194 - 18234 = 102724
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 310512 - 311382 - 310989 + 80270 + 80808 + 112260 + 47211 + 57169 + 141927 - 24508 - 34036 - 58095 - 29194 + 18234 = 684253
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 39960 + 72872 = 112832
+   ac|bd: c(1010) + c(0101) = 16439 + 12173 = 28612
+   ad|bc: c(1001) + c(0110) = 38363 + 11743 = 50106
+   W1 weights: ab|cd 0.589047, ac|bd 0.149371, ad|bc 0.261582
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2265709.466959; lengths 0.000001, 1.972917, 0.635999, 0.000001, 0.934263
+   ac|bd: log-likelihood -2265864.803970; lengths 0.940524, 10.000000, 0.638923, 0.000001, 0.000001
+   ad|bc: log-likelihood -2265864.799557; lengths 0.940525, 10.000000, 0.610081, 0.000001, 0.028843
+   W2a: best ab|cd with gap 155.332598
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 3147813916573775905
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 851: a = T2, b = T3, c = T7, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311465, n(c) = 314638, n(d) = 310989
+   n(ab) = 152159, n(ac) = 66336, n(ad) = 112260, n(bc) = 91934, n(bd) = 187980, n(cd) = 106063
+   n(abc) = 48491, n(abd) = 97024, n(acd) = 43695, n(bcd) = 71630
+   n(abcd) = 38613
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 38613 = 38613
+   c(1110) = n(abc) - n(abcd) = 48491 - 38613 = 9878
+   c(1101) = n(abd) - n(abcd) = 97024 - 38613 = 58411
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 152159 - 48491 - 97024 + 38613 = 45257
+   c(1011) = n(acd) - n(abcd) = 43695 - 38613 = 5082
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 66336 - 48491 - 43695 + 38613 = 12763
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 112260 - 97024 - 43695 + 38613 = 10154
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 152159 - 66336 - 112260 + 48491 + 97024 + 43695 - 38613 = 131115
+   c(0111) = n(bcd) - n(abcd) = 71630 - 38613 = 33017
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 91934 - 48491 - 71630 + 38613 = 10426
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 187980 - 97024 - 71630 + 38613 = 57939
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 152159 - 91934 - 187980 + 48491 + 97024 + 71630 - 38613 = 57924
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 106063 - 43695 - 71630 + 38613 = 29351
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 314638 - 66336 - 91934 - 106063 + 48491 + 43695 + 71630 - 38613 = 175508
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 112260 - 187980 - 106063 + 97024 + 43695 + 71630 - 38613 = 78422
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311465 - 314638 - 310989 + 152159 + 66336 + 112260 + 91934 + 187980 + 106063 - 48491 - 97024 - 43695 - 71630 + 38613 = 782503
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 45257 + 29351 = 74608
+   ac|bd: c(1010) + c(0101) = 12763 + 57939 = 70702
+   ad|bc: c(1001) + c(0110) = 10154 + 10426 = 20580
+   W1 weights: ab|cd 0.449744, ac|bd 0.426198, ad|bc 0.124058
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1952001.864146; lengths 0.689563, 0.000001, 1.780983, 0.000001, 0.432791
+   ac|bd: log-likelihood -1952296.040804; lengths 0.695655, 0.000001, 10.000000, 0.435605, 0.000001
+   ad|bc: log-likelihood -1952296.060181; lengths 0.695655, 0.000001, 10.000000, 0.435604, 0.000001
+   W2a: best ab|cd with gap 294.176658
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 8743030872842215120
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 853: a = T12, b = T3, c = T7, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 312476, n(b) = 311465, n(c) = 314638, n(d) = 310989
+   n(ab) = 122554, n(ac) = 59076, n(ad) = 93961, n(bc) = 91934, n(bd) = 187980, n(cd) = 106063
+   n(abc) = 39550, n(abd) = 78446, n(acd) = 36466, n(bcd) = 71630
+   n(abcd) = 31393
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 31393 = 31393
+   c(1110) = n(abc) - n(abcd) = 39550 - 31393 = 8157
+   c(1101) = n(abd) - n(abcd) = 78446 - 31393 = 47053
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 122554 - 39550 - 78446 + 31393 = 35951
+   c(1011) = n(acd) - n(abcd) = 36466 - 31393 = 5073
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 59076 - 39550 - 36466 + 31393 = 14453
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 93961 - 78446 - 36466 + 31393 = 10442
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 312476 - 122554 - 59076 - 93961 + 39550 + 78446 + 36466 - 31393 = 159954
+   c(0111) = n(bcd) - n(abcd) = 71630 - 31393 = 40237
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 91934 - 39550 - 71630 + 31393 = 12147
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 187980 - 78446 - 71630 + 31393 = 69297
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 122554 - 91934 - 187980 + 39550 + 78446 + 71630 - 31393 = 67230
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 106063 - 36466 - 71630 + 31393 = 29360
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 314638 - 59076 - 91934 - 106063 + 39550 + 36466 + 71630 - 31393 = 173818
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 93961 - 187980 - 106063 + 78446 + 36466 + 71630 - 31393 = 78134
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 312476 - 311465 - 314638 - 310989 + 122554 + 59076 + 93961 + 91934 + 187980 + 106063 - 39550 - 78446 - 36466 - 71630 + 31393 = 753664
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 35951 + 29360 = 65311
+   ac|bd: c(1010) + c(0101) = 14453 + 69297 = 83750
+   ad|bc: c(1001) + c(0110) = 10442 + 12147 = 22589
+   W1 weights: ab|cd 0.380489, ac|bd 0.487911, ad|bc 0.131599
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2035667.357837; lengths 0.995456, 0.000001, 1.427498, 0.000001, 0.412543
+   ac|bd: log-likelihood -2036933.898671; lengths 1.020043, 0.000001, 10.000000, 0.417434, 0.000003
+   ad|bc: log-likelihood -2036933.912620; lengths 1.020045, 0.000001, 10.000000, 0.417433, 0.000001
+   W2a: best ab|cd with gap 1266.540834
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 766310355693937513
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 890: a = T1, b = T9, c = T8, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 310512, n(c) = 312350, n(d) = 310989
+   n(ab) = 48339, n(ac) = 106309, n(ad) = 167235, n(bc) = 46495, n(bd) = 57169, n(cd) = 160346
+   n(abc) = 21166, n(abd) = 33222, n(acd) = 90864, n(bcd) = 31648
+   n(abcd) = 18955
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 18955 = 18955
+   c(1110) = n(abc) - n(abcd) = 21166 - 18955 = 2211
+   c(1101) = n(abd) - n(abcd) = 33222 - 18955 = 14267
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 48339 - 21166 - 33222 + 18955 = 12906
+   c(1011) = n(acd) - n(abcd) = 90864 - 18955 = 71909
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 106309 - 21166 - 90864 + 18955 = 13234
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 167235 - 33222 - 90864 + 18955 = 62104
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 48339 - 106309 - 167235 + 21166 + 33222 + 90864 - 18955 = 115662
+   c(0111) = n(bcd) - n(abcd) = 31648 - 18955 = 12693
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 46495 - 21166 - 31648 + 18955 = 12636
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 57169 - 33222 - 31648 + 18955 = 11254
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 48339 - 46495 - 57169 + 21166 + 33222 + 31648 - 18955 = 225590
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 160346 - 90864 - 31648 + 18955 = 56789
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 106309 - 46495 - 160346 + 21166 + 90864 + 31648 - 18955 = 123923
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 167235 - 57169 - 160346 + 33222 + 90864 + 31648 - 18955 = 63018
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 310512 - 312350 - 310989 + 48339 + 106309 + 167235 + 46495 + 57169 + 160346 - 21166 - 33222 - 90864 - 31648 + 18955 = 719212
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 12906 + 56789 = 69695
+   ac|bd: c(1010) + c(0101) = 13234 + 11254 = 24488
+   ad|bc: c(1001) + c(0110) = 62104 + 12636 = 74740
+   W1 weights: ab|cd 0.412584, ac|bd 0.144965, ad|bc 0.442450
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2107477.889370; lengths 0.396832, 10.000000, 0.532073, 0.000001, 0.090624
+   ac|bd: log-likelihood -2107477.901838; lengths 0.487456, 10.000000, 0.532072, 0.000001, 0.000001
+   ad|bc: log-likelihood -2107477.889372; lengths 0.487456, 10.000000, 0.414074, 0.000001, 0.117999
+   W2a: best ab|cd with gap 0.000002
+   W2b weights: ab|cd 0.334716, ac|bd 0.330569, ad|bc 0.334715
+
+5. W2c: 100 multinomial resamples with quartet seed 9789381272514783488
+   W2c weights (final): ab|cd 0.980000, ac|bd 0.000000, ad|bc 0.020000
+   Stored w2c weights: identical; decision stored as (0, 64224)
+
+----------------------------------------------------------------
+Quartet rank 915: a = T4, b = T6, c = T8, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311181, n(b) = 311122, n(c) = 312350, n(d) = 310989
+   n(ab) = 131119, n(ac) = 118210, n(ad) = 190446, n(bc) = 84869, n(bd) = 121462, n(cd) = 160346
+   n(abc) = 58755, n(abd) = 93950, n(acd) = 103628, n(bcd) = 67461
+   n(abcd) = 53146
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 53146 = 53146
+   c(1110) = n(abc) - n(abcd) = 58755 - 53146 = 5609
+   c(1101) = n(abd) - n(abcd) = 93950 - 53146 = 40804
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 131119 - 58755 - 93950 + 53146 = 31560
+   c(1011) = n(acd) - n(abcd) = 103628 - 53146 = 50482
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 118210 - 58755 - 103628 + 53146 = 8973
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 190446 - 93950 - 103628 + 53146 = 46014
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311181 - 131119 - 118210 - 190446 + 58755 + 93950 + 103628 - 53146 = 74593
+   c(0111) = n(bcd) - n(abcd) = 67461 - 53146 = 14315
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 84869 - 58755 - 67461 + 53146 = 11799
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 121462 - 93950 - 67461 + 53146 = 13197
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311122 - 131119 - 84869 - 121462 + 58755 + 93950 + 67461 - 53146 = 140692
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 160346 - 103628 - 67461 + 53146 = 42403
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 312350 - 118210 - 84869 - 160346 + 58755 + 103628 + 67461 - 53146 = 125623
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 190446 - 121462 - 160346 + 93950 + 103628 + 67461 - 53146 = 50628
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311181 - 311122 - 312350 - 310989 + 131119 + 118210 + 190446 + 84869 + 121462 + 160346 - 58755 - 93950 - 103628 - 67461 + 53146 = 826525
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 31560 + 42403 = 73963
+   ac|bd: c(1010) + c(0101) = 8973 + 13197 = 22170
+   ad|bc: c(1001) + c(0110) = 46014 + 11799 = 57813
+   W1 weights: ab|cd 0.480448, ac|bd 0.144012, ad|bc 0.375541
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1843299.940975; lengths 0.087774, 1.011780, 0.687810, 0.000001, 0.365124
+   ac|bd: log-likelihood -1846590.991820; lengths 0.460450, 1.457901, 0.703082, 0.000001, 0.000001
+   ad|bc: log-likelihood -1846590.973407; lengths 0.460451, 1.457902, 0.703082, 0.000001, 0.000001
+   W2a: best ab|cd with gap 3291.032433
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 18349725884654104952
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 946: a = T2, b = T9, c = T15, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 310512, n(c) = 310850, n(d) = 310989
+   n(ab) = 80270, n(ac) = 80511, n(ad) = 112260, n(bc) = 47423, n(bd) = 57169, n(cd) = 167007
+   n(abc) = 24520, n(abd) = 34036, n(acd) = 64358, n(bcd) = 32971
+   n(abcd) = 20045
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 20045 = 20045
+   c(1110) = n(abc) - n(abcd) = 24520 - 20045 = 4475
+   c(1101) = n(abd) - n(abcd) = 34036 - 20045 = 13991
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 80270 - 24520 - 34036 + 20045 = 41759
+   c(1011) = n(acd) - n(abcd) = 64358 - 20045 = 44313
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80511 - 24520 - 64358 + 20045 = 11678
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 112260 - 34036 - 64358 + 20045 = 33911
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 80270 - 80511 - 112260 + 24520 + 34036 + 64358 - 20045 = 141101
+   c(0111) = n(bcd) - n(abcd) = 32971 - 20045 = 12926
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 47423 - 24520 - 32971 + 20045 = 9977
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 57169 - 34036 - 32971 + 20045 = 10207
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 80270 - 47423 - 57169 + 24520 + 34036 + 32971 - 20045 = 197132
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 167007 - 64358 - 32971 + 20045 = 89723
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 80511 - 47423 - 167007 + 24520 + 64358 + 32971 - 20045 = 117713
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 112260 - 57169 - 167007 + 34036 + 64358 + 32971 - 20045 = 85873
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 310512 - 310850 - 310989 + 80270 + 80511 + 112260 + 47423 + 57169 + 167007 - 24520 - 34036 - 64358 - 32971 + 20045 = 701539
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 41759 + 89723 = 131482
+   ac|bd: c(1010) + c(0101) = 11678 + 10207 = 21885
+   ad|bc: c(1001) + c(0110) = 33911 + 9977 = 43888
+   W1 weights: ab|cd 0.666559, ac|bd 0.110948, ad|bc 0.222494
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2192339.468344; lengths 0.000001, 2.750813, 0.485731, 0.000001, 0.978802
+   ac|bd: log-likelihood -2192346.223373; lengths 0.980363, 10.000000, 0.486151, 0.000001, 0.000001
+   ad|bc: log-likelihood -2192346.211790; lengths 0.980364, 10.000000, 0.404636, 0.000001, 0.081516
+   W2a: best ab|cd with gap 6.743447
+   W2b weights: ab|cd 0.997662, ac|bd 0.001162, ad|bc 0.001176
+
+5. W2c: 100 multinomial resamples with quartet seed 13885371668151153422
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 951: a = T2, b = T3, c = T15, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 311465, n(c) = 310850, n(d) = 310989
+   n(ab) = 152159, n(ac) = 80511, n(ad) = 112260, n(bc) = 120451, n(bd) = 187980, n(cd) = 167007
+   n(abc) = 63102, n(abd) = 97024, n(acd) = 64358, n(bcd) = 106065
+   n(abcd) = 56286
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 56286 = 56286
+   c(1110) = n(abc) - n(abcd) = 63102 - 56286 = 6816
+   c(1101) = n(abd) - n(abcd) = 97024 - 56286 = 40738
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 152159 - 63102 - 97024 + 56286 = 48319
+   c(1011) = n(acd) - n(abcd) = 64358 - 56286 = 8072
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80511 - 63102 - 64358 + 56286 = 9337
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 112260 - 97024 - 64358 + 56286 = 7164
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 152159 - 80511 - 112260 + 63102 + 97024 + 64358 - 56286 = 134541
+   c(0111) = n(bcd) - n(abcd) = 106065 - 56286 = 49779
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 120451 - 63102 - 106065 + 56286 = 7570
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 187980 - 97024 - 106065 + 56286 = 41177
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 152159 - 120451 - 187980 + 63102 + 97024 + 106065 - 56286 = 60780
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 167007 - 64358 - 106065 + 56286 = 52870
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 80511 - 120451 - 167007 + 63102 + 64358 + 106065 - 56286 = 120120
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 112260 - 187980 - 167007 + 97024 + 64358 + 106065 - 56286 = 54903
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 311465 - 310850 - 310989 + 152159 + 80511 + 112260 + 120451 + 187980 + 167007 - 63102 - 97024 - 64358 - 106065 + 56286 = 837891
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 48319 + 52870 = 101189
+   ac|bd: c(1010) + c(0101) = 9337 + 41177 = 50514
+   ad|bc: c(1001) + c(0110) = 7164 + 7570 = 14734
+   W1 weights: ab|cd 0.607972, ac|bd 0.303502, ad|bc 0.088526
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1804413.218869; lengths 0.776026, 0.000001, 0.623188, 0.000001, 0.470993
+   ac|bd: log-likelihood -1820187.164481; lengths 10.000000, 0.496194, 0.663690, 0.000001, 0.000002
+   ad|bc: log-likelihood -1820187.192159; lengths 10.000000, 0.496193, 0.663691, 0.000001, 0.000001
+   W2a: best ab|cd with gap 15773.945612
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 16904107402052985423
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 952: a = T10, b = T3, c = T15, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 311465, n(c) = 310850, n(d) = 310989
+   n(ab) = 108819, n(ac) = 65458, n(ad) = 84931, n(bc) = 120451, n(bd) = 187980, n(cd) = 167007
+   n(abc) = 46143, n(abd) = 69869, n(acd) = 49246, n(bcd) = 106065
+   n(abcd) = 41127
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 41127 = 41127
+   c(1110) = n(abc) - n(abcd) = 46143 - 41127 = 5016
+   c(1101) = n(abd) - n(abcd) = 69869 - 41127 = 28742
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 108819 - 46143 - 69869 + 41127 = 33934
+   c(1011) = n(acd) - n(abcd) = 49246 - 41127 = 8119
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 65458 - 46143 - 49246 + 41127 = 11196
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 84931 - 69869 - 49246 + 41127 = 6943
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 108819 - 65458 - 84931 + 46143 + 69869 + 49246 - 41127 = 176058
+   c(0111) = n(bcd) - n(abcd) = 106065 - 41127 = 64938
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 120451 - 46143 - 106065 + 41127 = 9370
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 187980 - 69869 - 106065 + 41127 = 53173
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311465 - 108819 - 120451 - 187980 + 46143 + 69869 + 106065 - 41127 = 75165
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 167007 - 49246 - 106065 + 41127 = 52823
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 65458 - 120451 - 167007 + 46143 + 49246 + 106065 - 41127 = 118261
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 84931 - 187980 - 167007 + 69869 + 49246 + 106065 - 41127 = 55124
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 311465 - 310850 - 310989 + 108819 + 65458 + 84931 + 120451 + 187980 + 167007 - 46143 - 69869 - 49246 - 106065 + 41127 = 796374
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 33934 + 52823 = 86757
+   ac|bd: c(1010) + c(0101) = 11196 + 53173 = 64369
+   ad|bc: c(1001) + c(0110) = 6943 + 9370 = 16313
+   W1 weights: ab|cd 0.518141, ac|bd 0.384433, ad|bc 0.097427
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1905606.486957; lengths 1.640597, 0.000001, 0.576059, 0.000001, 0.440711
+   ac|bd: log-likelihood -1906112.566941; lengths 10.000000, 0.444738, 0.567439, 0.000001, 0.014796
+   ad|bc: log-likelihood -1906112.589720; lengths 10.000000, 0.444737, 0.582234, 0.000001, 0.000001
+   W2a: best ab|cd with gap 506.079984
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 4828246480043169694
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 988: a = T6, b = T7, c = T15, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311122, n(b) = 314638, n(c) = 310850, n(d) = 310989
+   n(ab) = 138555, n(ac) = 86790, n(ad) = 121462, n(bc) = 77811, n(bd) = 106063, n(cd) = 167007
+   n(abc) = 48263, n(abd) = 69440, n(acd) = 69989, n(bcd) = 60976
+   n(abcd) = 40809
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 40809 = 40809
+   c(1110) = n(abc) - n(abcd) = 48263 - 40809 = 7454
+   c(1101) = n(abd) - n(abcd) = 69440 - 40809 = 28631
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 138555 - 48263 - 69440 + 40809 = 61661
+   c(1011) = n(acd) - n(abcd) = 69989 - 40809 = 29180
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 86790 - 48263 - 69989 + 40809 = 9347
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 121462 - 69440 - 69989 + 40809 = 22842
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311122 - 138555 - 86790 - 121462 + 48263 + 69440 + 69989 - 40809 = 111198
+   c(0111) = n(bcd) - n(abcd) = 60976 - 40809 = 20167
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 77811 - 48263 - 60976 + 40809 = 9381
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 106063 - 69440 - 60976 + 40809 = 16456
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 314638 - 138555 - 77811 - 106063 + 48263 + 69440 + 60976 - 40809 = 130079
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 167007 - 69989 - 60976 + 40809 = 76851
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 86790 - 77811 - 167007 + 48263 + 69989 + 60976 - 40809 = 117661
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 121462 - 106063 - 167007 + 69440 + 69989 + 60976 - 40809 = 76053
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311122 - 314638 - 310850 - 310989 + 138555 + 86790 + 121462 + 77811 + 106063 + 167007 - 48263 - 69440 - 69989 - 60976 + 40809 = 778593
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 61661 + 76851 = 138512
+   ac|bd: c(1010) + c(0101) = 9347 + 16456 = 25803
+   ad|bc: c(1001) + c(0110) = 22842 + 9381 = 32223
+   W1 weights: ab|cd 0.704759, ac|bd 0.131288, ad|bc 0.163953
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2000984.129229; lengths 0.085178, 0.772580, 0.565129, 0.000001, 1.027455
+   ac|bd: log-likelihood -2013169.497295; lengths 1.210157, 2.522281, 0.588149, 0.000001, 0.000001
+   ad|bc: log-likelihood -2013169.487596; lengths 1.210157, 2.522294, 0.588149, 0.000001, 0.000001
+   W2a: best ab|cd with gap 12185.358367
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 6930743096837421327
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 989: a = T13, b = T7, c = T15, d = T11
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311382, n(b) = 314638, n(c) = 310850, n(d) = 310989
+   n(ab) = 165008, n(ac) = 97655, n(ad) = 141927, n(bc) = 77811, n(bd) = 106063, n(cd) = 167007
+   n(abc) = 57620, n(abd) = 83976, n(acd) = 81330, n(bcd) = 60976
+   n(abcd) = 48967
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 48967 = 48967
+   c(1110) = n(abc) - n(abcd) = 57620 - 48967 = 8653
+   c(1101) = n(abd) - n(abcd) = 83976 - 48967 = 35009
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 165008 - 57620 - 83976 + 48967 = 72379
+   c(1011) = n(acd) - n(abcd) = 81330 - 48967 = 32363
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 97655 - 57620 - 81330 + 48967 = 7672
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 141927 - 83976 - 81330 + 48967 = 25588
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311382 - 165008 - 97655 - 141927 + 57620 + 83976 + 81330 - 48967 = 80751
+   c(0111) = n(bcd) - n(abcd) = 60976 - 48967 = 12009
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 77811 - 57620 - 60976 + 48967 = 8182
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 106063 - 83976 - 60976 + 48967 = 10078
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 314638 - 165008 - 77811 - 106063 + 57620 + 83976 + 60976 - 48967 = 119361
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 167007 - 81330 - 60976 + 48967 = 73668
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 97655 - 77811 - 167007 + 57620 + 81330 + 60976 - 48967 = 119336
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 310989 - 141927 - 106063 - 167007 + 83976 + 81330 + 60976 - 48967 = 73307
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311382 - 314638 - 310850 - 310989 + 165008 + 97655 + 141927 + 77811 + 106063 + 167007 - 57620 - 83976 - 81330 - 60976 + 48967 = 809040
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 72379 + 73668 = 146047
+   ac|bd: c(1010) + c(0101) = 7672 + 10078 = 17750
+   ad|bc: c(1001) + c(0110) = 25588 + 8182 = 33770
+   W1 weights: ab|cd 0.739228, ac|bd 0.089843, ad|bc 0.170929
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1902234.062551; lengths 0.000001, 0.623226, 0.590112, 0.000001, 0.843172
+   ac|bd: log-likelihood -1933093.862020; lengths 0.931210, 10.000000, 0.633298, 0.000001, 0.000001
+   ad|bc: log-likelihood -1933093.844988; lengths 0.931210, 10.000000, 0.633298, 0.000001, 0.000001
+   W2a: best ab|cd with gap 30859.782437
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 1911732751264538637
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1046: a = T1, b = T9, c = T4, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 310512, n(c) = 311181, n(d) = 311760
+   n(ab) = 48339, n(ac) = 130400, n(ad) = 274193, n(bc) = 53355, n(bd) = 48740, n(cd) = 131761
+   n(abc) = 26706, n(abd) = 44000, n(acd) = 121334, n(bcd) = 27033
+   n(abcd) = 24973
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 24973 = 24973
+   c(1110) = n(abc) - n(abcd) = 26706 - 24973 = 1733
+   c(1101) = n(abd) - n(abcd) = 44000 - 24973 = 19027
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 48339 - 26706 - 44000 + 24973 = 2606
+   c(1011) = n(acd) - n(abcd) = 121334 - 24973 = 96361
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 130400 - 26706 - 121334 + 24973 = 7333
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 274193 - 44000 - 121334 + 24973 = 133832
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 48339 - 130400 - 274193 + 26706 + 44000 + 121334 - 24973 = 25383
+   c(0111) = n(bcd) - n(abcd) = 27033 - 24973 = 2060
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 53355 - 26706 - 27033 + 24973 = 24589
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 48740 - 44000 - 27033 + 24973 = 2680
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 48339 - 53355 - 48740 + 26706 + 44000 + 27033 - 24973 = 232844
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 131761 - 121334 - 27033 + 24973 = 8367
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311181 - 130400 - 53355 - 131761 + 26706 + 121334 + 27033 - 24973 = 145765
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 274193 - 48740 - 131761 + 44000 + 121334 + 27033 - 24973 = 24460
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 310512 - 311181 - 311760 + 48339 + 130400 + 274193 + 53355 + 48740 + 131761 - 26706 - 44000 - 121334 - 27033 + 24973 = 784350
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 2606 + 8367 = 10973
+   ac|bd: c(1010) + c(0101) = 7333 + 2680 = 10013
+   ad|bc: c(1001) + c(0110) = 133832 + 24589 = 158421
+   W1 weights: ab|cd 0.061163, ac|bd 0.055812, ad|bc 0.883026
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1704326.980925; lengths 0.054458, 10.000000, 0.835245, 0.039628, 0.000001
+   ac|bd: log-likelihood -1704326.980925; lengths 0.054459, 10.000000, 0.835245, 0.039627, 0.000001
+   ad|bc: log-likelihood -1704326.980819; lengths 0.054459, 10.000000, 0.356775, 0.039628, 0.478470
+   W2a: best ad|bc with gap 0.000106
+   W2b weights: ab|cd 0.333322, ac|bd 0.333322, ad|bc 0.333357
+
+5. W2c: 100 multinomial resamples with quartet seed 13968731227858376827
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1048: a = T10, b = T9, c = T4, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 310512, n(c) = 311181, n(d) = 311760
+   n(ab) = 64527, n(ac) = 75734, n(ad) = 67500, n(bc) = 53355, n(bd) = 48740, n(cd) = 131761
+   n(abc) = 21895, n(abd) = 19057, n(acd) = 40054, n(bcd) = 27033
+   n(abcd) = 12084
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 12084 = 12084
+   c(1110) = n(abc) - n(abcd) = 21895 - 12084 = 9811
+   c(1101) = n(abd) - n(abcd) = 19057 - 12084 = 6973
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 64527 - 21895 - 19057 + 12084 = 35659
+   c(1011) = n(acd) - n(abcd) = 40054 - 12084 = 27970
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 75734 - 21895 - 40054 + 12084 = 25869
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 67500 - 19057 - 40054 + 12084 = 20473
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 64527 - 75734 - 67500 + 21895 + 19057 + 40054 - 12084 = 172296
+   c(0111) = n(bcd) - n(abcd) = 27033 - 12084 = 14949
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 53355 - 21895 - 27033 + 12084 = 16511
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 48740 - 19057 - 27033 + 12084 = 14734
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 310512 - 64527 - 53355 - 48740 + 21895 + 19057 + 27033 - 12084 = 199791
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 131761 - 40054 - 27033 + 12084 = 76758
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 311181 - 75734 - 53355 - 131761 + 21895 + 40054 + 27033 - 12084 = 127229
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 67500 - 48740 - 131761 + 19057 + 40054 + 27033 - 12084 = 137819
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 310512 - 311181 - 311760 + 64527 + 75734 + 67500 + 53355 + 48740 + 131761 - 21895 - 19057 - 40054 - 27033 + 12084 = 637437
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 35659 + 76758 = 112417
+   ac|bd: c(1010) + c(0101) = 25869 + 14734 = 40603
+   ad|bc: c(1001) + c(0110) = 20473 + 16511 = 36984
+   W1 weights: ab|cd 0.591656, ac|bd 0.213696, ad|bc 0.194649
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2401487.883257; lengths 0.070529, 10.000000, 0.000001, 0.662036, 1.557944
+   ac|bd: log-likelihood -2401487.883342; lengths 1.628473, 10.000000, 0.000001, 0.474550, 0.187486
+   ad|bc: log-likelihood -2401487.883633; lengths 1.628472, 10.000000, 0.000001, 0.662035, 0.000001
+   W2a: best ab|cd with gap 0.000086
+   W2b weights: ab|cd 0.333385, ac|bd 0.333356, ad|bc 0.333259
+
+5. W2c: 100 multinomial resamples with quartet seed 6031290526451882141
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1151: a = T10, b = T6, c = T7, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311135, n(b) = 311122, n(c) = 314638, n(d) = 311760
+   n(ab) = 59681, n(ac) = 55304, n(ad) = 67500, n(bc) = 138555, n(bd) = 90962, n(cd) = 81176
+   n(abc) = 31992, n(abd) = 27155, n(acd) = 23923, n(bcd) = 50744
+   n(abcd) = 15922
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 15922 = 15922
+   c(1110) = n(abc) - n(abcd) = 31992 - 15922 = 16070
+   c(1101) = n(abd) - n(abcd) = 27155 - 15922 = 11233
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 59681 - 31992 - 27155 + 15922 = 16456
+   c(1011) = n(acd) - n(abcd) = 23923 - 15922 = 8001
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 55304 - 31992 - 23923 + 15922 = 15311
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 67500 - 27155 - 23923 + 15922 = 32344
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311135 - 59681 - 55304 - 67500 + 31992 + 27155 + 23923 - 15922 = 195798
+   c(0111) = n(bcd) - n(abcd) = 50744 - 15922 = 34822
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 138555 - 31992 - 50744 + 15922 = 71741
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 90962 - 27155 - 50744 + 15922 = 28985
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311122 - 59681 - 138555 - 90962 + 31992 + 27155 + 50744 - 15922 = 115893
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 81176 - 23923 - 50744 + 15922 = 22431
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 314638 - 55304 - 138555 - 81176 + 31992 + 23923 + 50744 - 15922 = 130340
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 67500 - 90962 - 81176 + 27155 + 23923 + 50744 - 15922 = 158022
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311135 - 311122 - 314638 - 311760 + 59681 + 55304 + 67500 + 138555 + 90962 + 81176 - 31992 - 27155 - 23923 - 50744 + 15922 = 662994
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 16456 + 22431 = 38887
+   ac|bd: c(1010) + c(0101) = 15311 + 28985 = 44296
+   ad|bc: c(1001) + c(0110) = 32344 + 71741 = 104085
+   W1 weights: ab|cd 0.207654, ac|bd 0.236538, ad|bc 0.555808
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2330978.356587; lengths 10.000000, 0.080475, 0.573704, 1.201116, 0.000001
+   ac|bd: log-likelihood -2330978.356591; lengths 10.000000, 0.080476, 0.404976, 1.201116, 0.168729
+   ad|bc: log-likelihood -2330978.356535; lengths 10.000000, 0.080476, 0.573704, 0.072417, 1.128701
+   W2a: best ad|bc with gap 0.000052
+   W2b weights: ab|cd 0.333328, ac|bd 0.333327, ad|bc 0.333345
+
+5. W2c: 100 multinomial resamples with quartet seed 9231409462534569590
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1257: a = T1, b = T13, c = T15, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311248, n(b) = 311382, n(c) = 310850, n(d) = 311760
+   n(ab) = 102815, n(ac) = 110025, n(ad) = 274193, n(bc) = 97655, n(bd) = 103444, n(cd) = 110925
+   n(abc) = 52652, n(abd) = 94991, n(acd) = 101875, n(bcd) = 53174
+   n(abcd) = 49306
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 49306 = 49306
+   c(1110) = n(abc) - n(abcd) = 52652 - 49306 = 3346
+   c(1101) = n(abd) - n(abcd) = 94991 - 49306 = 45685
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 102815 - 52652 - 94991 + 49306 = 4478
+   c(1011) = n(acd) - n(abcd) = 101875 - 49306 = 52569
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 110025 - 52652 - 101875 + 49306 = 4804
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 274193 - 94991 - 101875 + 49306 = 126633
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311248 - 102815 - 110025 - 274193 + 52652 + 94991 + 101875 - 49306 = 24427
+   c(0111) = n(bcd) - n(abcd) = 53174 - 49306 = 3868
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 97655 - 52652 - 53174 + 49306 = 41135
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 103444 - 94991 - 53174 + 49306 = 4585
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311382 - 102815 - 97655 - 103444 + 52652 + 94991 + 53174 - 49306 = 158979
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 110925 - 101875 - 53174 + 49306 = 5182
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 110025 - 97655 - 110925 + 52652 + 101875 + 53174 - 49306 = 150640
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 274193 - 103444 - 110925 + 94991 + 101875 + 53174 - 49306 = 23932
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311248 - 311382 - 310850 - 311760 + 102815 + 110025 + 274193 + 97655 + 103444 + 110925 - 52652 - 94991 - 101875 - 53174 + 49306 = 836794
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 4478 + 5182 = 9660
+   ac|bd: c(1010) + c(0101) = 4804 + 4585 = 9389
+   ad|bc: c(1001) + c(0110) = 126633 + 41135 = 167768
+   W1 weights: ab|cd 0.051708, ac|bd 0.050258, ad|bc 0.898034
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1608761.513716; lengths 0.016981, 10.000000, 10.000000, 0.015500, 0.072381
+   ac|bd: log-likelihood -1608761.513717; lengths 0.041403, 10.000000, 10.000000, 0.040981, 0.022478
+   ad|bc: log-likelihood -1608761.513597; lengths 0.056456, 10.000000, 10.000000, 0.048406, 10.000000
+   W2a: best ad|bc with gap 0.000119
+   W2b weights: ab|cd 0.333320, ac|bd 0.333320, ad|bc 0.333360
+
+5. W2c: 100 multinomial resamples with quartet seed 3589621827449409816
+   W2c weights (final): ab|cd 0.000000, ac|bd 0.000000, ad|bc 1.000000
+   Stored w2c weights: identical; decision stored as (2, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1267: a = T2, b = T7, c = T15, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311273, n(b) = 314638, n(c) = 310850, n(d) = 311760
+   n(ab) = 66336, n(ac) = 80511, n(ad) = 85208, n(bc) = 77811, n(bd) = 81176, n(cd) = 110925
+   n(abc) = 29575, n(abd) = 31148, n(acd) = 42574, n(bcd) = 40502
+   n(abcd) = 17605
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 17605 = 17605
+   c(1110) = n(abc) - n(abcd) = 29575 - 17605 = 11970
+   c(1101) = n(abd) - n(abcd) = 31148 - 17605 = 13543
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 66336 - 29575 - 31148 + 17605 = 23218
+   c(1011) = n(acd) - n(abcd) = 42574 - 17605 = 24969
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 80511 - 29575 - 42574 + 17605 = 25967
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 85208 - 31148 - 42574 + 17605 = 29091
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311273 - 66336 - 80511 - 85208 + 29575 + 31148 + 42574 - 17605 = 164910
+   c(0111) = n(bcd) - n(abcd) = 40502 - 17605 = 22897
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 77811 - 29575 - 40502 + 17605 = 25339
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 81176 - 31148 - 40502 + 17605 = 27131
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 314638 - 66336 - 77811 - 81176 + 29575 + 31148 + 40502 - 17605 = 172935
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 110925 - 42574 - 40502 + 17605 = 45454
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310850 - 80511 - 77811 - 110925 + 29575 + 42574 + 40502 - 17605 = 136649
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 85208 - 81176 - 110925 + 31148 + 42574 + 40502 - 17605 = 131070
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311273 - 314638 - 310850 - 311760 + 66336 + 80511 + 85208 + 77811 + 81176 + 110925 - 29575 - 31148 - 42574 - 40502 + 17605 = 663615
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 23218 + 45454 = 68672
+   ac|bd: c(1010) + c(0101) = 25967 + 27131 = 53098
+   ad|bc: c(1001) + c(0110) = 29091 + 25339 = 54430
+   W1 weights: ab|cd 0.389739, ac|bd 0.301351, ad|bc 0.308910
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2352513.654835; lengths 1.079819, 1.311134, 0.535830, 0.383288, 0.000001
+   ac|bd: log-likelihood -2352513.654906; lengths 1.079820, 1.311135, 0.535830, 0.383287, 0.000001
+   ad|bc: log-likelihood -2352513.654735; lengths 1.079820, 1.311135, 0.535829, 0.383288, 0.000001
+   W2a: best ad|bc with gap 0.000100
+   W2b weights: ab|cd 0.333330, ac|bd 0.333306, ad|bc 0.333363
+
+5. W2c: 100 multinomial resamples with quartet seed 13478955523342560709
+   W2c weights (final): ab|cd 0.333333, ac|bd 0.333333, ad|bc 0.333333
+   Stored w2c weights: identical; decision stored as (0, 21845)
+
+----------------------------------------------------------------
+Quartet rank 1319: a = T5, b = T6, c = T11, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 310054, n(b) = 311122, n(c) = 310989, n(d) = 311760
+   n(ab) = 56678, n(ac) = 79825, n(ad) = 64234, n(bc) = 121462, n(bd) = 90962, n(cd) = 169074
+   n(abc) = 35315, n(abd) = 25437, n(acd) = 47241, n(bcd) = 72090
+   n(abcd) = 21868
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 21868 = 21868
+   c(1110) = n(abc) - n(abcd) = 35315 - 21868 = 13447
+   c(1101) = n(abd) - n(abcd) = 25437 - 21868 = 3569
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 56678 - 35315 - 25437 + 21868 = 17794
+   c(1011) = n(acd) - n(abcd) = 47241 - 21868 = 25373
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 79825 - 35315 - 47241 + 21868 = 19137
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 64234 - 25437 - 47241 + 21868 = 13424
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 310054 - 56678 - 79825 - 64234 + 35315 + 25437 + 47241 - 21868 = 195442
+   c(0111) = n(bcd) - n(abcd) = 72090 - 21868 = 50222
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 121462 - 35315 - 72090 + 21868 = 35925
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 90962 - 25437 - 72090 + 21868 = 15303
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311122 - 56678 - 121462 - 90962 + 35315 + 25437 + 72090 - 21868 = 152994
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 169074 - 47241 - 72090 + 21868 = 71611
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310989 - 79825 - 121462 - 169074 + 35315 + 47241 + 72090 - 21868 = 73406
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 64234 - 90962 - 169074 + 25437 + 47241 + 72090 - 21868 = 110390
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 310054 - 311122 - 310989 - 311760 + 56678 + 79825 + 64234 + 121462 + 90962 + 169074 - 35315 - 25437 - 47241 - 72090 + 21868 = 716458
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 17794 + 71611 = 89405
+   ac|bd: c(1010) + c(0101) = 19137 + 15303 = 34440
+   ad|bc: c(1001) + c(0110) = 13424 + 35925 = 49349
+   W1 weights: ab|cd 0.516213, ac|bd 0.198852, ad|bc 0.284935
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -2151126.661157; lengths 10.000000, 0.892150, 0.000001, 0.489784, 0.000001
+   ac|bd: log-likelihood -2151126.669605; lengths 10.000000, 0.892151, 0.000001, 0.489783, 0.000001
+   ad|bc: log-likelihood -2151126.661157; lengths 10.000000, 0.892151, 0.000001, 0.489781, 0.000003
+   W2a: best ab|cd with gap 0.000000
+   W2b weights: ab|cd 0.334271, ac|bd 0.331459, ad|bc 0.334271
+
+5. W2c: 100 multinomial resamples with quartet seed 7563678344917937043
+   W2c weights (final): ab|cd 0.496667, ac|bd 0.006667, ad|bc 0.496667
+   Stored w2c weights: identical; decision stored as (0, 32549)
+
+----------------------------------------------------------------
+Quartet rank 1322: a = T4, b = T6, c = T11, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311181, n(b) = 311122, n(c) = 310989, n(d) = 311760
+   n(ab) = 131119, n(ac) = 190446, n(ad) = 131761, n(bc) = 121462, n(bd) = 90962, n(cd) = 169074
+   n(abc) = 93950, n(abd) = 64863, n(acd) = 112745, n(bcd) = 72090
+   n(abcd) = 57216
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 57216 = 57216
+   c(1110) = n(abc) - n(abcd) = 93950 - 57216 = 36734
+   c(1101) = n(abd) - n(abcd) = 64863 - 57216 = 7647
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 131119 - 93950 - 64863 + 57216 = 29522
+   c(1011) = n(acd) - n(abcd) = 112745 - 57216 = 55529
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 190446 - 93950 - 112745 + 57216 = 40967
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 131761 - 64863 - 112745 + 57216 = 11369
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311181 - 131119 - 190446 - 131761 + 93950 + 64863 + 112745 - 57216 = 72197
+   c(0111) = n(bcd) - n(abcd) = 72090 - 57216 = 14874
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 121462 - 93950 - 72090 + 57216 = 12638
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 90962 - 64863 - 72090 + 57216 = 11225
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 311122 - 131119 - 121462 - 90962 + 93950 + 64863 + 72090 - 57216 = 141266
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 169074 - 112745 - 72090 + 57216 = 41455
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310989 - 190446 - 121462 - 169074 + 93950 + 112745 + 72090 - 57216 = 51576
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 131761 - 90962 - 169074 + 64863 + 112745 + 72090 - 57216 = 112445
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311181 - 311122 - 310989 - 311760 + 131119 + 190446 + 131761 + 121462 + 90962 + 169074 - 93950 - 64863 - 112745 - 72090 + 57216 = 839703
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 29522 + 41455 = 70977
+   ac|bd: c(1010) + c(0101) = 40967 + 11225 = 52192
+   ad|bc: c(1001) + c(0110) = 11369 + 12638 = 24007
+   W1 weights: ab|cd 0.482259, ac|bd 0.354623, ad|bc 0.163118
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1807528.406248; lengths 0.052132, 1.134330, 0.000001, 0.630699, 0.415652
+   ac|bd: log-likelihood -1810023.682666; lengths 0.474989, 1.658954, 0.000001, 0.642525, 0.000001
+   ad|bc: log-likelihood -1810023.686990; lengths 0.474988, 1.658952, 0.000001, 0.642525, 0.000001
+   W2a: best ab|cd with gap 2495.276418
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 14661865202144437030
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)
+
+----------------------------------------------------------------
+Quartet rank 1341: a = T13, b = T7, c = T11, d = T14
+
+1. Co-occurrence counts n(S): columns where every taxon of S has 1
+   N = 1536363
+   n(a) = 311382, n(b) = 314638, n(c) = 310989, n(d) = 311760
+   n(ab) = 165008, n(ac) = 141927, n(ad) = 103444, n(bc) = 106063, n(bd) = 81176, n(cd) = 169074
+   n(abc) = 83976, n(abd) = 60845, n(acd) = 84122, n(bcd) = 62755
+   n(abcd) = 50562
+
+2. Pattern counts c(abcd) by inclusion-exclusion: c(P) = sum over S containing P of (-1)^(|S|-|P|) n(S)
+   c(1111) = n(abcd) = 50562 = 50562
+   c(1110) = n(abc) - n(abcd) = 83976 - 50562 = 33414
+   c(1101) = n(abd) - n(abcd) = 60845 - 50562 = 10283
+   c(1100) = n(ab) - n(abc) - n(abd) + n(abcd) = 165008 - 83976 - 60845 + 50562 = 70749
+   c(1011) = n(acd) - n(abcd) = 84122 - 50562 = 33560
+   c(1010) = n(ac) - n(abc) - n(acd) + n(abcd) = 141927 - 83976 - 84122 + 50562 = 24391
+   c(1001) = n(ad) - n(abd) - n(acd) + n(abcd) = 103444 - 60845 - 84122 + 50562 = 9039
+   c(1000) = n(a) - n(ab) - n(ac) - n(ad) + n(abc) + n(abd) + n(acd) - n(abcd) = 311382 - 165008 - 141927 - 103444 + 83976 + 60845 + 84122 - 50562 = 79384
+   c(0111) = n(bcd) - n(abcd) = 62755 - 50562 = 12193
+   c(0110) = n(bc) - n(abc) - n(bcd) + n(abcd) = 106063 - 83976 - 62755 + 50562 = 9894
+   c(0101) = n(bd) - n(abd) - n(bcd) + n(abcd) = 81176 - 60845 - 62755 + 50562 = 8138
+   c(0100) = n(b) - n(ab) - n(bc) - n(bd) + n(abc) + n(abd) + n(bcd) - n(abcd) = 314638 - 165008 - 106063 - 81176 + 83976 + 60845 + 62755 - 50562 = 119405
+   c(0011) = n(cd) - n(acd) - n(bcd) + n(abcd) = 169074 - 84122 - 62755 + 50562 = 72759
+   c(0010) = n(c) - n(ac) - n(bc) - n(cd) + n(abc) + n(acd) + n(bcd) - n(abcd) = 310989 - 141927 - 106063 - 169074 + 83976 + 84122 + 62755 - 50562 = 74216
+   c(0001) = n(d) - n(ad) - n(bd) - n(cd) + n(abd) + n(acd) + n(bcd) - n(abcd) = 311760 - 103444 - 81176 - 169074 + 60845 + 84122 + 62755 - 50562 = 115226
+   c(0000) = N - n(a) - n(b) - n(c) - n(d) + n(ab) + n(ac) + n(ad) + n(bc) + n(bd) + n(cd) - n(abc) - n(abd) - n(acd) - n(bcd) + n(abcd) = 1536363 - 311382 - 314638 - 310989 - 311760 + 165008 + 141927 + 103444 + 106063 + 81176 + 169074 - 83976 - 60845 - 84122 - 62755 + 50562 = 813150
+   Sum of the 16 counts: 1536363
+
+3. W1 votes (split patterns supporting each topology)
+   ab|cd: c(1100) + c(0011) = 70749 + 72759 = 143508
+   ac|bd: c(1010) + c(0101) = 24391 + 8138 = 32529
+   ad|bc: c(1001) + c(0110) = 9039 + 9894 = 18933
+   W1 weights: ab|cd 0.736052, ac|bd 0.166841, ad|bc 0.097107
+
+4. W2 (W2-sym, conditioned on NotAllZero): maximised log-likelihood and branch lengths (a, b, c, d, internal)
+   ab|cd: log-likelihood -1892152.349625; lengths 0.000001, 0.631305, 0.000001, 0.584723, 0.857609
+   ac|bd: log-likelihood -1921827.392662; lengths 0.947255, 10.000000, 0.000001, 0.626387, 0.000001
+   ad|bc: log-likelihood -1921827.406041; lengths 0.947255, 10.000000, 0.000001, 0.626387, 0.000001
+   W2a: best ab|cd with gap 29675.043038
+   W2b weights: ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+
+5. W2c: 100 multinomial resamples with quartet seed 7195785913087488539
+   W2c weights (final): ab|cd 1.000000, ac|bd 0.000000, ad|bc 0.000000
+   Stored w2c weights: identical; decision stored as (0, 65535)

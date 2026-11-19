@@ -1,0 +1,114 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[INFO] Read 8 species from directory: /home/runner/work/q-maws/q-maws/data/raw/yersinia_hgt/unsimulated-yersinia
+[STEP 1] Done. 8 species (0.109445s)
+  [1] AAKT020000 (4723304 bp)
+  [2] BX936398 (4517345 bp)
+  [3] NC_003143 (4653728 bp)
+  [4] NC_004088 (4600755 bp)
+  [5] NC_005810 (4595065 bp)
+  [6] NC_008149 (4534590 bp)
+  [7] NC_008150 (4702289 bp)
+  [8] NC_009381 (4517345 bp)
+
+[INFO] Adaptive length range: [5, 14] (avgSeqLen=4605552, nSpecies=8)
+[STEP 2/5] Extracting Minimal Absent Words (range=[5,14])...
+  AAKT020000: 1466539 MAWs (5.17477s)
+  BX936398: 1371812 MAWs (4.79166s)
+  NC_003143: 1412928 MAWs (4.86902s)
+  NC_004088: 1390660 MAWs (4.71636s)
+  NC_005810: 1391817 MAWs (4.6592s)
+  NC_008149: 1366997 MAWs (4.7051s)
+  NC_008150: 1393425 MAWs (4.83857s)
+  NC_009381: 1371806 MAWs (4.64426s)
+[STEP 2] Done (38.5087s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 460 unique MAWs
+[INFO] Removed 124 constant columns. Remaining: 336
+[INFO] Union of MAW sets: 39504 unique MAWs
+[INFO] Removed 11657 constant columns. Remaining: 27847
+[INFO] Union of MAW sets: 670928 unique MAWs
+[INFO] Removed 110956 constant columns. Remaining: 559972
+[INFO] Union of MAW sets: 1595766 unique MAWs
+[INFO] Removed 88217 constant columns. Remaining: 1507549
+[INFO] Union of MAW sets: 654664 unique MAWs
+[INFO] Removed 8952 constant columns. Remaining: 645712
+[INFO] Union of MAW sets: 72703 unique MAWs
+[INFO] Removed 335 constant columns. Remaining: 72368
+[INFO] Multi-length aggregation: selected lengths = {11, 12, 13}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={11,12,13})...
+[INFO] Union of MAW sets: 2921358 unique MAWs
+[INFO] Removed 208125 constant columns. Remaining: 2713233
+[INFO] Matrix has 2713233 characters, capping to 50000 most informative...
+[INFO] Capped to 50000 most informative characters
+[INFO] Matrix: 8 species x 50000 characters (3 length(s))
+[INFO] PHYLIP matrix written: /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws/ml_maws_matrix.phy (8 taxa, 50000 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 4 --prefix /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     8
+    n (avg seq len): 4605552
+    |U| (characters):50000
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.109       46.71         42.85       O(m * n)
+  MAW Extraction                38.399      800.68        753.79      O(m * n * sigma)
+                                  (m=8, n_avg=4605552, sigma=4)
+  Entropy Selection             2.448       800.73        0.04        O(L * m * |U_max|)
+                                  (L_range=[5..14])
+  Matrix Construction           3.853       1034.38       233.65      O(m * |U|)
+                                  (lengths={11,12,13})
+  ML Inference                  2.126       1034.44       0.06        NP-hard (heuristic)
+                                  (m=8, |U|=50000)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         46.936      1034.44       
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      8
+  MAW length:   {11,12,13}
+  Characters:   50000
+  Strand-aware: Yes
+  Total time:   46.94 sec
+  Peak memory:  1034.44 MB
+  Output dir:   /home/runner/work/_temp/out/results/benchmark/yersinia_hgt/ml_maws
+============================================================
+
