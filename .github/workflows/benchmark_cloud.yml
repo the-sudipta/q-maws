@@ -198,6 +198,7 @@ jobs:
         if: steps.progress.outputs.remaining == '0'
         run: |
           sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
+          command -v zstd >/dev/null || sudo apt-get install -y -q zstd   # bench_w2c1000.py
           bash scripts/cloud/install_tools.sh qmaws
           mkdir -p target/release && ln -sf /opt/bench/bin/qmaws target/release/qmaws
           sh scripts/cloud/analyse.sh "$RUNNER_TEMP/state"
