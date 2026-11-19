@@ -1,0 +1,66 @@
+name: Analysis check (no results shown)
+
+# A check of the analysis scripts of the extended benchmark (scripts/cloud/analyse.sh)
+# on the runs committed so far, so that a fault in a script is found before the last
+# wave and not after it (Amendment 10c). Every script runs as in analyse.sh, but its
+# output goes to a file that is deleted unread: the log shows only whether each script
+# finished and, if one stopped with an error, the last lines of its error output. No
+# table is uploaded or committed, and the state branch is not changed. Some scripts may
+# stop only because runs are still missing; the error lines tell which case it is.
+
+on:
+  push:
+    branches: [cloud-benchmark]
+    paths: [".github/workflows/analysis_check.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  STATE_BRANCH: benchmark-cloud-state
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out the state (read only)
+        run: |
+          git fetch -q --no-tags origin "+refs/heads/$STATE_BRANCH:refs/remotes/origin/state"
+          git worktree add -q --detach "$RUNNER_TEMP/state" origin/state
+      - name: Q-MAWS 1.0.0 (tree-compare)
+        run: |
+          sudo mkdir -p /opt/bench && sudo chown "$USER" /opt/bench
+          bash scripts/cloud/install_tools.sh qmaws
+          mkdir -p target/release && ln -sf /opt/bench/bin/qmaws target/release/qmaws
+          command -v zstd
+      - name: Run every analysis script, outputs discarded unread
+        run: |
+          rm -rf results/benchmark
+          cp -r "$RUNNER_TEMP/state/results/benchmark" results/benchmark
+          rm -rf results/benchmark/summary
+          check() {
+            name=$1; shift
+            if "$@" > "$RUNNER_TEMP/out.txt" 2> "$RUNNER_TEMP/err.txt"; then
+              echo "OK      $name"
+            else
+              echo "FAILED  $name (exit $?); last lines of its error output:"
+              tail -n 15 "$RUNNER_TEMP/err.txt" | sed 's/^/        /'
+            fi
+            rm -f "$RUNNER_TEMP/out.txt" "$RUNNER_TEMP/err.txt"
+          }
+          check bench_hash       python3 scripts/bench_hash.py verify
+          check bench_collect    python3 scripts/bench_collect.py
+          check bench_stats      python3 scripts/bench_stats.py --check
+          check bench_extra      python3 scripts/bench_extra.py
+          check bench_dependence python3 scripts/bench_dependence.py \
+            fish_mito=results/benchmark/dependence/fish_mito \
+            hgt_h000_r1=results/benchmark/dependence/hgt_h000_r1 \
+            hgt_h010_r1=results/benchmark/dependence/hgt_h010_r1 \
+            hgt_h020_r1=results/benchmark/dependence/hgt_h020_r1 \
+            hgt_h040_r1=results/benchmark/dependence/hgt_h040_r1
+          check bench_speed      python3 scripts/bench_speed.py
+          check bench_w2c1000    python3 scripts/bench_w2c1000.py
+          rm -rf results/benchmark
