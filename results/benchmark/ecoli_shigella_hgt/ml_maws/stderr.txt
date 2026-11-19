@@ -1,0 +1,152 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[INFO] Read 27 species from directory: /home/runner/work/q-maws/q-maws/data/raw/ecoli_shigella_hgt/unsimulated-ecoli_shigella
+[STEP 1] Done. 27 species (0.327012s)
+  [1] NC_000913 (4641652 bp)
+  [2] NC_002655 (5521804 bp)
+  [3] NC_002695 (5498450 bp)
+  [4] NC_004337 (4607196 bp)
+  [5] NC_004431 (5231148 bp)
+  [6] NC_004741 (4599326 bp)
+  [7] NC_007384 (4825265 bp)
+  [8] NC_007606 (4369232 bp)
+  [9] NC_007613 (4519823 bp)
+  [10] NC_007779 (4646332 bp)
+  [11] NC_007946 (5065741 bp)
+  [12] NC_008253 (4938920 bp)
+  [13] NC_008258 (4574284 bp)
+  [14] NC_008563 (5081897 bp)
+  [15] NC_009800 (4643537 bp)
+  [16] NC_009801 (4979619 bp)
+  [17] NC_010468 (4746218 bp)
+  [18] NC_010498 (5068389 bp)
+  [19] NC_010658 (4615997 bp)
+  [20] NC_011415 (4887515 bp)
+  [21] NC_011601 (4965553 bp)
+  [22] NC_011741 (4700560 bp)
+  [23] NC_011742 (5032268 bp)
+  [24] NC_011745 (5209448 bp)
+  [25] NC_011748 (5154862 bp)
+  [26] NC_011750 (5132068 bp)
+  [27] NC_011751 (5202090 bp)
+
+[INFO] Adaptive length range: [5, 14] (avgSeqLen=4905896, nSpecies=27)
+[STEP 2/5] Extracting Minimal Absent Words (range=[5,14])...
+  NC_000913: 1414971 MAWs (4.82947s)
+  NC_002655: 1708440 MAWs (5.60567s)
+  NC_002695: 1719556 MAWs (5.65737s)
+  NC_004337: 1370351 MAWs (4.42568s)
+  NC_004431: 1625061 MAWs (5.2626s)
+  NC_004741: 1353005 MAWs (4.26022s)
+  NC_007384: 1387587 MAWs (4.36707s)
+  NC_007606: 1210822 MAWs (3.82956s)
+  NC_007613: 1291285 MAWs (4.17354s)
+  NC_007779: 1421754 MAWs (4.53879s)
+  NC_007946: 1560505 MAWs (5.20692s)
+  NC_008253: 1522012 MAWs (5.09143s)
+  NC_008258: 1360074 MAWs (4.35385s)
+  NC_008563: 1586558 MAWs (5.44321s)
+  NC_009800: 1407716 MAWs (4.97268s)
+  NC_009801: 1526158 MAWs (4.85963s)
+  NC_010468: 1443661 MAWs (4.58965s)
+  NC_010498: 1558465 MAWs (4.93329s)
+  NC_010658: 1308398 MAWs (4.39243s)
+  NC_011415: 1505647 MAWs (5.54677s)
+  NC_011601: 1519918 MAWs (5.52729s)
+  NC_011741: 1453489 MAWs (5.73965s)
+  NC_011742: 1541629 MAWs (6.20272s)
+  NC_011745: 1619557 MAWs (6.42271s)
+  NC_011748: 1586124 MAWs (6.01939s)
+  NC_011750: 1559488 MAWs (5.08006s)
+  NC_011751: 1598510 MAWs (5.19492s)
+[STEP 2] Done (136.855s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 213 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 213
+[INFO] Union of MAW sets: 5760 unique MAWs
+[INFO] Removed 2 constant columns. Remaining: 5758
+[INFO] Union of MAW sets: 133699 unique MAWs
+[INFO] Removed 90 constant columns. Remaining: 133609
+[INFO] Union of MAW sets: 1433332 unique MAWs
+[INFO] Removed 1730 constant columns. Remaining: 1431602
+[INFO] Union of MAW sets: 3698409 unique MAWs
+[INFO] Removed 3034 constant columns. Remaining: 3695375
+[INFO] Union of MAW sets: 2231188 unique MAWs
+[INFO] Removed 604 constant columns. Remaining: 2230584
+[INFO] Union of MAW sets: 421040 unique MAWs
+[INFO] Removed 41 constant columns. Remaining: 420999
+[INFO] Multi-length aggregation: selected lengths = {11, 12, 13}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={11,12,13})...
+[INFO] Union of MAW sets: 7362929 unique MAWs
+[INFO] Removed 5368 constant columns. Remaining: 7357561
+[INFO] Matrix has 7357561 characters, capping to 50000 most informative...
+[INFO] Capped to 50000 most informative characters
+[INFO] Matrix: 27 species x 50000 characters (3 length(s))
+[INFO] PHYLIP matrix written: /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws/ml_maws_matrix.phy (27 taxa, 50000 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 4 --prefix /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     27
+    n (avg seq len): 4905896
+    |U| (characters):50000
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.327       137.86        134.05      O(m * n)
+  MAW Extraction                136.528     1777.47       1639.42     O(m * n * sigma)
+                                  (m=27, n_avg=4905896, sigma=4)
+  Entropy Selection             10.174      1885.47       108.00      O(L * m * |U_max|)
+                                  (L_range=[5..14])
+  Matrix Construction           14.596      2449.59       564.11      O(m * |U|)
+                                  (lengths={11,12,13})
+  ML Inference                  729.101     2449.65       0.06        NP-hard (heuristic)
+                                  (m=27, |U|=50000)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         890.725     2449.65       
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      27
+  MAW length:   {11,12,13}
+  Characters:   50000
+  Strand-aware: Yes
+  Total time:   890.73 sec
+  Peak memory:  2449.65 MB
+  Output dir:   /home/runner/work/_temp/out/results/benchmark/ecoli_shigella_hgt/ml_maws
+============================================================
+

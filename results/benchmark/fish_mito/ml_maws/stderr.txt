@@ -1,0 +1,142 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[INFO] Read 25 species from directory: /home/runner/work/q-maws/q-maws/data/raw/fish_mito/assembled-fish_mito
+[STEP 1] Done. 25 species (0.00113767s)
+  [1] NC_009057 (16626 bp)
+  [2] NC_009058 (16569 bp)
+  [3] NC_009059 (16533 bp)
+  [4] NC_009060 (16572 bp)
+  [5] NC_009062 (16585 bp)
+  [6] NC_009063 (16598 bp)
+  [7] NC_009064 (16703 bp)
+  [8] NC_009065 (16649 bp)
+  [9] NC_009066 (17045 bp)
+  [10] NC_009067 (16510 bp)
+  [11] NC_009459 (16441 bp)
+  [12] NC_010205 (16793 bp)
+  [13] NC_011168 (16544 bp)
+  [14] NC_011169 (16556 bp)
+  [15] NC_011170 (16522 bp)
+  [16] NC_011171 (16876 bp)
+  [17] NC_011177 (16486 bp)
+  [18] NC_011179 (16456 bp)
+  [19] NC_012055 (16508 bp)
+  [20] NC_013564 (16657 bp)
+  [21] NC_013577 (16798 bp)
+  [22] NC_013663 (16627 bp)
+  [23] NC_013750 (16628 bp)
+  [24] NC_018814 (16588 bp)
+  [25] NC_018815 (16590 bp)
+
+[INFO] Adaptive length range: [3, 10] (avgSeqLen=16618, nSpecies=25)
+[STEP 2/5] Extracting Minimal Absent Words (range=[3,10])...
+  NC_009057: 3299 MAWs (0.00975255s)
+  NC_009058: 3293 MAWs (0.00847384s)
+  NC_009059: 4024 MAWs (0.00872549s)
+  NC_009060: 4159 MAWs (0.00870659s)
+  NC_009062: 3472 MAWs (0.00856717s)
+  NC_009063: 3612 MAWs (0.00877987s)
+  NC_009064: 3392 MAWs (0.00870209s)
+  NC_009065: 3506 MAWs (0.00884246s)
+  NC_009066: 4081 MAWs (0.00898293s)
+  NC_009067: 3818 MAWs (0.00881476s)
+  NC_009459: 3665 MAWs (0.00865375s)
+  NC_010205: 4036 MAWs (0.00892519s)
+  NC_011168: 3328 MAWs (0.0086194s)
+  NC_011169: 3142 MAWs (0.00859597s)
+  NC_011170: 3458 MAWs (0.00860477s)
+  NC_011171: 3571 MAWs (0.00871691s)
+  NC_011177: 3207 MAWs (0.00877101s)
+  NC_011179: 3395 MAWs (0.00860615s)
+  NC_012055: 3833 MAWs (0.00893518s)
+  NC_013564: 3398 MAWs (0.00873342s)
+  NC_013577: 3487 MAWs (0.00869886s)
+  NC_013663: 3459 MAWs (0.0086875s)
+  NC_013750: 3281 MAWs (0.00865955s)
+  NC_018814: 3577 MAWs (0.00865628s)
+  NC_018815: 3500 MAWs (0.00869471s)
+[STEP 2] Done (0.220368s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 2 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 2
+[INFO] Union of MAW sets: 509 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 509
+[INFO] Union of MAW sets: 10208 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 10208
+[INFO] Union of MAW sets: 20883 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 20883
+[INFO] Union of MAW sets: 5126 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 5126
+[INFO] Union of MAW sets: 415 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 415
+[INFO] Multi-length aggregation: selected lengths = {7, 8, 9}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={7,8,9})...
+[INFO] Union of MAW sets: 36217 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 36217
+[INFO] Matrix: 25 species x 36217 characters (3 length(s))
+[INFO] PHYLIP matrix written: /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws/ml_maws_matrix.phy (25 taxa, 36217 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 4 --prefix /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     25
+    n (avg seq len): 16618
+    |U| (characters):36217
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.001       4.48          0.65        O(m * n)
+  MAW Extraction                0.219       9.65          4.99        O(m * n * sigma)
+                                  (m=25, n_avg=16618, sigma=4)
+  Entropy Selection             0.024       13.60         3.95        O(L * m * |U_max|)
+                                  (L_range=[3..10])
+  Matrix Construction           0.073       16.20         2.61        O(m * |U|)
+                                  (lengths={7,8,9})
+  ML Inference                  19.110      16.27         0.06        NP-hard (heuristic)
+                                  (m=25, |U|=36217)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         19.427      16.27         
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      25
+  MAW length:   {7,8,9}
+  Characters:   36217
+  Strand-aware: Yes
+  Total time:   19.43 sec
+  Peak memory:  16.27 MB
+  Output dir:   /home/runner/work/_temp/out/results/benchmark/fish_mito/ml_maws
+============================================================
+
