@@ -13,7 +13,12 @@ Written to results/benchmark/summary/:
   medians.tsv     median nRF and nQD of every method per condition, with bootstrap
                   95% CIs and the number of finished datasets
   friedman.tsv    Friedman test and mean ranks on the datasets every method finished
-  pairwise.tsv    two-sided Wilcoxon tests of every pair of methods, Holm-adjusted
+  pairwise.tsv    two-sided Wilcoxon tests of every pair of methods, Holm-adjusted, with the
+                  effect sizes of Amendment 9 (median difference with a bootstrap 95% CI,
+                  Hodges-Lehmann estimate, matched-pairs rank-biserial correlation)
+  tuned.tsv       descriptive: every tuned setting against its default (tuned minus default)
+                  on the datasets where both finished, with the same effect sizes and a
+                  two-sided Wilcoxon test, Holm-adjusted across these comparisons
   h1_rerun.tsv    descriptive: the H1 test (Q-MAWS mean of five seeds against ML-MAWS on the
                   7 AFproject datasets with HGT) with ML-MAWS run on this laptop instead of
                   the values reported in its paper (results/summary/h1_pairs.tsv)
@@ -283,14 +288,42 @@ def main():
         for i, a in enumerate(af):
             for b in af[i + 1:]:
                 d = [float(acc[(ds, a)][k]) - float(acc[(ds, b)][k]) for ds in complete]
-                pw.append([k, a, b, len(d), fmt(median(d)), fmt(rank_biserial(d), 3), p_two_sided(d)])
-    adj = holm([r[6] for r in pw]) if pw else []
+                lo, hi = boot_ci(d)
+                pw.append([k, a, b, len(d), fmt(median(d)), fmt(lo), fmt(hi), fmt(hodges_lehmann(d)),
+                           fmt(rank_biserial(d), 3), p_two_sided(d)])
+    adj = holm([r[9] for r in pw]) if pw else []
     with open(os.path.join(SUMMARY, 'pairwise.tsv'), 'w', encoding='utf-8', newline='') as f:
         w = csv.writer(f, delimiter='\t', lineterminator='\n')
-        w.writerow(['measure', 'method_a', 'method_b', 'datasets', 'median_diff', 'rank_biserial', 'p', 'p_holm'])
+        w.writerow(['measure', 'method_a', 'method_b', 'datasets', 'median_diff', 'ci_low', 'ci_high',
+                    'hodges_lehmann', 'rank_biserial', 'p', 'p_holm'])
         for r, pa in zip(pw, adj):
-            w.writerow(r[:6] + [fmt(r[6]), fmt(pa)])
+            w.writerow(r[:9] + [fmt(r[9]), fmt(pa)])
     print(f'  Friedman: {len(complete)} datasets finished by all {len(af)} alignment-free methods')
+    tuned_vs_default(acc, methods)
+
+
+def tuned_vs_default(acc, methods):
+    """Descriptive: tuned minus default for every method with a tuned setting (Amendment 8),
+    on the datasets where both runs finished; the effect sizes of Amendment 9."""
+    rows = []
+    for t in (m for m in methods if m.endswith('_tuned')):
+        m = t[:-len('_tuned')]
+        both = sorted(ds for ds, x in acc if x == t and acc[(ds, t)].get('status') == 'done'
+                      and acc.get((ds, m), {}).get('status') == 'done')
+        for k in ('nrf', 'nqd'):
+            d = [float(acc[(ds, t)][k]) - float(acc[(ds, m)][k]) for ds in both]
+            lo, hi = boot_ci(d)
+            rows.append([f'{m} tuned minus default', k, len(d), sum(x < 0 for x in d), sum(x == 0 for x in d),
+                         sum(x > 0 for x in d), fmt(median(d)), fmt(lo), fmt(hi), fmt(hodges_lehmann(d)),
+                         fmt(rank_biserial(d), 3), p_two_sided(d)])
+    adj = holm([r[11] for r in rows]) if rows else []
+    with open(os.path.join(SUMMARY, 'tuned.tsv'), 'w', encoding='utf-8', newline='') as f:
+        w = csv.writer(f, delimiter='\t', lineterminator='\n')
+        w.writerow(['comparison', 'measure', 'n', 'lower', 'equal', 'higher', 'median_diff', 'ci_low', 'ci_high',
+                    'hodges_lehmann', 'rank_biserial', 'p_two_sided', 'p_holm'])
+        for r, pa in zip(rows, adj):
+            w.writerow(r[:11] + [fmt(r[11]), fmt(pa)])
+    print(f'  tuned against default: {len(rows) // 2} methods')
 
 
 if __name__ == '__main__':
