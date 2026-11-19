@@ -14,7 +14,7 @@ on:
 
 permissions:
   contents: write
-  actions: read
+  actions: write   # the analysis job starts the next workflow run when runs are left
 
 concurrency:
   group: benchmark-cloud
@@ -210,3 +210,23 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "📊 data : Add the analysis of the extended benchmark (workflow run ${{ github.run_id }})" || echo "nothing new"
           git push -q origin "HEAD:refs/heads/$STATE_BRANCH"
+      - name: Continue in a new workflow run (runs left, and this run finished some)
+        # A workflow run has at most 12 waves; when runs are left, the next workflow run is
+        # started here instead of by hand (Amendment 10c). It is started only if this run
+        # finished at least one run, so a run that cannot progress never repeats itself.
+        if: steps.progress.outputs.remaining != '0'
+        run: |
+          made=$(python3 - "$RUNNER_TEMP/state/cloud/waves.json" "${{ github.run_id }}" <<'EOF'
+          import json, sys
+          log = json.load(open(sys.argv[1]))
+          print(sum(n for w in log if str(w.get('workflow_run')) == sys.argv[2]
+                    for k, n in w.get('outcomes', {}).items() if k in ('done', 'failed')))
+          EOF
+          )
+          echo "runs finished in this workflow run: $made; runs left: ${{ steps.progress.outputs.remaining }}"
+          if [ "$made" -gt 0 ]; then
+            gh workflow run benchmark_cloud.yml --ref "${{ github.ref_name }}"
+          else
+            echo "::error::no run finished in this workflow run, so it is not started again"
+            exit 1
+          fi
