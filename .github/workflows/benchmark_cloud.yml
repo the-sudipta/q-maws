@@ -210,6 +210,10 @@ jobs:
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
             commit -q -m "📊 data : Add the analysis of the extended benchmark (workflow run ${{ github.run_id }})" || echo "nothing new"
           git push -q origin "HEAD:refs/heads/$STATE_BRANCH"
+          if [ -s results/benchmark/summary/analysis_errors.txt ]; then
+            echo "::error::an analysis script stopped; see results/benchmark/summary/analysis_errors.txt"
+            exit 1
+          fi
       - name: Continue in a new workflow run (runs left, and this run finished some)
         # A workflow run has at most 12 waves; when runs are left, the next workflow run is
         # started here instead of by hand (Amendment 10c). It is started only if this run

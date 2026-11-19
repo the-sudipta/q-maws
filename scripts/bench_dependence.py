@@ -183,6 +183,10 @@ def main():
     out = []
     for arg in sys.argv[1:]:
         name, folder = arg.split('=', 1)
+        if not os.path.isfile(os.path.join(folder, 'm_ml.phy')):
+            print(f'   {name}: no matrix in {folder} (left out)', flush=True)
+            out.append([name] + ['NA'] * 11)
+            continue
         rng = random.Random(1)
         names, bits, words = read_matrix(folder)
         n = len(names)

@@ -213,21 +213,31 @@ def check_h5():
 def h1_rerun(acc):
     """H1 with ML-MAWS values from our own runs (descriptive; H1 itself used reported values)."""
     pairs = list(csv.DictReader(open(os.path.join('results', 'summary', 'h1_pairs.tsv'), encoding='utf-8'), delimiter='\t'))
-    out, ps = [], []
+    out, ps, missing = [], [], set()
     for metric, key in (('nRF', 'nrf'), ('nQD', 'nqd')):
-        d = [float(p['qmaws']) - float(acc[(p['dataset'], 'ml_maws')][key]) for p in pairs if p['metric'] == metric]
+        d = []
+        for p in pairs:
+            if p['metric'] != metric:
+                continue
+            r = acc.get((p['dataset'], 'ml_maws'), {})
+            if r.get('status') == 'done' and r.get(key) not in (None, ''):
+                d.append(float(p['qmaws']) - float(r[key]))
+            else:     # ML-MAWS failed or has no value: the pair is left out and named
+                missing.add(p['dataset'])
         out.append((key, d))
         ps.append(p_less(d))
+    if missing:
+        print('  H1 rerun: no ML-MAWS value for', ', '.join(sorted(missing)), '(left out)')
     rows = []
     for (key, d), p, pa in zip(out, ps, holm(ps)):
         c = clean(d)
         rows.append(['Q-MAWS (mean of 5 seeds) minus ML-MAWS (laptop runs)', key, len(d), sum(x < 0 for x in c),
                      sum(x == 0 for x in c), sum(x > 0 for x in c), fmt(median(d)), fmt(hodges_lehmann(d)),
-                     fmt(rank_biserial(d), 3), fmt(p), fmt(pa)])
+                     fmt(rank_biserial(d), 3), fmt(p), fmt(pa), '; '.join(sorted(missing))])
     with open(os.path.join(SUMMARY, 'h1_rerun.tsv'), 'w', encoding='utf-8', newline='') as f:
         w = csv.writer(f, delimiter='\t', lineterminator='\n')
         w.writerow(['comparison', 'measure', 'n', 'lower', 'equal', 'higher', 'median_diff', 'hodges_lehmann',
-                    'rank_biserial', 'p_one_sided', 'p_holm'])
+                    'rank_biserial', 'p_one_sided', 'p_holm', 'left_out_no_ml_maws_value'])
         w.writerows(rows)
     for r in rows:
         print('  H1 rerun', r[1], 'L/E/H', r[3], r[4], r[5], 'median', r[6], 'Holm p', r[10])

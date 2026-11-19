@@ -8,6 +8,8 @@ Written to results/benchmark/summary/:
   calibration.tsv       ECE (10 equal-width bins, as H4) of Q-MAWS S1, Q-MAWS S2 and ML-MAWS
                         UFBoot, with bootstrap 95% CIs over branches, on the H4 branches
                         (reproduces H4) and on the branches of the 20 H5 and 30 new datasets
+  calibration_left_out.tsv  the H5 and new datasets left out because Q-MAWS or ML-MAWS has no
+                        tree there (failed or not run); both methods use the same datasets
   calibration_bins.tsv  reliability-diagram bins of the same sets
   calibration_power.tsv the ECE difference S1 minus UFBoot, its bootstrap SE, and the
                         smallest difference the set detects with 80% power (2.8 SE)
@@ -163,7 +165,7 @@ def calibration():
         'qmaws_s2': sum((edges(os.path.join('results', 'runs', f'{d}_seed1', 'trees', 'tree_s2.nwk'), ref) for d in AF_SIM), []),
         'ml_maws_ufboot': sum((edges(os.path.join(h4, 'mlmaws', d, 'ML_MAWS_tree.newick'), ref, 100) for d in AF_SIM), []),
     }
-    s1, uf = [], []
+    s1, uf, used, left_out = [], [], 0, []
     for ds in H5 + NEW:
         truth = os.path.join('data', 'manifests', 'simulated', 'trees', ds + '.nwk')
         run = os.path.join('results', 'h5', ds, 'qmaws') if ds in H5 else os.path.join('results', 'benchmark', ds, 'qmaws')
@@ -171,9 +173,17 @@ def calibration():
             os.path.join('results', 'benchmark', ds, 'ml_maws', 'ML_MAWS_tree.newick')
         if not os.path.exists(ml):
             ml = os.path.join('results', 'benchmark', ds, 'ml_maws', 'ml_maws_iqtree.treefile')
-        s1 += edges(os.path.join(run, 'trees', 'tree_s1.nwk'), truth)
+        tree = os.path.join(run, 'trees', 'tree_s1.nwk')
+        if not (os.path.exists(tree) and os.path.exists(ml)):
+            left_out.append(ds)       # a method has no tree here: both are left out, and named
+            continue
+        s1 += edges(tree, truth)
         uf += edges(ml, truth, 100)
-    sets['H5 and new data (50 datasets)'] = {'qmaws_s1': s1, 'ml_maws_ufboot': uf}
+        used += 1
+    if left_out:
+        print('  calibration: no tree of Q-MAWS or ML-MAWS for', ', '.join(left_out), '(left out)')
+        write('calibration_left_out.tsv', ['dataset'], [[ds] for ds in left_out])
+    sets[f'H5 and new data ({used} datasets)'] = {'qmaws_s1': s1, 'ml_maws_ufboot': uf}
 
     rows, bins, power = [], [], []
     for name, d in sets.items():
@@ -235,6 +245,10 @@ def halo():
         else:
             run = os.path.join('results', 'h5', ds, 'qmaws') if ds in H5 else os.path.join('results', 'benchmark', ds, 'qmaws')
             truth = os.path.join('data', 'manifests', 'simulated', 'trees', ds + '.nwk')
+        if not (os.path.exists(os.path.join(run, 'report', 'tree.nwk')) and
+                os.path.exists(os.path.join(run, 'report', 'halo.tsv'))):
+            print(f'  halo: no Q-MAWS tree for {ds} (left out)')
+            continue
         de, dt = leaf_dist(read(os.path.join(run, 'report', 'tree.nwk'))), leaf_dist(read(truth))
         taxa = sorted(dt)
         wrong = {t: 0 for t in taxa}
