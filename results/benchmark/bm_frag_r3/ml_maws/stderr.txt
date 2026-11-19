@@ -1,0 +1,158 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[INFO] Read 30 species from directory: /home/runner/work/q-maws/q-maws/data/raw/simulated/bm_frag_r3
+[STEP 1] Done. 30 species (0.141535s)
+  [1] T1 (1000000 bp)
+  [2] T10 (1000000 bp)
+  [3] T11 (1000000 bp)
+  [4] T12 (1000000 bp)
+  [5] T13 (1000000 bp)
+  [6] T14 (1000000 bp)
+  [7] T15 (1000000 bp)
+  [8] T16 (1000000 bp)
+  [9] T17 (1000000 bp)
+  [10] T18 (1000000 bp)
+  [11] T19 (1000000 bp)
+  [12] T2 (1000000 bp)
+  [13] T20 (1000000 bp)
+  [14] T21 (1000000 bp)
+  [15] T22 (1000000 bp)
+  [16] T23 (1000000 bp)
+  [17] T24 (1000000 bp)
+  [18] T25 (1000000 bp)
+  [19] T26 (1000000 bp)
+  [20] T27 (1000000 bp)
+  [21] T28 (1000000 bp)
+  [22] T29 (1000000 bp)
+  [23] T3 (1000000 bp)
+  [24] T30 (1000000 bp)
+  [25] T4 (1000000 bp)
+  [26] T5 (1000000 bp)
+  [27] T6 (1000000 bp)
+  [28] T7 (1000000 bp)
+  [29] T8 (1000000 bp)
+  [30] T9 (1000000 bp)
+
+[INFO] Adaptive length range: [5, 14] (avgSeqLen=1000000, nSpecies=30)
+[STEP 2/5] Extracting Minimal Absent Words (range=[5,14])...
+  T1: 313200 MAWs (1.38918s)
+  T10: 314559 MAWs (1.39004s)
+  T11: 313595 MAWs (1.31874s)
+  T12: 312337 MAWs (1.29916s)
+  T13: 312415 MAWs (1.28478s)
+  T14: 311100 MAWs (1.3193s)
+  T15: 312697 MAWs (1.28223s)
+  T16: 313157 MAWs (1.26062s)
+  T17: 312964 MAWs (1.32219s)
+  T18: 311973 MAWs (1.27571s)
+  T19: 312684 MAWs (1.34453s)
+  T2: 311491 MAWs (1.35098s)
+  T20: 311819 MAWs (1.34304s)
+  T21: 313359 MAWs (1.35813s)
+  T22: 313381 MAWs (1.28002s)
+  T23: 311876 MAWs (1.28537s)
+  T24: 312137 MAWs (1.31885s)
+  T25: 311897 MAWs (1.26368s)
+  T26: 313014 MAWs (1.26902s)
+  T27: 312677 MAWs (1.2891s)
+  T28: 312542 MAWs (1.27509s)
+  T29: 312667 MAWs (1.27457s)
+  T3: 312925 MAWs (1.293s)
+  T30: 312953 MAWs (1.27809s)
+  T4: 313224 MAWs (1.26198s)
+  T5: 313268 MAWs (1.28025s)
+  T6: 314020 MAWs (1.29102s)
+  T7: 313782 MAWs (1.33034s)
+  T8: 312983 MAWs (1.36165s)
+  T9: 313994 MAWs (1.29677s)
+[STEP 2] Done (39.3304s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 2520 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 2520
+[INFO] Union of MAW sets: 657317 unique MAWs
+[INFO] Removed 4 constant columns. Remaining: 657313
+[INFO] Union of MAW sets: 1580360 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 1580360
+[INFO] Union of MAW sets: 165947 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 165947
+[INFO] Union of MAW sets: 4320 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 4320
+[INFO] Union of MAW sets: 115 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 115
+[INFO] Multi-length aggregation: selected lengths = {10, 11, 12}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={10,11,12})...
+[INFO] Union of MAW sets: 2403624 unique MAWs
+[INFO] Removed 4 constant columns. Remaining: 2403620
+[INFO] Matrix has 2403620 characters, capping to 50000 most informative...
+[INFO] Capped to 50000 most informative characters
+[INFO] Matrix: 30 species x 50000 characters (3 length(s))
+[INFO] PHYLIP matrix written: /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws/ml_maws_matrix.phy (30 taxa, 50000 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 4 --prefix /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     30
+    n (avg seq len): 1000000
+    |U| (characters):50000
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.142       35.31         31.48       O(m * n)
+  MAW Extraction                39.189      578.27        542.77      O(m * n * sigma)
+                                  (m=30, n_avg=1000000, sigma=4)
+  Entropy Selection             3.165       614.88        36.62       O(L * m * |U_max|)
+                                  (L_range=[5..14])
+  Matrix Construction           4.408       877.48        262.60      O(m * |U|)
+                                  (lengths={10,11,12})
+  ML Inference                  278.913     877.55        0.06        NP-hard (heuristic)
+                                  (m=30, |U|=50000)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         325.816     877.55        
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      30
+  MAW length:   {10,11,12}
+  Characters:   50000
+  Strand-aware: Yes
+  Total time:   325.82 sec
+  Peak memory:  877.55 MB
+  Output dir:   /home/runner/work/_temp/out/results/benchmark/bm_frag_r3/ml_maws
+============================================================
+
