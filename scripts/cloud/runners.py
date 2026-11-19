@@ -101,11 +101,14 @@ def run_tool(task, ctx):
 # --- Q-MAWS (release 1.0.0) ---------------------------------------------------------
 def _qmaws_command(task, ctx, folder):
     if os.path.isfile(os.path.join(folder, 'run.json')):
-        # a run continued in another job: its lock belongs to a process that no longer exists
-        try:
-            os.remove(os.path.join(folder, 'work', 'run.lock'))
-        except OSError:
-            pass
+        # A run continued in another job: its lock belongs to a process on another runner.
+        # Mark it closed (crates/qmaws-engine/src/lock.rs). Removing it is not enough: without
+        # a lock, Q-MAWS takes a run.json changed in the last 120 s as in use, and the files
+        # of a restored run are all new, so every resume stopped at once (Amendment 10c).
+        lock = os.path.join(folder, 'work', 'run.lock')
+        os.makedirs(os.path.dirname(lock), exist_ok=True)
+        with open(lock, 'w', encoding='utf-8') as f:
+            f.write('closed\n')
         return [ctx.qmaws, '--quiet', 'resume', '--output', folder]
     cmd = [ctx.qmaws, '--quiet', 'run', '--input', os.path.join(REPO, input_path(task.dataset)),
            '--reference', os.path.join(REPO, reference_path(task.dataset)), '--seed', '1',
