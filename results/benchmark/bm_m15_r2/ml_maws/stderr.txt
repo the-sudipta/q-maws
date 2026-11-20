@@ -1,0 +1,127 @@
+
+============================================================
+  ML-MAWS: Maximum Likelihood Phylogeny Estimation
+  Using Minimal Absent Word Characters
+============================================================
+
+[STEP 1/5] Reading input sequences...
+[STEP 1] Done. 15 species (0.0323171s)
+  [1] T1 (1000000 bp)
+  [2] T2 (1000000 bp)
+  [3] T10 (1000000 bp)
+  [4] T12 (1000000 bp)
+  [5] T5 (1000000 bp)
+  [6] T9 (1000000 bp)
+  [7] T3 (1000000 bp)
+  [8] T4 (1000000 bp)
+  [9] T6 (1000000 bp)
+  [10] T13 (1000000 bp)
+  [11] T7 (1000000 bp)
+  [12] T8 (1000000 bp)
+  [13] T15 (1000000 bp)
+  [14] T11 (1000000 bp)
+  [15] T14 (1000000 bp)
+
+[INFO] Adaptive length range: [5, 14] (avgSeqLen=1000000, nSpecies=15)
+[STEP 2/5] Extracting Minimal Absent Words (range=[5,14])...
+  T1: 311618 MAWs (1.06353s)
+  T2: 311669 MAWs (1.03328s)
+  T10: 311477 MAWs (1.03049s)
+  T12: 312860 MAWs (1.02887s)
+  T5: 310461 MAWs (1.02496s)
+  T9: 310845 MAWs (1.034s)
+  T3: 311879 MAWs (1.06399s)
+  T4: 311595 MAWs (1.02428s)
+  T6: 311501 MAWs (1.02733s)
+  T13: 311769 MAWs (1.03484s)
+  T7: 315024 MAWs (1.02416s)
+  T8: 312724 MAWs (1.02469s)
+  T15: 311254 MAWs (1.05698s)
+  T11: 311368 MAWs (1.14474s)
+  T14: 312135 MAWs (1.06581s)
+[STEP 2] Done (15.7149s)
+
+[STEP 3/5] Selecting optimal MAW length(s) via entropy...
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 0 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 0
+[INFO] Union of MAW sets: 1218 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 1218
+[INFO] Union of MAW sets: 473433 unique MAWs
+[INFO] Removed 535 constant columns. Remaining: 472898
+[INFO] Union of MAW sets: 977452 unique MAWs
+[INFO] Removed 214 constant columns. Remaining: 977238
+[INFO] Union of MAW sets: 85478 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 85478
+[INFO] Union of MAW sets: 2116 unique MAWs
+[INFO] Removed 0 constant columns. Remaining: 2116
+[INFO] Union of MAW sets: 62 unique MAWs
+[INFO] Removed 1 constant columns. Remaining: 61
+[INFO] Multi-length aggregation: selected lengths = {10, 11, 12}
+[STEP 3] Done
+
+[STEP 4/5] Building binary matrix (lengths={10,11,12})...
+[INFO] Union of MAW sets: 1536363 unique MAWs
+[INFO] Removed 749 constant columns. Remaining: 1535614
+[INFO] Matrix has 1535614 characters, capping to 50000 most informative...
+[INFO] Capped to 50000 most informative characters
+[INFO] Matrix: 15 species x 50000 characters (3 length(s))
+[INFO] PHYLIP matrix written: /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws/ml_maws_matrix.phy (15 taxa, 50000 characters)
+[STEP 4] Done
+
+[STEP 5/5] Running ML tree estimation...
+[CMD] iqtree2 -s /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws/ml_maws_matrix.phy -st BIN -m MFP+ASC -bb 1000 -nt 4 --prefix /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws/ml_maws_iqtree -redo
+[STEP 5] Done
+[OUTPUT] Tree: /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws/ML_MAWS_tree.newick
+
+============================================================
+  TIME AND SPACE COMPLEXITY ANALYSIS
+============================================================
+
+  Input Parameters:
+    m (species):     15
+    n (avg seq len): 1000000
+    |U| (characters):50000
+    sigma (alphabet):4
+
+  Step                          Time (s)    Memory (MB)   Delta (MB)  Complexity
+  ------------------------------------------------------------------------------------------
+  Read FASTA                    0.032       19.11         15.27       O(m * n)
+  MAW Extraction                15.683      323.29        304.00      O(m * n * sigma)
+                                  (m=15, n_avg=1000000, sigma=4)
+  Entropy Selection             1.191       546.17        222.88      O(L * m * |U_max|)
+                                  (L_range=[5..14])
+  Matrix Construction           1.627       565.91        19.74       O(m * |U|)
+                                  (lengths={10,11,12})
+  ML Inference                  22.143      565.98        0.06        NP-hard (heuristic)
+                                  (m=15, |U|=50000)
+  ------------------------------------------------------------------------------------------
+  TOTAL                         40.676      565.98        
+
+  Theoretical Complexity:
+    Step 1 (Read FASTA):     O(m * n)
+    Step 2 (Extract MAWs):   O(m * n * sigma)
+    Step 3 (Entropy select):  O(L_range * m * |U_max|)
+    Step 4 (Build matrix):   O(m * |U|)
+    Step 5 (ML inference):   NP-hard (RAxML/IQ-TREE heuristic)
+    Overall:                 O(m * n * sigma) + ML(m, |U|)
+
+  Complexity report: /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws/complexity_report.json
+
+============================================================
+  SUMMARY
+============================================================
+  Species:      15
+  MAW length:   {10,11,12}
+  Characters:   50000
+  Strand-aware: Yes
+  Total time:   40.68 sec
+  Peak memory:  565.98 MB
+  Output dir:   /home/runner/work/_temp/out/results/benchmark/bm_m15_r2/ml_maws
+============================================================
+
