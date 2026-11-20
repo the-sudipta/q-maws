@@ -80,8 +80,12 @@ jobs:
             sleep 60
           done
           exit 1
-      - name: Processor of this runner (the tool cache is per processor model, -march=native)
-        run: echo "CPU_KEY=$(grep -m 1 'model name' /proc/cpuinfo | sha256sum | cut -c1-16)" >> "$GITHUB_ENV"
+      # Runners of one processor model do not all offer the same instruction sets, so a build
+      # with -march=native is reused only on runners with the same model and the same CPU
+      # flags (Amendment 10d).
+      - name: Processor of this runner (the tool cache is per processor model and CPU flags, -march=native)
+        run: |
+          echo "CPU_KEY=$({ grep -m 1 'model name' /proc/cpuinfo; grep -m 1 '^flags' /proc/cpuinfo; } | sha256sum | cut -c1-16)" >> "$GITHUB_ENV"
       - name: Restore the tools
         id: tools
         uses: actions/cache/restore@v6
