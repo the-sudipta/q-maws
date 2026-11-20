@@ -43,13 +43,22 @@ def _clear_finished(outcomes, src, dest):
             os.remove(old)
 
 
+def _job_outputs(outputs, wave):
+    """[(artifact name, folder)] of the job outputs of one wave. actions/download-artifact
+    puts the files of the only matching artifact straight into the folder, without a
+    sub-folder named after it, so a wave of one job has no sub-folder (Amendment 10d)."""
+    if os.path.isdir(os.path.join(outputs, 'cloud')):
+        job = read_json(os.path.join(outputs, 'cloud', 'outcomes.json'), {}).get('job') or f'w{wave}-s0'
+        return [('out-' + job, outputs)]
+    return [(job, os.path.join(outputs, job)) for job in sorted(os.listdir(outputs))]
+
+
 def merge(state, outputs, run_id, wave):
-    """state: state checkout; outputs: folder holding one sub-folder per job output."""
+    """state: state checkout; outputs: folder holding the job outputs of the wave."""
     partials = read_json(os.path.join(state, 'cloud', 'partials.json'), {})
     failures = read_json(os.path.join(state, 'cloud', 'failures.json'), {})
     notes, counts = [], {}
-    for job in sorted(os.listdir(outputs)):
-        out = os.path.join(outputs, job)
+    for job, out in _job_outputs(outputs, wave):
         if not os.path.isdir(os.path.join(out, 'cloud')):
             continue
         result = read_json(os.path.join(out, 'cloud', 'outcomes.json'), {'outcomes': {}, 'partials': {}})

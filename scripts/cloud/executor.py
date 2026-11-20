@@ -164,7 +164,7 @@ def run_shard(shard, tasks_by_id, out, partial, scratch, tools, deadline, full_b
             'workflow_run': os.environ.get('GITHUB_RUN_ID', 'local'), 'job': job,
             'start_utc': utc(start), 'end_utc': utc(), 'outcome': outcome}])
     with open(os.path.join(out, 'cloud', 'outcomes.json'), 'w', encoding='utf-8') as f:
-        json.dump({'outcomes': outcomes, 'partials': ctx.saved_partials}, f, indent=1, sort_keys=True)
+        json.dump({'outcomes': outcomes, 'partials': ctx.saved_partials, 'job': job}, f, indent=1, sort_keys=True)
     done = sum(o in (DONE, FAILED) for o in outcomes.values())
     print(f'shard finished: {done} of {len(outcomes)} tasks have a result; '
           f'{sum(o == INTERRUPTED for o in outcomes.values())} continue later')
