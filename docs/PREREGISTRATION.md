@@ -260,3 +260,14 @@ If decision D8 is declined, H2 and H4 are reported as "not tested" with the reas
 - **What this note is:** a disclosure for readers, added because the text above names ML-MAWS without saying so. It is not an amendment: no hypothesis, method, setting, dataset, measure, test or result changes, and nothing above is altered.
 - **How ML-MAWS was run:** from its public code (commit `0c38db1`) with its documented command, changed only where IQ-TREE 2.4.0 refused that command above 50 taxa (Amendment 6), under the same rules, limits and measures as every other method.
 - **Recorded by:** the owner, 2026-11-21.
+
+## Addendum (2026-11-21): completed verification of the reused AFproject runs
+
+This is a dated record, not an amendment: it changes no hypothesis, method, setting, dataset, measure, test or result.
+
+- **What the rule says:** Amendment 8 requires that every reused run is checked with `qmaws verify --quick` (release 1.0.0) before it enters the benchmark.
+- **What happened on the runners:** the check passed for 54 reused runs (the 20 H5 runs, the 9 scaling runs and 25 runs on the NCBI datasets without a reference tree). For the 45 runs on the nine AFproject datasets (five seeds each) it stopped at the input check, because these runs recorded their input files under paths of the development laptop (`D:\q-maws\data\raw\...`) and the workflow did not pass `--input`; no result was compared (`results/benchmark/verify/` of `benchmark-cloud-state`). The runs nevertheless entered the benchmark. This was a deviation from Amendment 8.
+- **When it was noticed:** after the final analysis (commit `e30630c5` of `benchmark-cloud-state`), while the manuscript was prepared.
+- **The completed check:** on 2026-11-21, on the development laptop, with the published Windows program of release 1.0.0 (SHA-256 matches `SHA256SUMS.txt`). The AFproject data were downloaded again with `qmaws download` (archives checked against AFproject's published checksums), and the pre-registered check was run on copies of the committed run folders: `qmaws verify --quick --seed 1 --input <AFproject folder>`. **All 45 runs passed.** The reports are in `results/benchmark/verify_completed/` of `benchmark-cloud-state`.
+- **Effect:** none on any value that enters a table, a figure or a test; the check depends on no benchmark result. The deviation is reported in the paper and the thesis.
+- **Recorded by:** the owner, 2026-11-21.
